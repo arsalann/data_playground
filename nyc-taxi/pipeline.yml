@@ -1,0 +1,13 @@
+name: nyc-taxi-pipelines
+schedule: monthly
+start_date: "2020-01-01"
+
+default_connections:
+  motherduck: "motherduck-prod"
+
+variables:
+  taxi_types:
+    type: array
+    items:
+      type: string
+    default: ["yellow"]

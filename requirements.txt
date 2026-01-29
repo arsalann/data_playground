@@ -1,0 +1,11 @@
+pandas>=2.2.0
+requests>=2.31.0
+python-dateutil>=2.8.2
+pyarrow>=15.0.0
+shapely
+geopandas
+pydeck
+streamlit>=1.32.0
+altair>=5.0.0
+duckdb==1.4.3
+pyyaml

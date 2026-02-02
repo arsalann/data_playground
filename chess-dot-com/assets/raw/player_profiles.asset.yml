@@ -1,0 +1,17 @@
+name: raw.player_profiles
+type: ingestr
+connection: motherduck-prod
+description: |
+  Ingests player profile data from Chess.com public API.
+  Retrieves profile information for specified players including:
+  - Username, name, country
+  - Followers count
+  - Join date
+  - Status and verification status
+  
+  Data source: Chess.com Public API (no authentication required for public profiles)
+
+parameters:
+  source_connection: chess-players
+  source_table: 'profiles'
+  destination: motherduck

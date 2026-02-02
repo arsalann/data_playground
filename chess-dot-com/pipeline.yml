@@ -1,0 +1,7 @@
+name: chess-dot-com
+schedule: daily
+start_date: "2019-01-01"
+
+default_connections:
+  motherduck: "motherduck-prod"
+  chess: "chess-players"

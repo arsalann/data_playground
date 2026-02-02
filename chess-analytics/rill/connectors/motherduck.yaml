@@ -1,0 +1,4 @@
+# MotherDuck connector for Rill Cloud
+type: connector
+driver: motherduck
+# Use default DB from token; staging schema holds our tables

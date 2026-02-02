@@ -75,5 +75,5 @@ SELECT
     ELSE 'Beginner (<1400)'
   END AS rating_tier
 
-FROM read_parquet('data/games_enriched.parquet')
+FROM games_enriched
 WHERE end_time IS NOT NULL

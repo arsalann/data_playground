@@ -1,5 +1,3 @@
-# Games Enriched
+# Games Enriched (MotherDuck schema: staging)
 type: model
-sql: SELECT * FROM read_parquet('data/games_enriched.parquet')
-
-
+sql: SELECT * FROM 'md:staging/games_enriched'

@@ -1,0 +1,38 @@
+# Explore YAML
+# Reference documentation: https://docs.rilldata.com/reference/project-files/canvas-dashboards
+
+type: canvas
+display_name: "Canvas Dashboard"
+defaults:
+  time_range: inf
+  comparison_mode: time
+  filters: {}
+rows:
+  - items:
+      - heatmap:
+          color:
+            colorRange:
+              mode: scheme
+              scheme: plasma
+            field: checkmate_rate
+            type: quantitative
+          metrics_view: time_psychology
+          x:
+            field: day_name
+            limit: 40
+            type: nominal
+            sort:
+              - Monday
+              - Tuesday
+              - Wednesday
+              - Thursday
+              - Friday
+              - Saturday
+              - Sunday
+          y:
+            field: hour_utc
+            limit: 40
+            type: nominal
+            sort: y
+        width: 12
+    height: 675px

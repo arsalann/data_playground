@@ -1,0 +1,3 @@
+# Player Statistics
+type: model
+sql: SELECT * FROM read_parquet('data/player_stats.parquet')

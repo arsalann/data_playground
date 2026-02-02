@@ -1,0 +1,46 @@
+# Viral Giant Killers - Lightweight Canvas
+type: canvas
+display_name: "🐉 Giant Killer Board"
+defaults:
+  time_range: inf
+  comparison_mode: time
+  filters: {}
+
+rows:
+  - items:
+      - leaderboard:
+          metrics_view: giant_killers
+          dimension: opponent
+          measure: giant_kills
+        width: 6
+      - heatmap:
+          metrics_view: upset_watch
+          color:
+            colorRange:
+              mode: scheme
+              scheme: turbo
+            field: upset_rate
+            type: quantitative
+          x:
+            field: time_class
+            type: nominal
+          y:
+            field: rating_gap_bucket
+            type: nominal
+        width: 6
+    height: 420px
+
+  - items:
+      - table:
+          metrics_view: giant_killers
+          columns:
+            - field: opponent
+              type: dimension
+            - field: gm_player
+              type: dimension
+            - field: giant_kills
+              type: measure
+            - field: upset_rate
+              type: measure
+        width: 12
+    height: 320px

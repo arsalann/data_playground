@@ -1,0 +1,30 @@
+# Upset Watch Metrics View
+type: metrics_view
+title: "🐉 Upset Watch"
+description: "Where underdogs beat higher-rated players."
+model: game_insights
+
+dimensions:
+  - name: time_class
+    column: time_class
+  - name: rating_gap_bucket
+    column: rating_gap_bucket
+  - name: rating_tier
+    column: rating_tier
+  - name: termination_type
+    column: termination_type
+  - name: upset_category
+    column: upset_category
+
+measures:
+  - name: total_games
+    expression: COUNT(*)
+  - name: upset_count
+    expression: SUM(CASE WHEN is_upset THEN 1 ELSE 0 END)
+    format_preset: humanize
+  - name: upset_rate
+    expression: CAST(SUM(CASE WHEN is_upset THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
+    format_d3: ".1%"
+  - name: checkmate_rate
+    expression: CAST(SUM(CASE WHEN termination_type = 'Checkmate' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
+    format_d3: ".1%"

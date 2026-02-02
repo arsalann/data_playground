@@ -1,0 +1,31 @@
+# Time Psychology Metrics View
+type: metrics_view
+title: "⏰ Time Psychology"
+description: "When do players blunder vs. resign? Day/hour patterns."
+model: game_insights
+
+dimensions:
+  - name: day_name
+    column: day_name
+  - name: hour_utc
+    column: hour_utc
+  - name: time_class
+    column: time_class
+  - name: rating_tier
+    column: rating_tier
+
+measures:
+  - name: total_games
+    expression: COUNT(*)
+  - name: checkmate_rate
+    expression: CAST(SUM(CASE WHEN termination_type = 'Checkmate' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
+    format_d3: ".1%"
+  - name: resignation_rate
+    expression: CAST(SUM(CASE WHEN termination_type = 'Resignation' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
+    format_d3: ".1%"
+  - name: timeout_rate
+    expression: CAST(SUM(CASE WHEN termination_type = 'Timeout' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
+    format_d3: ".1%"
+  - name: draw_rate
+    expression: CAST(SUM(CASE WHEN termination_type = 'Draw' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
+    format_d3: ".1%"

@@ -1,0 +1,84 @@
+# Viral Chess Shocks Dashboard
+# Format reference: https://docs.rilldata.com/reference/project-files/canvas-dashboards
+type: canvas
+display_name: "🔥 Viral Chess Shocks"
+defaults:
+  time_range: inf
+  comparison_mode: time
+  filters: {}
+rows:
+  # Row 1: Biggest GM losses by hour/day (heatmap)
+  - items:
+      - heatmap:
+          color:
+            colorRange:
+              mode: scheme
+              scheme: inferno
+            field: checkmate_rate
+            type: quantitative
+          description: ""
+          metrics_view: loss_windows
+          title: ""
+          x:
+            field: day_name
+            limit: 7
+            sort:
+              - Monday
+              - Tuesday
+              - Wednesday
+              - Thursday
+              - Friday
+              - Saturday
+              - Sunday
+            type: nominal
+          y:
+            field: hour_utc
+            limit: 24
+            sort: y
+            type: nominal
+        width: 12
+    height: 420px
+
+  # Row 2: Giant killers (leaderboard) + Upset rate by gap/speed (heatmap)
+  - items:
+      - leaderboard:
+          metrics_view: giant_killers
+          dimension: opponent
+          measure: giant_kills
+        width: 6
+      - heatmap:
+          color:
+            colorRange:
+              mode: scheme
+              scheme: turbo
+            field: upset_rate
+            type: quantitative
+          metrics_view: upset_watch
+          x:
+            field: time_class
+            limit: 10
+            type: nominal
+          y:
+            field: rating_gap_bucket
+            limit: 10
+            type: nominal
+        width: 6
+    height: 420px
+
+  # Row 3: Biggest single-game gaps where underdog beat GM (table)
+  - items:
+      - table:
+          metrics_view: giant_killers
+          columns:
+            - field: opponent
+              type: dimension
+            - field: gm_player
+              type: dimension
+            - field: biggest_upset
+              type: measure
+            - field: avg_rating_deficit
+              type: measure
+            - field: upset_rate
+              type: measure
+        width: 12
+    height: 360px

@@ -218,3 +218,5 @@ logs/queries
 
 __pycache__/
 *.py[cod]
+chess-dot-com/assets/reports/.streamlit/secrets.toml
+chess-dot-com/.streamlit/secrets.toml

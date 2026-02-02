@@ -405,45 +405,42 @@ if len(biggest_upsets) > 0:
     upsets_display['winner_rating_int'] = upsets_display['winner_rating'].astype(int)
     upsets_display['loser_rating_int'] = upsets_display['loser_rating'].astype(int)
     
-    # Lollipop chart showing rating gap - use columns to make it narrower
-    col_chart, col_space = st.columns([2, 1])
+    base = alt.Chart(upsets_display).encode(
+        y=alt.Y('label:N', title=None, 
+                sort=alt.EncodingSortField(field='rating_gap', order='descending'),
+                axis=alt.Axis(labelLimit=250))
+    )
     
-    with col_chart:
-        base = alt.Chart(upsets_display).encode(
-            y=alt.Y('label:N', title=None, sort=alt.EncodingSortField(field='rating_gap', order='descending'))
-        )
-        
-        # Lines from winner rating to loser rating
-        upset_lines = base.mark_rule(strokeWidth=3, color='#FF6B6B').encode(
-            x=alt.X('winner_rating_int:Q', title='Rating', scale=alt.Scale(domain=[0, 3500])),
-            x2='loser_rating_int:Q',
-            tooltip=[
-                alt.Tooltip('winner', title='Giant Killer'),
-                alt.Tooltip('winner_rating_int', title='Winner Rating'),
-                alt.Tooltip('loser_display', title='Victim'),
-                alt.Tooltip('loser_rating_int', title='Victim Rating'),
-                alt.Tooltip('rating_gap', title='Rating Gap'),
-                alt.Tooltip('time_class', title='Format'),
-            ]
-        )
-        
-        # Points for winner (lower rating)
-        winner_points = base.mark_circle(size=100, color='#4CAF50').encode(
-            x='winner_rating_int:Q',
-            tooltip=[alt.Tooltip('winner', title='Winner'), alt.Tooltip('winner_rating_int', title='Rating')]
-        )
-        
-        # Points for loser (higher rating)  
-        loser_points = base.mark_circle(size=100, color='#F44336').encode(
-            x='loser_rating_int:Q',
-            tooltip=[alt.Tooltip('loser_display', title='Loser'), alt.Tooltip('loser_rating_int', title='Rating')]
-        )
-        
-        upset_chart = (upset_lines + winner_points + loser_points).properties(height=350)
-        st.altair_chart(upset_chart, use_container_width=True)
-        
-        st.caption("🟢 Green = Winner (lower rated) | 🔴 Red = Loser (higher rated)")
+    # Lines from winner rating to loser rating
+    upset_lines = base.mark_rule(strokeWidth=3, color='#FF6B6B').encode(
+        x=alt.X('winner_rating_int:Q', title='Rating', scale=alt.Scale(domain=[0, 3500])),
+        x2='loser_rating_int:Q',
+        tooltip=[
+            alt.Tooltip('winner', title='Giant Killer'),
+            alt.Tooltip('winner_rating_int', title='Winner Rating'),
+            alt.Tooltip('loser_display', title='Victim'),
+            alt.Tooltip('loser_rating_int', title='Victim Rating'),
+            alt.Tooltip('rating_gap', title='Rating Gap'),
+            alt.Tooltip('time_class', title='Format'),
+        ]
+    )
     
+    # Points for winner (lower rating)
+    winner_points = base.mark_circle(size=100, color='#4CAF50').encode(
+        x='winner_rating_int:Q',
+        tooltip=[alt.Tooltip('winner', title='Winner'), alt.Tooltip('winner_rating_int', title='Rating')]
+    )
+    
+    # Points for loser (higher rating)  
+    loser_points = base.mark_circle(size=100, color='#F44336').encode(
+        x='loser_rating_int:Q',
+        tooltip=[alt.Tooltip('loser_display', title='Loser'), alt.Tooltip('loser_rating_int', title='Rating')]
+    )
+    
+    upset_chart = (upset_lines + winner_points + loser_points).properties(height=350)
+    st.altair_chart(upset_chart, use_container_width=True)
+    
+    st.caption("🟢 Green = Winner (lower rated) | 🔴 Red = Loser (higher rated)")
     st.caption(f"Largest upset: {int(biggest_upsets.iloc[0]['winner_rating'])}-rated player defeated {player_display.get(biggest_upsets.iloc[0]['loser'], biggest_upsets.iloc[0]['loser'])} ({int(biggest_upsets.iloc[0]['loser_rating'])}) — {int(biggest_upsets.iloc[0]['rating_gap'])} point difference")
 
 # ============================================================================

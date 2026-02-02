@@ -9,7 +9,7 @@ WITH all_matchups AS (
     end_time,
     white_rating,
     black_rating
-  FROM read_parquet('data/games_enriched.parquet')
+  FROM games_enriched
   WHERE winner IS NOT NULL
 )
 

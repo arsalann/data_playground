@@ -44,7 +44,7 @@ WITH gm_games AS (
         AND black_result IN ('checkmated', 'resigned', 'timeout') THEN black_result
       ELSE NULL
     END as gm_loss_type
-  FROM read_parquet('data/games_enriched.parquet')
+  FROM games_enriched
   WHERE white_username IN ('MagnusCarlsen', 'Hikaru', 'GothamChess', 'DanielNaroditsky')
      OR black_username IN ('MagnusCarlsen', 'Hikaru', 'GothamChess', 'DanielNaroditsky')
 )

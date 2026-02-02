@@ -16,7 +16,7 @@ WITH matchups AS (
       ELSE 'draw'
     END AS result,
     end_time
-  FROM read_parquet('data/games_enriched.parquet')
+  FROM games_enriched
   WHERE white_username IS NOT NULL AND black_username IS NOT NULL
 )
 

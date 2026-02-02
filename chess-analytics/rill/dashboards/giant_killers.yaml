@@ -1,0 +1,58 @@
+# 🐉 Giant Killers
+# The nobodies who slay grandmasters
+
+type: metrics_view
+title: "🐉 Giant Killers"
+description: "A 486-rated player once beat a 3195-rated GM. Meet the heroes."
+model: shocking_insights
+
+dimensions:
+  - name: opponent
+    label: "Giant Killer"
+    column: opponent
+    description: "The underdog who won"
+  
+  - name: gm_player
+    label: "GM Victim"
+    column: gm_player
+  
+  - name: skill_gap_bucket
+    label: "Rating Gap"
+    column: skill_gap_bucket
+  
+  - name: time_class
+    label: "Speed"
+    column: time_class
+  
+  - name: gm_loss_type
+    label: "How GM Lost"
+    column: gm_loss_type
+
+measures:
+  - name: giant_kills
+    label: "Giant Kills"
+    expression: SUM(CASE WHEN is_giant_kill THEN 1 ELSE 0 END)
+    format_preset: humanize
+    description: "Wins against GM 300+ rating higher"
+  
+  - name: total_games_vs_gms
+    label: "Games vs GMs"
+    expression: COUNT(*)
+    format_preset: humanize
+  
+  - name: upset_rate
+    label: "Upset Rate"
+    expression: CAST(SUM(CASE WHEN is_giant_kill THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
+    format_d3: ".1%"
+    description: "% of games that were upsets"
+  
+  - name: avg_rating_deficit
+    label: "Avg Rating Deficit"
+    expression: ROUND(AVG(CASE WHEN gm_outcome = 'GM Lost' THEN rating_advantage ELSE NULL END), 0)
+    format_preset: humanize
+    description: "How outrated was the giant killer?"
+  
+  - name: biggest_upset
+    label: "Biggest Rating Gap"
+    expression: MAX(CASE WHEN gm_outcome = 'GM Lost' THEN rating_advantage ELSE NULL END)
+    format_preset: humanize

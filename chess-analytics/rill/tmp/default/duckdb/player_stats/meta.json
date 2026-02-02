@@ -1,0 +1,1 @@
+{"name":"player_stats","version":"1769953545382","created_version":"1769953545382","type":"VIEW","sql":"SELECT * FROM read_parquet(main.list_value('/Users/bear/Github/data_playground/chess-analytics/rill/data/player_stats.parquet'))"}

@@ -1,0 +1,18 @@
+name: raw.player_games
+type: ingestr
+connection: motherduck-prod
+description: |
+  Ingests game data from Chess.com public API.
+  Retrieves all games for specified players including:
+  - Game URL, time class (rapid, blitz, bullet)
+  - Players (white/black) and their ratings
+  - Result, accuracy, time control
+  - Opening ECO code
+  - PGN move data
+  
+  Data source: Chess.com Public API (no authentication required for public games)
+
+parameters:
+  source_connection: chess-players
+  source_table: 'games'
+  destination: motherduck

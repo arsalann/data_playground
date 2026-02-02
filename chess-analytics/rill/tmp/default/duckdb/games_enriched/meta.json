@@ -1,0 +1,1 @@
+{"name":"games_enriched","version":"1769953542203","created_version":"1769953542203","type":"VIEW","sql":"SELECT * FROM read_parquet(main.list_value('/Users/bear/Github/data_playground/chess-analytics/rill/data/games_enriched.parquet'))"}

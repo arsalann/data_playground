@@ -1,0 +1,35 @@
+# Viral Loss Windows - Lightweight Canvas
+type: canvas
+display_name: "🔥 GM Loss Windows"
+defaults:
+  time_range: inf
+  comparison_mode: time
+  filters: {}
+
+rows:
+  - items:
+      - heatmap:
+          metrics_view: loss_windows
+          color:
+            colorRange:
+              mode: scheme
+              scheme: inferno
+            field: checkmate_rate
+            type: quantitative
+          x:
+            field: day_name
+            sort:
+              - Monday
+              - Tuesday
+              - Wednesday
+              - Thursday
+              - Friday
+              - Saturday
+              - Sunday
+            type: nominal
+          y:
+            field: hour_utc
+            type: nominal
+            sort: y
+        width: 12
+    height: 420px

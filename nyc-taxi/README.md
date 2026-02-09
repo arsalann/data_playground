@@ -61,7 +61,7 @@ nyc_cabs/
 - Appends records with extraction timestamps
 
 ### Stage 2: Staging Transformation
-- Normalizes column names across yellow/green taxi types
+- Normalizes column names across yellow taxi types
 - Filters invalid records (null times, negative amounts, unreasonable durations)
 - Enriches with borough/zone names and payment descriptions
 - Deduplicates using composite key + latest extraction

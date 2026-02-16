@@ -13,6 +13,6 @@ description: |
   Data source: Chess.com Public API (no authentication required for public games)
 
 parameters:
-  source_connection: chess-players
+  source_connection: chess-default
   source_table: 'games'
   destination: motherduck

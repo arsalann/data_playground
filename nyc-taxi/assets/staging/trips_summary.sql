@@ -146,7 +146,8 @@ normalized_trips AS ( -- Normalize column names from raw data (cast, coalesce, r
     extracted_at,
   FROM raw.trips_raw
   WHERE 1=1
-    AND DATE_TRUNC('month', CAST(COALESCE(tpep_pickup_datetime, lpep_pickup_datetime) AS TIMESTAMP)) BETWEEN DATE_TRUNC('month', CAST('{{ start_datetime }}' AS TIMESTAMP)) AND DATE_TRUNC('month', CAST('{{ end_datetime }}' AS TIMESTAMP))
+    AND DATE_TRUNC('month', CAST(COALESCE(tpep_pickup_datetime, lpep_pickup_datetime) AS TIMESTAMP))
+      BETWEEN DATE_TRUNC('month', CAST('{{ start_datetime }}' AS TIMESTAMP)) AND DATE_TRUNC('month', CAST('{{ end_datetime }}' AS TIMESTAMP))
     AND COALESCE(tpep_pickup_datetime, lpep_pickup_datetime) IS NOT NULL
     AND COALESCE(tpep_dropoff_datetime, lpep_dropoff_datetime) IS NOT NULL
     AND pulocationid IS NOT NULL

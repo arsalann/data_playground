@@ -1,0 +1,6 @@
+name: berlin-weather
+schedule: daily
+start_date: "2009-01-01"
+
+default_connections:
+  duckdb: "duckdb-default"

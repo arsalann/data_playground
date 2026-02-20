@@ -4,6 +4,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 from google.cloud import bigquery
+from google.oauth2 import service_account
 
 st.set_page_config(
     page_title="Berlin Winter Check",
@@ -21,7 +22,11 @@ base_path = Path(__file__).parent
 
 @st.cache_resource
 def get_client():
-    return bigquery.Client(project=PROJECT_ID)
+    credentials = service_account.Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]),
+        scopes=["https://www.googleapis.com/auth/bigquery"],
+    )
+    return bigquery.Client(project=PROJECT_ID, credentials=credentials)
 
 
 def run_raw(sql: str) -> pd.DataFrame:

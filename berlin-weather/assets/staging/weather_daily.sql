@@ -1,7 +1,7 @@
 /* @bruin
 name: staging.weather_daily
-type: duckdb.sql
-connection: duckdb-default
+type: bq.sql
+connection: bruin-playground-arsalan
 description: |
   Transforms raw Berlin weather data into an analysis-ready daily table.
   Classifies each day by weather type using WMO weather codes and actual
@@ -90,7 +90,7 @@ SELECT
     CAST(time AS DATE) AS date,
     EXTRACT(YEAR FROM CAST(time AS DATE)) AS year,
     EXTRACT(MONTH FROM CAST(time AS DATE)) AS month,
-    EXTRACT(DOW FROM CAST(time AS DATE)) AS day_of_week,
+    EXTRACT(DAYOFWEEK FROM CAST(time AS DATE)) AS day_of_week,
 
     CASE
         WHEN EXTRACT(MONTH FROM CAST(time AS DATE)) IN (12, 1, 2) THEN 'Winter'

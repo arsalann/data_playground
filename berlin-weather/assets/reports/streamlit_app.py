@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import altair as alt
-import duckdb
 import pandas as pd
 import streamlit as st
+from google.cloud import bigquery
 
 st.set_page_config(
     page_title="Berlin Winter Check",
@@ -14,31 +14,30 @@ st.set_page_config(
 # Connection
 # ──────────────────────────────────────────────────────────────────────
 
-DB_PATH = Path(__file__).resolve().parents[3] / "duckdb.db"
-
-
-@st.cache_resource
-def get_conn():
-    return duckdb.connect(str(DB_PATH), read_only=True)
-
+PROJECT_ID = "bruin-playground-arsalan"
 
 base_path = Path(__file__).parent
 
 
+@st.cache_resource
+def get_client():
+    return bigquery.Client(project=PROJECT_ID)
+
+
 def run_raw(sql: str) -> pd.DataFrame:
-    return get_conn().execute(sql).df()
+    return get_client().query(sql).to_dataframe()
 
 
 def run_query(filename: str) -> pd.DataFrame:
     sql = (base_path / filename).read_text()
-    return get_conn().execute(sql).df()
+    return get_client().query(sql).to_dataframe()
 
 
 # ──────────────────────────────────────────────────────────────────────
 # Load & prep
 # ──────────────────────────────────────────────────────────────────────
 
-daily = run_raw("SELECT * FROM staging.weather_daily ORDER BY date")
+daily = run_raw("SELECT * FROM `bruin-playground-arsalan.staging.weather_daily` ORDER BY date")
 streaks = run_query("weather_streaks.sql")
 
 daily["date"] = pd.to_datetime(daily["date"])
@@ -64,7 +63,7 @@ DEFAULT = "#56B4E9"
 st.title("Is Berlin's 2025/26 Winter Really That Bad?")
 st.caption(
     "Daily weather data for Berlin (2010-2026) from Open-Meteo  ·  "
-    "Built with Bruin + DuckDB + Streamlit"
+    "Built with Bruin + BigQuery + Streamlit"
 )
 
 latest_date = daily["date"].max().strftime("%b %d, %Y")
@@ -518,5 +517,5 @@ if len(current_freezing) and len(current_harsh) and len(current_gloomy):
 st.markdown("---")
 st.caption(
     "Data: Open-Meteo Historical Weather API (CC BY 4.0)  ·  "
-    "Pipeline: Bruin  ·  Database: DuckDB  ·  Visualization: Streamlit + Altair"
+    "Pipeline: Bruin  ·  Database: BigQuery  ·  Visualization: Streamlit + Altair"
 )

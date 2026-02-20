@@ -2,7 +2,7 @@ WITH gloomy_flags AS (
     SELECT
         date,
         sunshine_hours < 1 AS is_gloomy
-    FROM staging.weather_daily
+    FROM `bruin-playground-arsalan.staging.weather_daily`
 ),
 
 streaks AS (

@@ -2,7 +2,7 @@
 name: raw.weather_raw
 type: python
 image: python:3.11
-connection: duckdb-default
+connection: bruin-playground-arsalan
 description: |
   Ingests Berlin daily weather data from the Open-Meteo Historical Weather API.
   Fetches daily observations including weather codes, temperature, precipitation,

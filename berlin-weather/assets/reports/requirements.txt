@@ -1,4 +1,5 @@
 streamlit
-duckdb
+google-cloud-bigquery
+db-dtypes
 altair
 pandas

@@ -1,0 +1,314 @@
+Deploy
+The State of Stack Overflow
+
+Monthly activity data from 2008 to present · Built with Bruin + BigQuery + Streamlit
+
+Data current through Feb 2026. Sources: BigQuery Public Datasets (2008-Sep 2022) + Stack Exchange API (Oct 2022-present).
+
+Peak Month
+
+209,224
+
+Mar 2014
+
+Latest Month
+
+2,951
+
+Feb 2026
+
+Decline from Peak
+
+-98.6%
+
+Post-ChatGPT Avg
+
+36,394/mo
+
+-72.9% vs pre-ChatGPT
+
+Monthly Questions Asked
+
+Total questions posted to Stack Overflow each month since 2008. The vertical line marks November 2022 (ChatGPT public launch).
+
+July
+October
+2009
+April
+July
+October
+2010
+April
+July
+October
+2011
+April
+July
+October
+2012
+April
+July
+October
+2013
+April
+July
+October
+2014
+April
+July
+October
+2015
+April
+July
+October
+2016
+April
+July
+October
+2017
+April
+July
+October
+2018
+April
+July
+October
+2019
+April
+July
+October
+2020
+April
+July
+October
+2021
+April
+July
+October
+2022
+April
+July
+October
+2023
+April
+July
+October
+2024
+April
+July
+October
+2025
+April
+July
+October
+2026
+Month
+0
+20,000
+40,000
+60,000
+80,000
+100,000
+120,000
+140,000
+160,000
+180,000
+200,000
+220,000
+Questions
+ChatGPT launches
+Pre-ChatGPT avg: 134,312
+Growth (2008-2014)
+Plateau (2015-2022)
+Post-ChatGPT (2023+)
+Era
+
+In Dec 2022, Stack Overflow saw 96,972 questions. By Feb 2026, that number was 2,951 — a -97.0% change.
+
+Which Communities Collapsed First?
+
+Each tag's monthly question volume, normalized to its all-time peak (100%). Smoothed to quarterly averages. Click a tag in the legend to highlight it. Tag-level data available through Sep 2022 (BigQuery public dataset).
+
+July
+October
+2009
+April
+July
+October
+2010
+April
+July
+October
+2011
+April
+July
+October
+2012
+April
+July
+October
+2013
+April
+July
+October
+2014
+April
+July
+October
+2015
+April
+July
+October
+2016
+April
+July
+October
+2017
+April
+July
+October
+2018
+April
+July
+October
+2019
+April
+July
+October
+2020
+April
+July
+October
+2021
+April
+July
+October
+2022
+April
+July
+October
+Quarter
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+100
+% of Peak
+javascript
+python
+java
+c#
+php
+android
+html
+jquery
+Tag
+
+As of Sep 2022: jquery has fallen to 8.4% of its peak, while python retains 64.0%.
+
+The Answer Desert
+
+Are the remaining questions still getting answered? Answer rate = % of questions with at least one answer. Smoothed to quarterly averages. Detailed answer metrics available through Sep 2022.
+
+Answer Rate
+
+2009
+2010
+2011
+2012
+2013
+2014
+2015
+2016
+2017
+2018
+2019
+2020
+2021
+2022
+Quarter
+55
+60
+65
+70
+75
+80
+85
+90
+95
+100
+% Answered
+
+Answers per Question
+
+2009
+2010
+2011
+2012
+2013
+2014
+2015
+2016
+2017
+2018
+2019
+2020
+2021
+2022
+Quarter
+0
+2
+4
+6
+8
+10
+12
+14
+16
+Avg Answers per Question
+
+In the early years (2008-2014), 95.9% of questions received an answer with an average of 2.85 answers each. By 2019-2022, the answer rate dropped to 76.2% with 1.08 answers per question.
+
+The Acceleration
+
+Year-over-year change in total questions asked. Only complete calendar years are shown.
+
+2010
+2011
+2012
+2013
+2014
+2015
+2016
+2017
+2018
+2019
+2020
+2021
+2022
+2023
+2024
+2025
+Year
+0
+−80
+−60
+−40
+−20
+20
+40
+60
+80
+100
+120
+Year-over-Year Change (%)
+
+The steepest annual decline: 2025 at -69.2% year-over-year (123,474 total questions).
+
+Data: Google BigQuery Public Datasets + Stack Exchange API — Stack Overflow (CC BY-SA 4.0) · Pipeline: Bruin · Database: BigQuery · Visualization: Streamlit + Altair

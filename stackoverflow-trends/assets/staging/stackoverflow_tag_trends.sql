@@ -24,6 +24,7 @@ columns:
   - name: tag
     type: VARCHAR
     description: Programming language or technology tag
+    primary_key: true
     nullable: false
   - name: question_count
     type: INTEGER

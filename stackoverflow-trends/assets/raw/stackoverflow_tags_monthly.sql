@@ -23,6 +23,7 @@ columns:
   - name: tag
     type: VARCHAR
     description: Programming language or technology tag (e.g. python, javascript)
+    primary_key: true
   - name: question_count
     type: INTEGER
     description: Number of questions tagged with this tag in the given month

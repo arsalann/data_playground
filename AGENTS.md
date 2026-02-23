@@ -41,11 +41,14 @@ default_connections:
 - `schedule` can be `daily`, `hourly`, `weekly`, `monthly`, or a cron expression.
 - `default_connections` sets which BigQuery project/connection assets use unless overridden.
 
-### 2. `assets/raw/` — Ingestion Layer (Python)
+### 2. `assets/raw/` — Ingestion Layer (Python or SQL)
 
-Raw assets fetch data from external sources and materialize it into BigQuery. They are Python scripts with an embedded Bruin YAML header.
+Raw assets fetch data from external sources and materialize it into BigQuery.
 
-**File naming**: `<source_name>_raw.py` — always suffix with `_raw`.
+- **Python** (`type: python`) — for fetching from external APIs or files. Use an embedded Bruin YAML header in a docstring.
+- **SQL** (`type: bq.sql`) — for querying existing BigQuery datasets (e.g. public datasets). Use an embedded Bruin YAML header in a SQL comment.
+
+**File naming**: the file name (without extension) must match the table name in the asset's `name` field. For example, asset `raw.stackoverflow_api_monthly` lives in `stackoverflow_api_monthly.py`.
 
 **Table naming**: `raw.<descriptive_name>` — all raw tables live in the `raw` schema.
 
@@ -288,3 +291,4 @@ Bruin resolves Python dependencies by walking up the file tree from the asset to
 - Do not use `.yml` extension for asset definitions — use `.asset.yml` if defining assets in YAML.
 - Do not commit `.bruin.yml`, credentials, or `.streamlit/secrets.toml` — they are gitignored.
 - Do not write `CREATE TABLE` or `INSERT` in SQL assets — let Bruin's `materialization` handle DDL.
+- Do not give the asset file's a different name than the asset name (file name and asset name must match - asset name is like <dataset>.<table_name> which is the same as <parent_folder_name>.<asset_file_name>)

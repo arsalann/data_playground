@@ -222,3 +222,4 @@ chess-dot-com/assets/reports/.streamlit/secrets.toml
 chess-dot-com/.streamlit/secrets.toml
 
 credentials/
+secrets.toml

@@ -4,12 +4,15 @@ type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Transforms raw monthly tag counts into peak-normalized trend data.
-  Each tag's monthly question count is expressed as a percentage of its
-  all-time peak month, making it easy to compare the relative decline
-  of different technology communities on the same scale.
+  Combines tag data from the BigQuery public dataset and the Stack Exchange
+  API, preferring BQ data for months where both exist. Each tag's monthly
+  question count is expressed as a percentage of its all-time peak month,
+  making it easy to compare the relative trajectory of different technology
+  communities on the same scale.
 
 depends:
   - raw.stackoverflow_tags_monthly
+  - raw.stackoverflow_tags_api_monthly
 
 materialization:
   type: table
@@ -46,11 +49,36 @@ columns:
 
 @bruin */
 
-WITH tag_peaks AS (
+WITH bq_tags AS (
+    SELECT CAST(month AS DATE) AS month, tag, question_count
+    FROM raw.stackoverflow_tags_monthly
+),
+
+api_tags_deduped AS (
+    SELECT *
+    FROM raw.stackoverflow_tags_api_monthly
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY month, tag ORDER BY extracted_at DESC) = 1
+),
+
+api_tags AS (
+    SELECT CAST(month AS DATE) AS month, tag, question_count
+    FROM api_tags_deduped
+    WHERE (CAST(month AS DATE), tag) NOT IN (
+        SELECT (CAST(month AS DATE), tag) FROM raw.stackoverflow_tags_monthly
+    )
+),
+
+all_tags AS (
+    SELECT * FROM bq_tags
+    UNION ALL
+    SELECT * FROM api_tags
+),
+
+tag_peaks AS (
     SELECT
         tag,
         MAX(question_count) AS peak_count
-    FROM raw.stackoverflow_tags_monthly
+    FROM all_tags
     GROUP BY 1
 )
 
@@ -69,6 +97,6 @@ SELECT
 
     t.month >= '2022-12-01' AS is_post_chatgpt
 
-FROM raw.stackoverflow_tags_monthly t
+FROM all_tags t
 INNER JOIN tag_peaks tp ON t.tag = tp.tag
 ORDER BY t.month, t.question_count DESC

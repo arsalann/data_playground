@@ -52,12 +52,22 @@ tags = run_raw(
 monthly["month"] = pd.to_datetime(monthly["month"])
 tags["month"] = pd.to_datetime(tags["month"])
 
+monthly = monthly[monthly["year"] >= 2010].copy()
+tags = tags[tags["month"] >= "2010-01-01"].copy()
+
+monthly["era"] = monthly["era"].replace(
+    {"Growth (2008-2014)": "Growth (2010-2014)"}
+)
+tags["era"] = tags["era"].replace(
+    {"Growth (2008-2014)": "Growth (2010-2014)"}
+)
+
 HIGHLIGHT = "#D55E00"
 DEFAULT = "#56B4E9"
 SECONDARY = "#E69F00"
 MUTED = "#999999"
 
-ERA_DOMAIN = ["Growth (2008-2014)", "Plateau (2015-2022)", "Post-ChatGPT (2023+)"]
+ERA_DOMAIN = ["Growth (2010-2014)", "Plateau (2015-2022)", "Post-ChatGPT (2023+)"]
 ERA_RANGE = [DEFAULT, SECONDARY, HIGHLIGHT]
 
 # ──────────────────────────────────────────────────────────────────────
@@ -66,14 +76,14 @@ ERA_RANGE = [DEFAULT, SECONDARY, HIGHLIGHT]
 
 st.title("The State of Stack Overflow")
 st.caption(
-    "Monthly activity data from 2008 to present  ·  "
+    "Monthly activity data from 2010 to present  ·  "
     "Built with Bruin + BigQuery + Streamlit"
 )
 
 latest_month = monthly["month"].max().strftime("%b %Y")
 st.info(
     f"Data current through **{latest_month}**. "
-    "Sources: BigQuery Public Datasets (2008-Sep 2022) + Stack Exchange API (Oct 2022-present)."
+    "Sources: BigQuery Public Datasets + Stack Exchange API."
 )
 
 st.markdown("---")
@@ -133,7 +143,7 @@ st.markdown("---")
 
 st.subheader("Monthly Questions Asked")
 st.caption(
-    "Total questions posted to Stack Overflow each month since 2008. "
+    "Total questions posted to Stack Overflow each month since 2010. "
     "The vertical line marks November 2022 (ChatGPT public launch)."
 )
 
@@ -224,8 +234,7 @@ st.markdown("---")
 st.subheader("Which Communities Collapsed First?")
 st.caption(
     "Each tag's monthly question volume, normalized to its all-time peak (100%). "
-    "Smoothed to quarterly averages. Click a tag in the legend to highlight it. "
-    "Tag-level data available through Sep 2022 (BigQuery public dataset)."
+    "Smoothed to quarterly averages. Click a tag in the legend to highlight it."
 )
 
 top_8 = (
@@ -289,16 +298,16 @@ chatgpt_rule_2 = (
 
 st.altair_chart(tag_lines + chatgpt_rule_2, use_container_width=True)
 
-latest_tag_month = tags_top8["month"].max()
+latest_tag_quarter = tags_quarterly["quarter_start"].max()
 latest_tags = (
-    tags_top8[tags_top8["month"] == latest_tag_month]
+    tags_quarterly[tags_quarterly["quarter_start"] == latest_tag_quarter]
     .sort_values("pct_of_peak")
 )
 if len(latest_tags):
     most_collapsed = latest_tags.iloc[0]
     least_collapsed = latest_tags.iloc[-1]
     st.markdown(
-        f"> As of **{latest_tag_month.strftime('%b %Y')}**: "
+        f"> As of **{latest_tag_quarter.strftime('%b %Y')}**: "
         f"**{most_collapsed['tag']}** has fallen to "
         f"**{most_collapsed['pct_of_peak']:.1f}%** of its peak, while "
         f"**{least_collapsed['tag']}** retains "
@@ -314,13 +323,16 @@ st.subheader("The Answer Desert")
 st.caption(
     "Are the remaining questions still getting answered? "
     "Answer rate = % of questions with at least one answer. "
-    "Smoothed to quarterly averages. Detailed answer metrics available through Sep 2022."
+    "Smoothed to quarterly averages."
 )
 
 monthly_with_rates = monthly[monthly["answer_rate_pct"].notna()].copy()
 monthly_with_rates["quarter_start"] = (
     monthly_with_rates["month"].dt.to_period("Q").dt.to_timestamp()
 )
+
+has_avg_answers = monthly_with_rates["avg_answer_count"].notna().any()
+
 quarterly_rates = (
     monthly_with_rates.groupby("quarter_start")
     .agg(
@@ -378,64 +390,70 @@ with rate_col:
 with apq_col:
     st.markdown("**Answers per Question**")
 
-    apq_line = (
-        alt.Chart(quarterly_rates)
-        .mark_line(strokeWidth=2.5, color=DEFAULT)
-        .encode(
-            x=alt.X("quarter_start:T", title="Quarter"),
-            y=alt.Y(
-                "avg_answer_count:Q",
-                title="Avg Answers per Question",
-                scale=alt.Scale(zero=False),
-            ),
-            tooltip=[
-                alt.Tooltip("quarter_start:T", title="Quarter", format="%b %Y"),
-                alt.Tooltip("avg_answer_count:Q", title="Answers/Question", format=".2f"),
-            ],
+    apq_data = quarterly_rates[quarterly_rates["avg_answer_count"].notna()]
+    if len(apq_data):
+        apq_line = (
+            alt.Chart(apq_data)
+            .mark_line(strokeWidth=2.5, color=DEFAULT)
+            .encode(
+                x=alt.X("quarter_start:T", title="Quarter"),
+                y=alt.Y(
+                    "avg_answer_count:Q",
+                    title="Avg Answers per Question",
+                    scale=alt.Scale(zero=False),
+                ),
+                tooltip=[
+                    alt.Tooltip("quarter_start:T", title="Quarter", format="%b %Y"),
+                    alt.Tooltip("avg_answer_count:Q", title="Answers/Question", format=".2f"),
+                ],
+            )
+            .properties(height=340)
         )
-        .properties(height=340)
-    )
-    apq_dots = (
-        alt.Chart(quarterly_rates)
-        .mark_circle(size=40)
-        .encode(
-            x="quarter_start:T",
-            y="avg_answer_count:Q",
-            color=alt.condition(
-                alt.datum.is_post_chatgpt,
-                alt.value(HIGHLIGHT),
-                alt.value(DEFAULT),
-            ),
-            tooltip=[
-                alt.Tooltip("quarter_start:T", title="Quarter", format="%b %Y"),
-                alt.Tooltip("avg_answer_count:Q", title="Answers/Question", format=".2f"),
-            ],
+        apq_dots = (
+            alt.Chart(apq_data)
+            .mark_circle(size=40)
+            .encode(
+                x="quarter_start:T",
+                y="avg_answer_count:Q",
+                color=alt.condition(
+                    alt.datum.is_post_chatgpt,
+                    alt.value(HIGHLIGHT),
+                    alt.value(DEFAULT),
+                ),
+                tooltip=[
+                    alt.Tooltip("quarter_start:T", title="Quarter", format="%b %Y"),
+                    alt.Tooltip("avg_answer_count:Q", title="Answers/Question", format=".2f"),
+                ],
+            )
         )
-    )
-    st.altair_chart(
-        apq_line + apq_dots + chatgpt_rule_2,
-        use_container_width=True,
-    )
+        st.altair_chart(
+            apq_line + apq_dots + chatgpt_rule_2,
+            use_container_width=True,
+        )
+    else:
+        st.caption("Answers-per-question data not available for this range.")
 
 early_rate = monthly_with_rates.loc[
     monthly_with_rates["month"] < "2015-01-01", "answer_rate_pct"
 ].mean()
-late_rate = monthly_with_rates.loc[
-    monthly_with_rates["month"] >= "2019-01-01", "answer_rate_pct"
-].mean()
-early_apq = monthly_with_rates.loc[
-    monthly_with_rates["month"] < "2015-01-01", "avg_answer_count"
-].mean()
-late_apq = monthly_with_rates.loc[
-    monthly_with_rates["month"] >= "2019-01-01", "avg_answer_count"
-].mean()
+post_rate = monthly_with_rates.loc[
+    monthly_with_rates["is_post_chatgpt"], "answer_rate_pct"
+]
 
-st.markdown(
-    f"> In the early years (2008-2014), **{early_rate:.1f}%** of questions received "
-    f"an answer with an average of **{early_apq:.2f}** answers each. "
-    f"By 2019-2022, the answer rate dropped to **{late_rate:.1f}%** "
-    f"with **{late_apq:.2f}** answers per question."
-)
+if len(post_rate):
+    late_rate = post_rate.mean()
+    st.markdown(
+        f"> In the growth years (2010-2014), **{early_rate:.1f}%** of questions received "
+        f"an answer. In the post-ChatGPT era, that figure is **{late_rate:.1f}%**."
+    )
+else:
+    late_rate_plateau = monthly_with_rates.loc[
+        monthly_with_rates["month"] >= "2019-01-01", "answer_rate_pct"
+    ].mean()
+    st.markdown(
+        f"> In the growth years (2010-2014), **{early_rate:.1f}%** of questions received "
+        f"an answer. By 2019-2022, that dropped to **{late_rate_plateau:.1f}%**."
+    )
 
 # ══════════════════════════════════════════════════════════════════════
 # 5. The Acceleration
@@ -501,6 +519,129 @@ st.markdown(
     f"**{worst_year['yoy_change_pct']:+.1f}%** year-over-year "
     f"({int(worst_year['total_questions']):,} total questions)."
 )
+
+# ══════════════════════════════════════════════════════════════════════
+# 6. Who is Still Posting?
+# ══════════════════════════════════════════════════════════════════════
+
+st.markdown("---")
+st.subheader("Who is Still Posting?")
+st.caption(
+    "How each major tag fared after ChatGPT. Compares the average monthly "
+    "question volume in the two years before ChatGPT (2021-2022) to the "
+    "post-ChatGPT era (Dec 2022+). Tags sorted by survival rate."
+)
+
+pre_window = tags_top8[
+    (tags_top8["month"] >= "2021-01-01") & (tags_top8["month"] < "2022-12-01")
+]
+post_window = tags_top8[tags_top8["month"] >= "2022-12-01"]
+
+if len(pre_window) and len(post_window):
+    pre_avg = pre_window.groupby("tag")["question_count"].mean().rename("pre_avg")
+    post_avg = post_window.groupby("tag")["question_count"].mean().rename("post_avg")
+
+    survival = pd.merge(pre_avg, post_avg, on="tag", how="inner").reset_index()
+    survival["survival_pct"] = (survival["post_avg"] / survival["pre_avg"] * 100).round(1)
+    survival["change_pct"] = (survival["survival_pct"] - 100).round(1)
+    survival = survival.sort_values("survival_pct")
+
+    survival_chart = (
+        alt.Chart(survival)
+        .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+        .encode(
+            x=alt.X("change_pct:Q", title="Change in Monthly Questions (%)"),
+            y=alt.Y("tag:N", title=None, sort=alt.EncodingSortField(field="change_pct", order="ascending")),
+            color=alt.condition(
+                alt.datum.change_pct > 0,
+                alt.value("#009E73"),
+                alt.value(HIGHLIGHT),
+            ),
+            tooltip=[
+                alt.Tooltip("tag:N", title="Tag"),
+                alt.Tooltip("pre_avg:Q", title="Pre-ChatGPT Avg/mo", format=",.0f"),
+                alt.Tooltip("post_avg:Q", title="Post-ChatGPT Avg/mo", format=",.0f"),
+                alt.Tooltip("change_pct:Q", title="Change %", format="+.1f"),
+            ],
+        )
+        .properties(height=340)
+    )
+
+    zero_rule_h = (
+        alt.Chart(pd.DataFrame({"x": [0]}))
+        .mark_rule(color="#333333", strokeWidth=1)
+        .encode(x="x:Q")
+    )
+
+    st.altair_chart(survival_chart + zero_rule_h, use_container_width=True)
+
+    most_hit = survival.iloc[0]
+    most_resilient = survival.iloc[-1]
+
+    st.markdown(
+        f"> **{most_hit['tag']}** lost the most, dropping **{most_hit['change_pct']:+.1f}%** "
+        f"(from {most_hit['pre_avg']:,.0f} to {most_hit['post_avg']:,.0f} questions/month). "
+        f"**{most_resilient['tag']}** held up best at **{most_resilient['change_pct']:+.1f}%**."
+    )
+
+    # Post-ChatGPT trajectory: are things still declining or stabilizing?
+    st.markdown("#### Post-ChatGPT Trajectory")
+    st.caption(
+        "Monthly question counts for each tag since ChatGPT launched. "
+        "Are communities still shrinking, or stabilizing?"
+    )
+
+    post_monthly = tags_top8[tags_top8["month"] >= "2022-12-01"].copy()
+
+    if len(post_monthly):
+        trajectory_lines = (
+            alt.Chart(post_monthly)
+            .mark_line(strokeWidth=2)
+            .encode(
+                x=alt.X("month:T", title="Month"),
+                y=alt.Y("question_count:Q", title="Monthly Questions"),
+                color=alt.Color(
+                    "tag:N",
+                    title="Tag",
+                    scale=alt.Scale(domain=top_8, range=tag_palette),
+                ),
+                opacity=alt.condition(selection, alt.value(1), alt.value(0.15)),
+                tooltip=[
+                    alt.Tooltip("month:T", title="Month", format="%b %Y"),
+                    alt.Tooltip("tag:N", title="Tag"),
+                    alt.Tooltip("question_count:Q", title="Questions", format=","),
+                ],
+            )
+            .properties(height=380)
+            .add_params(selection)
+        )
+
+        st.altair_chart(trajectory_lines, use_container_width=True)
+
+        last_3mo = post_monthly[
+            post_monthly["month"] >= post_monthly["month"].max() - pd.DateOffset(months=3)
+        ]
+        first_3mo = post_monthly[
+            post_monthly["month"] <= post_monthly["month"].min() + pd.DateOffset(months=3)
+        ]
+
+        if len(last_3mo) and len(first_3mo):
+            early_total = first_3mo.groupby("tag")["question_count"].mean()
+            late_total = last_3mo.groupby("tag")["question_count"].mean()
+            within_era = ((late_total - early_total) / early_total * 100).round(1)
+
+            still_falling = within_era[within_era < -10]
+            stabilizing = within_era[within_era.between(-10, 10)]
+
+            if len(still_falling):
+                falling_tags = ", ".join(f"**{t}** ({v:+.1f}%)" for t, v in still_falling.items())
+                st.markdown(f"> Still declining within the post-ChatGPT era: {falling_tags}")
+            if len(stabilizing):
+                stable_tags = ", ".join(f"**{t}**" for t in stabilizing.index)
+                st.markdown(f"> Showing signs of stabilization: {stable_tags}")
+
+else:
+    st.warning("Insufficient data to compare pre- and post-ChatGPT tag volumes.")
 
 # ──────────────────────────────────────────────────────────────────────
 # Footer

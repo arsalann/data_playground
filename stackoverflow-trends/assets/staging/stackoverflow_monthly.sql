@@ -5,9 +5,11 @@ connection: bruin-playground-arsalan
 description: |
   Transforms raw monthly Stack Overflow question aggregates into an analysis-ready
   table. Combines data from two sources: the BigQuery public dataset (2008-Sept 2022)
-  and the Stack Exchange API (Oct 2022-present). Adds temporal dimensions,
-  answer/acceptance rates, era labels, year-over-year change percentages, and peak
-  comparison metrics.
+  and the Stack Exchange API (Oct 2022-present). BQ data is preferred for any months
+  where both sources overlap, since it has richer metrics.
+
+  Adds temporal dimensions, answer/acceptance rates, era labels, year-over-year
+  change percentages, and peak comparison metrics.
 
 depends:
   - raw.stackoverflow_questions_monthly
@@ -73,7 +75,7 @@ columns:
 
 @bruin */
 
-WITH combined AS (
+WITH bq_data AS (
     SELECT
         CAST(month AS DATE) AS month,
         question_count,
@@ -85,9 +87,16 @@ WITH combined AS (
         accepted_count
     FROM raw.stackoverflow_questions_monthly
     WHERE month IS NOT NULL
+),
 
-    UNION ALL
+api_deduped AS (
+    SELECT *
+    FROM raw.stackoverflow_api_monthly
+    WHERE month IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY month ORDER BY extracted_at DESC) = 1
+),
 
+api_data AS (
     SELECT
         CAST(month AS DATE) AS month,
         question_count,
@@ -95,10 +104,16 @@ WITH combined AS (
         CAST(NULL AS FLOAT64) AS avg_score,
         CAST(NULL AS FLOAT64) AS avg_views,
         CAST(NULL AS FLOAT64) AS avg_answer_count,
-        CAST(NULL AS INT64) AS answered_count,
+        answered_count,
         CAST(NULL AS INT64) AS accepted_count
-    FROM raw.stackoverflow_api_monthly
-    WHERE month IS NOT NULL
+    FROM api_deduped
+    WHERE CAST(month AS DATE) NOT IN (SELECT month FROM bq_data)
+),
+
+combined AS (
+    SELECT * FROM bq_data
+    UNION ALL
+    SELECT * FROM api_data
 ),
 
 peak AS (

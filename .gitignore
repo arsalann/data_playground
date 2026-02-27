@@ -223,3 +223,4 @@ chess-dot-com/.streamlit/secrets.toml
 
 credentials/
 secrets.toml
+logs/*

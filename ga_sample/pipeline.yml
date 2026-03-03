@@ -1,0 +1,4 @@
+name: ga-sample
+
+default_connections:
+    google_cloud_platform: "bruin-playground-arsalan"

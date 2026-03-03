@@ -1,0 +1,82 @@
+type: bq.source
+description: |-
+  Obfuscated Google Analytics 360 data. It’s a great way to look at business data and experiment and learn the benefits of analyzing Google Analytics 360 data in BigQuery. Learn more at: https://support.google.com/analytics/answer/7586738
+
+  Imported table: ga_sample.raw_ga
+  Extracted at: 2026-03-03T12:56:04Z
+  Created at: 2026-03-03T12:54:51Z
+  Last modified: 2026-03-03T12:54:51Z
+  Row count: 903,653
+  Size: 5.37 GB
+tags:
+  - google-analytics
+  - web-analytics
+  - raw-data
+  - visitor-behavior
+  - customer-journey
+
+columns:
+  - name: channelGrouping
+    type: STRING
+    description: Marketing channel grouping (e.g., Organic Search, Paid Search, Direct, Social)
+    checks:
+      - name: not_null
+  - name: clientId
+    type: STRING
+    description: Client identifier used to identify unique clients across sessions (null in obfuscated demo dataset)
+  - name: customDimensions
+    type: RECORD
+    description: Custom dimensions configured in Google Analytics containing additional data
+  - name: date
+    type: STRING
+    description: Date of the session in YYYYMMDD format
+    checks:
+      - name: not_null
+  - name: device
+    type: RECORD
+    description: Device information including browser, operating system, and device category
+  - name: fullVisitorId
+    type: STRING
+    description: Unique identifier for each visitor across all sessions and devices (not unique per row — one visitor can have multiple sessions)
+    checks:
+      - name: not_null
+  - name: geoNetwork
+    type: RECORD
+    description: Geographic information including country, region, city, and network domain
+  - name: hits
+    type: RECORD
+    description: Hit-level data containing pageviews, events, transactions, and other interactions
+  - name: socialEngagementType
+    type: STRING
+    description: Type of social engagement for the session (e.g., 'Not Socially Engaged')
+    checks:
+      - name: not_null
+  - name: totals
+    type: RECORD
+    description: Session totals including bounces, hits, pageviews, and session duration
+  - name: trafficSource
+    type: RECORD
+    description: Traffic source information including source, medium, campaign, and referral path
+  - name: userId
+    type: STRING
+    description: User identifier when available (only for authenticated users)
+  - name: visitId
+    type: INTEGER
+    description: Unique identifier for each visit/session
+    checks:
+      - name: not_null
+  - name: visitNumber
+    type: INTEGER
+    description: Sequential visit number for each visitor (1 for first visit, 2 for second, etc.)
+    checks:
+      - name: not_null
+      - name: positive
+  - name: visitStartTime
+    type: INTEGER
+    description: Timestamp when the visit started (in seconds since Unix epoch)
+    checks:
+      - name: not_null
+      - name: positive
+  - name: visitorId
+    type: INTEGER
+    description: Numeric identifier for the visitor (null in obfuscated demo dataset)

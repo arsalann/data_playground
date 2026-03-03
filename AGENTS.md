@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Utilize Bruin MCP and use Bruin CLI to run assets and query the tables. Reference Bruin docs.
+
 This repository contains data pipelines built with **Bruin**, warehoused in **BigQuery**, with **Streamlit** dashboards visualized using **Altair**. Raw data ingestion is done in **Python**.
 
 ## Repository Structure
@@ -40,6 +42,7 @@ default_connections:
 - `name` must match the directory name.
 - `schedule` can be `daily`, `hourly`, `weekly`, `monthly`, or a cron expression.
 - `default_connections` sets which BigQuery project/connection assets use unless overridden.
+- Python assets must include proper logging
 
 ### 2. `assets/raw/` — Ingestion Layer (Python or SQL)
 
@@ -105,6 +108,8 @@ def materialize():
 - Mark exactly one column as `primary_key: true`.
 - Use `BRUIN_START_DATE` and `BRUIN_END_DATE` environment variables for date-bounded fetches.
 - Place a `requirements.txt` alongside the Python file with only the dependencies needed for that layer.
+
+
 
 **Dependencies** (`assets/raw/requirements.txt`):
 

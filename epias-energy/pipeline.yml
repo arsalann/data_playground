@@ -1,0 +1,6 @@
+name: epias-energy
+schedule: daily
+start_date: "2025-03-01"
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"

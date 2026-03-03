@@ -12,11 +12,13 @@ data_playground/
 ├── .gitignore
 ├── requirements.txt        # Root-level Python dependencies
 ├── AGENTS.md               # You are here
+├── prompt.md               # Generic template for prompting new pipelines
 ├── credentials/            # Service account keys (gitignored)
 ├── <pipeline-name>/        # Each pipeline is a top-level directory
 │   ├── pipeline.yml        # Pipeline config (schedule, connections)
+│   ├── README.md           # Pipeline-specific docs (data sources, assets, run commands)
 │   └── assets/
-│       ├── raw/            # Ingestion layer (Python)
+│       ├── raw/            # Ingestion layer (Python or SQL)
 │       ├── staging/        # Transformation layer (SQL)
 │       └── reports/        # Dashboards & analytical queries
 └── ...
@@ -24,7 +26,7 @@ data_playground/
 
 ## Pipeline Structure
 
-Every pipeline follows the same three-layer pattern. Use `berlin-weather/` as the reference implementation.
+Every pipeline follows the same three-layer pattern. Use `berlin-weather/` as the reference implementation and `stackoverflow-trends/` for advanced patterns (multiple data sources, API ingestion, append + dedup).
 
 ### 1. `pipeline.yml`
 
@@ -42,9 +44,16 @@ default_connections:
 - `name` must match the directory name.
 - `schedule` can be `daily`, `hourly`, `weekly`, `monthly`, or a cron expression.
 - `default_connections` sets which BigQuery project/connection assets use unless overridden.
-- Python assets must include proper logging
 
-### 2. `assets/raw/` — Ingestion Layer (Python or SQL)
+### 2. `pipeline-name/README.md`
+
+Every pipeline must have its own README covering:
+- Data sources used (with links)
+- All assets by layer (raw, staging, reports) with brief descriptions
+- Key run commands (`bruin run`, `bruin validate`, `streamlit run`)
+- Known limitations or data gaps
+
+### 3. `assets/raw/` — Ingestion Layer (Python or SQL)
 
 Raw assets fetch data from external sources and materialize it into BigQuery.
 
@@ -69,7 +78,7 @@ description: |
 
 materialization:
   type: table
-  strategy: create+replace
+  strategy: append
 
 columns:
   - name: <column_name>
@@ -79,10 +88,18 @@ columns:
 
 @bruin"""
 
+import logging
+import os
+from datetime import datetime, timezone
+
 import pandas as pd
 import requests
-import os
-from datetime import datetime
+
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def fetch_data(start_date: str, end_date: str) -> pd.DataFrame:
@@ -94,22 +111,56 @@ def materialize():
     start_date = os.environ.get("BRUIN_START_DATE", "<default>")
     end_date = os.environ.get("BRUIN_END_DATE", "<default>")
 
+    logger.info("Interval: %s to %s", start_date, end_date)
     df = fetch_data(start_date, end_date)
-    df["extracted_at"] = datetime.now()
+    df["extracted_at"] = datetime.now(timezone.utc)
 
+    logger.info("Fetched %d rows", len(df))
     return df
 ```
 
 **Rules**:
 - Always use `image: python:3.11`.
-- Always include an `extracted_at` timestamp column.
-- Use `create+replace` strategy for small/immutable datasets; use `merge` or `delete+insert` for large/incremental ones.
+- Always include an `extracted_at` timestamp column (use `datetime.now(timezone.utc)`).
+- Always include structured logging (`logging.basicConfig` + `logger = logging.getLogger(__name__)`).
 - Document every column with a description including units where applicable.
-- Mark exactly one column as `primary_key: true`.
+- Mark exactly one column (or composite key) as `primary_key: true`.
 - Use `BRUIN_START_DATE` and `BRUIN_END_DATE` environment variables for date-bounded fetches.
 - Place a `requirements.txt` alongside the Python file with only the dependencies needed for that layer.
 
+#### Materialization Strategy
 
+| Strategy | Use when |
+|---|---|
+| `create+replace` | Small/immutable reference data (e.g. ticker lists, tag catalogs) |
+| `append` | Large/incremental data (e.g. daily prices, hourly readings). **Always deduplicate in staging.** |
+| `merge` | When you need upsert behavior on the raw table itself |
+| `delete+insert` | When re-processing a date partition should replace old rows |
+
+**Prefer `append` for most raw ingestion assets.** This allows safe re-runs and backfills without losing previously ingested data. Deduplication is handled in staging SQL using `ROW_NUMBER() ... ORDER BY extracted_at DESC`.
+
+#### API Ingestion Best Practices
+
+When fetching from external APIs:
+
+- **Chunk large date ranges**: Break requests into 30-day (or smaller) windows to avoid timeouts and stay within API limits.
+- **Retry with backoff**: Use exponential backoff for transient errors (429, 502, 503, timeouts). 5 retries is a good default.
+- **Handle rate limits gracefully**: If you hit a rate limit mid-run, return whatever data was already fetched rather than crashing. Log a warning about the partial result.
+- **Add delay between requests**: Use `time.sleep(0.5)` (or more) between API calls to avoid throttling.
+- **Log progress**: Log each chunk/batch with counts so you can monitor long-running ingestions.
+- **Environment variables for testing**: Use env vars like `STOCK_TICKER_LIMIT` to limit scope during development, so you don't need to fetch all 500+ tickers every test run.
+
+#### Secrets
+
+When an asset needs API credentials, declare them in the Bruin header under `secrets`. The keys must match the secret names in `.bruin.yml`:
+
+```yaml
+secrets:
+  - key: epias_username
+  - key: epias_password
+```
+
+Access them in Python via `os.environ["epias_username"]`.
 
 **Dependencies** (`assets/raw/requirements.txt`):
 
@@ -118,7 +169,9 @@ pandas
 requests
 ```
 
-### 3. `assets/staging/` — Transformation Layer (SQL)
+Add additional packages as needed (e.g. `yfinance`, `lxml`, `python-dateutil`).
+
+### 4. `assets/staging/` — Transformation Layer (SQL)
 
 Staging assets transform raw data into analysis-ready tables using BigQuery SQL. They reference upstream raw tables via `depends`.
 
@@ -153,22 +206,44 @@ columns:
 
 @bruin */
 
+WITH deduped AS (
+    SELECT *
+    FROM raw.<upstream_table>
+    WHERE <primary_key> IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY <natural_key_columns> ORDER BY extracted_at DESC) = 1
+)
+
 SELECT
     ...
-FROM raw.<upstream_table>
-WHERE <filter out nulls/bad data>
+FROM deduped
 ORDER BY <primary_key>
 ```
 
 **Rules**:
 - Always declare `depends` listing every upstream asset by its full `schema.table` name.
-- Add derived columns: temporal dimensions (year, month, season, day_of_week), human-readable labels, boolean flags, unit conversions.
+- **Always deduplicate raw data** using a `deduped` CTE with `ROW_NUMBER() OVER (PARTITION BY <natural_key> ORDER BY extracted_at DESC) = 1`. This is critical when raw assets use `append` strategy.
+- Add derived columns: temporal dimensions (year, month, season, day_of_week), human-readable labels, boolean flags, unit conversions, derived ratios.
 - Use `COALESCE` for nullable numeric fields to default to 0.
 - Use `CASE` expressions for categorization and code-to-label mappings.
 - Document every output column.
 - SQL should be pure `SELECT` — let Bruin handle the DDL via `materialization`.
+- Staging always uses `create+replace` strategy (it rebuilds from raw each time).
 
-### 4. `assets/reports/` — Reports Layer (Streamlit + Altair)
+#### Multiple Data Sources
+
+When the same entity comes from multiple sources (e.g. BigQuery public data + API supplement):
+- Keep each source as a separate raw asset.
+- In staging, `UNION ALL` the sources and deduplicate with `ROW_NUMBER()`, preferring the richer source for overlapping periods.
+- Use `CAST(NULL AS INT64)` for columns that only exist in one source.
+
+#### Common Staging Patterns
+
+- **Unpivot**: Turn wide-format raw tables (one column per category) into long format using `UNION ALL` with `source_name` / `category` columns. E.g. energy sources, financial statement line items.
+- **Enrichment joins**: Join with reference/dimension tables (e.g. `raw.stock_tickers` for sector/industry).
+- **Window functions**: Moving averages (`AVG ... ROWS BETWEEN N PRECEDING`), rolling highs/lows, daily returns, period-over-period growth.
+- **Ratio derivation**: Margins, ROE, debt-to-equity, share percentages — compute in staging, not in reports.
+
+### 5. `assets/reports/` — Reports Layer (Streamlit + Altair)
 
 This layer contains Streamlit dashboards and their supporting SQL queries.
 
@@ -263,27 +338,46 @@ Use these types for column definitions: `VARCHAR`, `INTEGER`, `DOUBLE`, `BOOLEAN
 ## Bruin CLI Quick Reference
 
 ```bash
-bruin run <path/to/asset>              # Run a single asset
-bruin run <path/to/pipeline/>          # Run entire pipeline
-bruin run --downstream <path>          # Run asset + all downstream
-bruin validate <path>                  # Validate asset/pipeline definitions
-bruin format <path>                    # Auto-format asset files
-bruin lineage <path>                   # Show asset dependency graph
-bruin connections list                 # List configured connections
-bruin connections ping <name>          # Test a connection
+bruin run <path/to/asset>                                    # Run a single asset
+bruin run <path/to/pipeline/>                                # Run entire pipeline
+bruin run --downstream <path>                                # Run asset + all downstream
+bruin run --start-date 2024-07-01 --end-date 2024-12-31 <path>  # Run with date range
+bruin validate <path>                                        # Validate asset/pipeline definitions
+bruin format <path>                                          # Auto-format asset files
+bruin lineage <path>                                         # Show asset dependency graph
+bruin connections list                                       # List configured connections
+bruin connections ping <name>                                # Test a connection
 ```
 
-Always run individual assets during development, not entire pipelines.
+- Always run individual assets during development, not entire pipelines.
+- Use `--start-date` / `--end-date` for backfilling specific date ranges without re-ingesting everything.
+- Use `--downstream` when you want to run a raw asset and automatically rebuild its staging dependents.
+
+## Testing & Development Workflow
+
+Follow this order when building or modifying a pipeline:
+
+1. **Validate first**: `bruin validate <pipeline-dir>/` — catches header/config errors before any execution.
+2. **Test raw assets individually** with a small date range (2-3 days) or a limited scope (e.g. `STOCK_TICKER_LIMIT=5`).
+3. **Verify data in BigQuery** after each raw asset — check row counts, date ranges, column types.
+4. **Test staging SQL** once raw tables exist — run individually, then check output row counts and derived metrics.
+5. **Test full pipeline** with a slightly larger window (e.g. 1 week) using `bruin run <pipeline-dir>/`.
+6. **Run Streamlit** locally to verify the dashboard renders: `streamlit run <pipeline>/assets/reports/streamlit_app.py`.
+
+For financial or quarterly data: the source API may only return recent quarters regardless of date range. Test with whatever the API actually provides rather than forcing specific dates.
 
 ## Creating a New Pipeline — Checklist
 
 1. Create a new top-level directory named after the pipeline.
 2. Add `pipeline.yml` with name, schedule, start_date, and default_connections.
-3. Create `assets/raw/` with a Python ingestion script and its `requirements.txt`.
-4. Create `assets/staging/` with SQL transformations that `depends` on the raw assets.
-5. Create `assets/reports/` with a Streamlit app, supporting SQL files, and `requirements.txt`.
-6. Validate with `bruin validate <pipeline-dir>/`.
-7. Run individual assets with `bruin run <path/to/asset>` to test.
+3. Add a `README.md` documenting data sources, all assets, and run commands.
+4. Create `assets/raw/` with Python ingestion scripts and a `requirements.txt`.
+5. Create `assets/staging/` with SQL transformations that `depends` on the raw assets. Always deduplicate.
+6. Create `assets/reports/` with a Streamlit app, supporting SQL files, and `requirements.txt`.
+7. Validate with `bruin validate <pipeline-dir>/`.
+8. Test each raw asset individually with a small subset of data.
+9. Test staging assets once raw data exists.
+10. Test the full pipeline end-to-end.
 
 ## Dependency Resolution
 
@@ -296,4 +390,8 @@ Bruin resolves Python dependencies by walking up the file tree from the asset to
 - Do not use `.yml` extension for asset definitions — use `.asset.yml` if defining assets in YAML.
 - Do not commit `.bruin.yml`, credentials, or `.streamlit/secrets.toml` — they are gitignored.
 - Do not write `CREATE TABLE` or `INSERT` in SQL assets — let Bruin's `materialization` handle DDL.
-- Do not give the asset file's a different name than the asset name (file name and asset name must match - asset name is like <dataset>.<table_name> which is the same as <parent_folder_name>.<asset_file_name>)
+- Do not give the asset file a different name than the asset name (file name and asset name must match — asset name is `<dataset>.<table_name>` which is `<parent_folder_name>.<asset_file_name>`).
+- Do not use `create+replace` for large incremental data — use `append` and deduplicate in staging.
+- Do not crash on API rate limits — return partial data and log a warning.
+- Do not skip logging — every Python asset must have structured logging with progress output.
+- Do not leave throwaway test scripts in the root directory or inside `assets/`.

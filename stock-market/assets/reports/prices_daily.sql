@@ -1,14 +1,15 @@
 /* @bruin
-name: stock_market.prices_daily
+name: stock_market_staging.prices_daily
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Transforms raw daily stock prices into an analysis-ready table.
+  Combines yfinance and FMP price sources into an analysis-ready table.
   Deduplicates on (ticker, date), adds daily return %, moving averages,
   52-week high/low metrics, and enriches with sector/industry from tickers.
 
 depends:
   - stock_market_raw.prices_daily
+  - stock_market_raw.fmp_prices_daily
   - stock_market_raw.tickers
 
 materialization:
@@ -92,9 +93,17 @@ columns:
 
 @bruin */
 
-WITH deduped AS (
-    SELECT *
+WITH all_prices AS (
+    SELECT ticker, date, open, high, low, close, adj_close, volume, extracted_at
     FROM stock_market_raw.prices_daily
+    UNION ALL
+    SELECT ticker, date, open, high, low, close, adj_close, volume, extracted_at
+    FROM stock_market_raw.fmp_prices_daily
+),
+
+deduped AS (
+    SELECT *
+    FROM all_prices
     WHERE date IS NOT NULL
       AND close IS NOT NULL
       AND close > 0

@@ -1,4 +1,4 @@
-/* @bruin
+/*
 name: stock_market_staging.prices_daily
 type: bq.sql
 connection: bruin-playground-arsalan
@@ -91,7 +91,7 @@ columns:
     type: VARCHAR
     description: GICS sub-industry classification
 
-@bruin */
+*/
 
 WITH all_prices AS (
     SELECT ticker, date, open, high, low, close, adj_close, volume, extracted_at

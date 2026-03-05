@@ -1,20 +1,16 @@
 /* @bruin
-name: stock_market_staging.financials_quarterly
+name: stock_market.financials_quarterly
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Combines yfinance and FMP financial sources, joins quarterly income statements,
-  balance sheets, and cash flow statements into a single analysis-ready table.
-  Adds derived financial ratios including margins, returns, leverage, and growth
-  metrics. Enriched with sector/industry.
+  Joins quarterly income statements, balance sheets, and cash flow statements
+  into a single analysis-ready table. Adds derived financial ratios including
+  margins, returns, leverage, and growth metrics. Enriched with sector/industry.
 
 depends:
   - stock_market_raw.income_statements
   - stock_market_raw.balance_sheets
   - stock_market_raw.cash_flows
-  - stock_market_raw.fmp_income_statements
-  - stock_market_raw.fmp_balance_sheets
-  - stock_market_raw.fmp_cash_flows
   - stock_market_raw.tickers
 
 materialization:
@@ -149,77 +145,23 @@ columns:
 
 @bruin */
 
-WITH all_income AS (
-    SELECT ticker, period_ending, fiscal_year, fiscal_quarter,
-           total_revenue, cost_of_revenue, gross_profit, operating_expense, operating_income,
-           net_income, basic_eps, diluted_eps, ebitda,
-           interest_expense, tax_provision, research_and_development,
-           selling_general_and_administration, diluted_average_shares, extracted_at
-    FROM stock_market_raw.income_statements
-    UNION ALL
-    SELECT ticker, period_ending, fiscal_year, fiscal_quarter,
-           total_revenue, cost_of_revenue, gross_profit, operating_expense, operating_income,
-           net_income, basic_eps, diluted_eps, ebitda,
-           interest_expense, tax_provision, research_and_development,
-           selling_general_and_administration, diluted_average_shares, extracted_at
-    FROM stock_market_raw.fmp_income_statements
-),
-
-income AS (
+WITH income AS (
     SELECT *
-    FROM all_income
+    FROM stock_market_raw.income_statements
     WHERE period_ending IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker, period_ending ORDER BY extracted_at DESC) = 1
-),
-
-all_balance AS (
-    SELECT ticker, period_ending, fiscal_year, fiscal_quarter,
-           total_assets, total_liabilities_net_minority_interest, stockholders_equity,
-           retained_earnings, cash_and_cash_equivalents,
-           current_assets, current_liabilities, current_debt, long_term_debt,
-           total_debt, net_debt, goodwill, net_tangible_assets, inventory,
-           accounts_receivable, accounts_payable, working_capital,
-           ordinary_shares_number, extracted_at
-    FROM stock_market_raw.balance_sheets
-    UNION ALL
-    SELECT ticker, period_ending, fiscal_year, fiscal_quarter,
-           total_assets, total_liabilities_net_minority_interest, stockholders_equity,
-           retained_earnings, cash_and_cash_equivalents,
-           current_assets, current_liabilities, current_debt, long_term_debt,
-           total_debt, net_debt, goodwill, net_tangible_assets, inventory,
-           accounts_receivable, accounts_payable, working_capital,
-           CAST(NULL AS FLOAT64) AS ordinary_shares_number, extracted_at
-    FROM stock_market_raw.fmp_balance_sheets
 ),
 
 balance AS (
     SELECT *
-    FROM all_balance
+    FROM stock_market_raw.balance_sheets
     WHERE period_ending IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker, period_ending ORDER BY extracted_at DESC) = 1
 ),
 
-all_cashflow AS (
-    SELECT ticker, period_ending, fiscal_year, fiscal_quarter,
-           operating_cash_flow, capital_expenditure, free_cash_flow,
-           investing_cash_flow, financing_cash_flow,
-           depreciation_and_amortization, stock_based_compensation,
-           change_in_working_capital, common_stock_dividend_paid,
-           repurchase_of_capital_stock, extracted_at
-    FROM stock_market_raw.cash_flows
-    UNION ALL
-    SELECT ticker, period_ending, fiscal_year, fiscal_quarter,
-           operating_cash_flow, capital_expenditure, free_cash_flow,
-           investing_cash_flow, financing_cash_flow,
-           depreciation_and_amortization, stock_based_compensation,
-           change_in_working_capital, common_stock_dividend_paid,
-           repurchase_of_capital_stock, extracted_at
-    FROM stock_market_raw.fmp_cash_flows
-),
-
 cashflow AS (
     SELECT *
-    FROM all_cashflow
+    FROM stock_market_raw.cash_flows
     WHERE period_ending IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY ticker, period_ending ORDER BY extracted_at DESC) = 1
 ),

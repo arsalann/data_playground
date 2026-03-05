@@ -1,4 +1,5 @@
 """@bruin
+name: stock_market_raw.fmp_cash_flows
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan

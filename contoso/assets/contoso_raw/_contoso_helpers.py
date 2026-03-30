@@ -9,11 +9,11 @@ NOT a Bruin asset (prefixed with _).
 import logging
 import os
 import random
-import subprocess
 import tempfile
 
 import numpy as np
 import pandas as pd
+import py7zr
 import pyarrow.parquet as pq
 import requests
 
@@ -59,11 +59,8 @@ def _ensure_extracted():
         )
 
     logger.info("Extracting archive...")
-    subprocess.run(
-        ["7z", "x", "-y", "-o" + CACHE_DIR, archive_path],
-        check=True,
-        capture_output=True,
-    )
+    with py7zr.SevenZipFile(archive_path, "r") as z:
+        z.extractall(path=CACHE_DIR)
 
     with open(marker, "w") as f:
         f.write("ok")

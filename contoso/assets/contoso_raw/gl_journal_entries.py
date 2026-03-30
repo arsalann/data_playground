@@ -28,6 +28,7 @@ description: |
   Serves as the authoritative source for all GL-based financial analytics and executive
   KPI dashboards across the Contoso organization.
 connection: gcp-default
+instance: b1.large
 tags:
   - domain:finance
   - domain:accounting

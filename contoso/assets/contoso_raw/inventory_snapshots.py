@@ -19,6 +19,7 @@ description: |
   Business applications: stock-out risk analysis, reorder optimization, demand forecasting,
   inventory turnover calculations, and cross-department operational reporting.
 connection: gcp-default
+instance: b1.medium
 tags:
   - domain:operations
   - data_type:fact_table

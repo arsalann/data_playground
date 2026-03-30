@@ -34,6 +34,7 @@ description: |
 
   Source: Synthetic data generated with Python Faker, deterministic with seed=42
 connection: gcp-default
+instance: b1.large
 tags:
   - marketing
   - attribution

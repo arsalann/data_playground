@@ -303,6 +303,7 @@ def run_query(filename: str) -> pd.DataFrame:
 
 **Altair Chart Conventions**:
 
+- **All charts must be colorblind-friendly.** Use the Wong (2011) palette from *Nature Methods* (`#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey). Never rely on color alone to convey meaning — always pair color with a secondary visual channel (stroke dash pattern, marker shape, or direct labels). For heatmaps and diverging scales, use `blueorange` (not `redblue` or `redgreen`).
 - Use a consistent color palette with a highlight color for the "current" or "focus" item: `HIGHLIGHT = "#D55E00"`, `DEFAULT = "#56B4E9"`.
 - Use `alt.condition` to highlight a specific bar/point based on a boolean column (e.g. `is_current`).
 - Always include tooltips with `alt.Tooltip` for interactivity.

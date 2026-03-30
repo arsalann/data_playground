@@ -1,7 +1,0 @@
-name: chess_duckdb
-catchup: false
-default:
-  type: ingestr
-  parameters:
-    source_connection: chess-default
-    destination: duckdb

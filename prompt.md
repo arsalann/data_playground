@@ -30,17 +30,19 @@ Credentials are in @.bruin.yml ([line range])
 [Describe the entities and fields you care about. Be specific about granularity and history depth.]
 
 Examples:
+
 - "daily OHLCV prices + market cap for every S&P 500 ticker, going back to 2012"
 - "hourly generation by energy source (MWh), day-ahead forecasts, market clearing prices, for the past 1 year"
 
 ### Naming
 
-All asset/table names should have prefix **`[prefix]_`**
+All asset/table names should have prefix `**[prefix]_`**
 Destination: BigQuery
 
 ### Dashboard questions
 
 The goal is a final dashboard that answers:
+
 - [Question 1]
 - [Question 2]
 - [Question 3]
@@ -49,6 +51,7 @@ The goal is a final dashboard that answers:
 ### Build order
 
 Start building the pipeline:
+
 1. Create pipeline structure and a README outlining the pipeline, data sources, and processing method
 2. Create the Python extraction assets (with Bruin Python materialization), use Bruin's built-in start/end date variables
 3. Test each raw asset individually for a small subset of data ([describe subset, e.g. "2-3 days" or "a single quarter"])
@@ -58,6 +61,8 @@ Start building the pipeline:
 ### Constraints (optional)
 
 [Any additional constraints, e.g.:]
+
 - "start with a free API for now, we can switch to a paid one later"
 - "use append-only strategy and deduplicate in staging"
 - "financial statements should fetch all available quarters regardless of date range"
+

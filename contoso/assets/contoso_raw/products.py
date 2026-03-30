@@ -17,7 +17,7 @@ description: |
   - Categories follow a two-level hierarchy (category -> subcategory)
 
   Source: SQLBI Contoso Data Generator V2 (MIT license)
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:sales
   - data_type:dimension_table
@@ -30,9 +30,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: product_key

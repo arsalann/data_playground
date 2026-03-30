@@ -23,7 +23,7 @@ description: |
 
   Generated deterministically with seed=42 for reproducible synthetic data modeling realistic
   deployment cadences, failure patterns, and operational characteristics.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:engineering
   - domain:devops
@@ -39,9 +39,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: deployment_key

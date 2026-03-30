@@ -22,7 +22,7 @@ description: |
   Data spans 2016-2026 with records only for active campaign days (no padding for inactive periods).
   Synthetic data generated with deterministic patterns (seed=42) to ensure reproducible results.
   Used downstream in marketing performance analysis, ROI calculations, and budget optimization models.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - marketing
   - advertising
@@ -36,9 +36,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: AdSpendKey

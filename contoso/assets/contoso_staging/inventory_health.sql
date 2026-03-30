@@ -23,7 +23,7 @@ description: |
   Critical for operations, purchasing, and finance teams to prevent stockouts (revenue loss),
   reduce carrying costs (working capital optimization), and maintain service level agreements
   with customers. Updated daily to support rapid response to inventory movements.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - operations
   - inventory_management
@@ -42,9 +42,6 @@ depends:
   - contoso_raw.products
   - contoso_raw.stores
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: store_key

@@ -24,7 +24,7 @@ description: |
   - Some sprints may have zero deployments due to sprint/deployment timing misalignment
   - Cycle time only calculated for resolved tickets (Done/Closed status)
   - Tasks and Improvements are excluded from story point calculations
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:engineering
   - domain:product
@@ -43,9 +43,6 @@ depends:
   - contoso_raw.deployments
   - contoso_raw.employees
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: sprint_name

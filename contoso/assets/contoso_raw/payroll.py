@@ -26,7 +26,7 @@ description: |
   cross-departmental analytics. Links to contoso_raw.employees via employee_key
   for workforce analytics, compensation benchmarking, and department-level
   payroll reporting.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:hr
   - domain:finance
@@ -40,9 +40,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: payroll_key

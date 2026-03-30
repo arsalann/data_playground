@@ -23,7 +23,7 @@ description: |
   customer satisfaction monitoring, and resource planning. Contains typical support operation
   challenges like escalations (5%), open tickets requiring follow-up, and varying satisfaction
   scores across different issue types and resolution methods.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - customer_support
   - raw_data
@@ -39,9 +39,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: SupportTicketKey

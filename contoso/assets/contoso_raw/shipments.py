@@ -18,7 +18,7 @@ description: |
   data via OrderKey and fulfillment locations via StoreKey.
 
   Generated deterministically with seed=42 for reproducible analysis (~980K rows).
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - operations
   - logistics
@@ -33,9 +33,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: ShipmentKey

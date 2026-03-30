@@ -20,7 +20,7 @@ description: |
   customer experience quality. OpEx includes all operating expenses excluding payroll.
 
   Used for: monthly board reports, executive dashboards, trend analysis, and variance reporting.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - executive_reporting
   - finance
@@ -43,9 +43,6 @@ depends:
   - contoso_staging.support_metrics_monthly
   - contoso_staging.payroll_summary_monthly
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: year

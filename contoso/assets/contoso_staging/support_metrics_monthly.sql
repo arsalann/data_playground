@@ -38,7 +38,7 @@ description: |
   - Most common categories are "Product Quality" and "Shipping" issues
   - Resolution times are highly consistent (1.4-1.6 days) indicating mature processes
   - No missing data due to synthetic generation ensuring comprehensive coverage
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - customer_support
   - operational_metrics
@@ -59,9 +59,6 @@ depends:
   - contoso_raw.support_tickets
   - contoso_raw.customers
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: year

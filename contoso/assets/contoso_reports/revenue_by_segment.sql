@@ -41,7 +41,7 @@ description: |
   - Complete coverage of all active country-category combinations with no gaps
   - All monetary values aggregated and rounded to 2 decimal places for financial precision
   - Growth metrics calculated with safe division to handle edge cases and null values
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - finance
   - executive_reporting
@@ -60,9 +60,6 @@ materialization:
 depends:
   - contoso_staging.sales_fact
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: year

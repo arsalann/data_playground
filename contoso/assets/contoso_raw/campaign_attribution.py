@@ -33,7 +33,7 @@ description: |
   - Used downstream in contoso_staging.marketing_performance for aggregated campaign metrics
 
   Source: Synthetic data generated with Python Faker, deterministic with seed=42
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - marketing
   - attribution
@@ -49,9 +49,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: attribution_key

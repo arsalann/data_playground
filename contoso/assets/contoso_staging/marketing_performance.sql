@@ -33,7 +33,7 @@ description: |
   - Performance varies significantly by channel (Paid Search typically highest volume)
   - Safe division used throughout to handle campaigns with zero attributed orders
   - All monetary values standardized to USD for cross-campaign comparison
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - marketing
   - performance
@@ -52,9 +52,6 @@ depends:
   - contoso_raw.campaign_attribution
   - contoso_raw.sales
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: campaign_key

@@ -14,7 +14,7 @@ description: |
   ~3,000 employees and supports cross-departmental analytics including payroll,
   budget allocation, and organizational reporting. The hierarchy enables rollup
   calculations for management reporting and departmental KPIs.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:hr
   - domain:organizational
@@ -30,9 +30,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: department_key

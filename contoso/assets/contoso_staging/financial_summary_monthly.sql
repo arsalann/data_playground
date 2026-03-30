@@ -20,7 +20,7 @@ description: |
   - Budget data may be sparse (not all accounts have budgets) resulting in nulls for budget_amount and variance_pct
   - Balances are in USD; journal entries inherently balance (total_debit ≈ total_credit across all entries)
   - Account codes follow standard GL hierarchy with 4-digit numeric codes
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - finance
   - staging
@@ -39,9 +39,6 @@ depends:
   - contoso_raw.budgets
   - contoso_raw.departments
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: fiscal_year

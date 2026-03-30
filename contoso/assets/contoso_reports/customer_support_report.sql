@@ -17,7 +17,7 @@ description: |
 
   Data is deduplicated by support_ticket_key using the most recent extraction timestamp
   to handle potential reprocessing scenarios.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - customer_support
   - operational_metrics
@@ -36,9 +36,6 @@ depends:
   - contoso_raw.support_tickets
   - contoso_staging.employee_directory
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: year

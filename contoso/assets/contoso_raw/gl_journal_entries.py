@@ -27,7 +27,7 @@ description: |
   analysis, and departmental cost allocation in contoso_staging.financial_summary_monthly.
   Serves as the authoritative source for all GL-based financial analytics and executive
   KPI dashboards across the Contoso organization.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:finance
   - domain:accounting
@@ -46,9 +46,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: journal_entry_key

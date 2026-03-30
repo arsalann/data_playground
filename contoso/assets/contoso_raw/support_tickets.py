@@ -24,6 +24,7 @@ description: |
   challenges like escalations (5%), open tickets requiring follow-up, and varying satisfaction
   scores across different issue types and resolution methods.
 connection: gcp-default
+instance: b1.medium
 tags:
   - customer_support
   - raw_data

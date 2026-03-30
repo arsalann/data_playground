@@ -27,6 +27,7 @@ description: |
   for workforce analytics, compensation benchmarking, and department-level
   payroll reporting.
 connection: gcp-default
+instance: b1.large
 tags:
   - domain:hr
   - domain:finance

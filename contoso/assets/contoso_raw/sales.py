@@ -19,6 +19,7 @@ description: |
   Source: SQLBI Contoso Data Generator V2 (MIT license)
   https://github.com/sql-bi/Contoso-Data-Generator-V2-Data
 connection: gcp-default
+instance: b1.large
 tags:
   - domain:sales
   - data_type:fact_table

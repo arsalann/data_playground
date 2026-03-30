@@ -23,6 +23,7 @@ description: |
   Synthetic data generated with deterministic patterns (seed=42) to ensure reproducible results.
   Used downstream in marketing performance analysis, ROI calculations, and budget optimization models.
 connection: gcp-default
+instance: b1.medium
 tags:
   - marketing
   - advertising

@@ -25,6 +25,7 @@ description: |
   Source: SQLBI Contoso Data Generator V2 (MIT license)
   Documentation: https://github.com/sql-bi/Contoso-Data-Generator-V2-Data
 connection: gcp-default
+instance: b1.medium
 tags:
   - dimension_table
   - customer_data

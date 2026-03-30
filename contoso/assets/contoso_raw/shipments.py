@@ -19,6 +19,7 @@ description: |
 
   Generated deterministically with seed=42 for reproducible analysis (~980K rows).
 connection: gcp-default
+instance: b1.large
 tags:
   - operations
   - logistics

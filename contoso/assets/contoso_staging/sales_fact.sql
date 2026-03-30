@@ -43,7 +43,7 @@ description: |
   - Source data deduplication ensures referential integrity across dimension tables
   - Safe division operations prevent divide-by-zero errors in margin calculations
   - Maintains full history for trend analysis and comparative reporting
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - sales
   - fact_table
@@ -66,9 +66,6 @@ depends:
   - contoso_raw.stores
   - contoso_raw.dates
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: order_key

@@ -18,7 +18,7 @@ description: |
   - Assignee and reporter can be the same person (self-assigned work)
 
   Generated deterministically with seed=42 for reproducible synthetic data.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:engineering
   - data_type:fact_table
@@ -32,9 +32,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: TicketKey

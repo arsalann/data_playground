@@ -23,7 +23,7 @@ description: |
   financial reporting, and international performance analysis.
 
   Source: SQLBI Contoso Data Generator V2 (MIT license)
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:sales
   - domain:finance
@@ -38,9 +38,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: date

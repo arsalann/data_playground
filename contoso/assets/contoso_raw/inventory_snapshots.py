@@ -18,7 +18,7 @@ description: |
 
   Business applications: stock-out risk analysis, reorder optimization, demand forecasting,
   inventory turnover calculations, and cross-department operational reporting.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:operations
   - data_type:fact_table
@@ -33,9 +33,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: snapshot_key

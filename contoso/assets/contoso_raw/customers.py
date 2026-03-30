@@ -24,7 +24,7 @@ description: |
 
   Source: SQLBI Contoso Data Generator V2 (MIT license)
   Documentation: https://github.com/sql-bi/Contoso-Data-Generator-V2-Data
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - dimension_table
   - customer_data
@@ -39,9 +39,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: customer_key

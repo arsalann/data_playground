@@ -23,7 +23,7 @@ description: |
   - Data completeness is high with no null values in core metrics, indicating robust payroll processing
 
   Business context: Used for monthly workforce reporting, budget variance analysis, compensation benchmarking, and strategic workforce planning.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - hr
   - payroll
@@ -44,9 +44,6 @@ depends:
   - contoso_raw.employees
   - contoso_raw.departments
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: year

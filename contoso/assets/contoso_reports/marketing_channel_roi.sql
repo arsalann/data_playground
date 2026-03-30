@@ -35,7 +35,7 @@ description: |
   - Executive reporting on marketing ROI effectiveness
   - Seasonal trend analysis for strategic planning
   - Identification of underperforming channels requiring attention
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - marketing
   - roi
@@ -52,9 +52,6 @@ materialization:
 depends:
   - contoso_staging.marketing_performance
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: channel

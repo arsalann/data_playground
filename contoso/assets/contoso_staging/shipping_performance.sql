@@ -19,7 +19,7 @@ description: |
 
   Downstream usage: Feeds delivery SLA reports, carrier performance dashboards, and operations
   cost analysis. Critical for identifying shipping bottlenecks and optimizing fulfillment strategies.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - operations
   - logistics
@@ -39,9 +39,6 @@ depends:
   - contoso_raw.orders
   - contoso_raw.stores
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: shipment_key

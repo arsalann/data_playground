@@ -15,7 +15,7 @@ description: |
 
   Refreshes daily as part of the operations reporting pipeline. Historical data spans 2016-present covering
   approximately 1M+ shipments aggregated to ~4,000+ monthly carrier-country combinations.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:operations
   - domain:logistics
@@ -32,9 +32,6 @@ materialization:
 depends:
   - contoso_staging.shipping_performance
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: year

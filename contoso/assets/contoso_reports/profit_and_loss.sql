@@ -37,7 +37,7 @@ description: |
   - Budget variance analysis limited to OpEx categories where budgets exist
   - Supports drill-down analysis through upstream staging tables
   - Used as primary data source for executive financial reporting and board presentations
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - finance
   - reports
@@ -56,9 +56,6 @@ depends:
   - contoso_staging.financial_summary_monthly
   - contoso_staging.sales_fact
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: year

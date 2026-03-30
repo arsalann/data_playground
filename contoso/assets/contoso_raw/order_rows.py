@@ -18,7 +18,7 @@ description: |
 
   Source: SQLBI Contoso Data Generator V2 (MIT license) - a widely-used sample dataset
   in the BI community representing realistic retail business patterns.
-connection: bruin-playground-eu
+connection: gcp-default
 tags:
   - domain:sales
   - domain:finance
@@ -34,9 +34,6 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
-secrets:
-  - key: bruin-playground-eu
-    inject_as: bruin-playground-eu
 
 columns:
   - name: order_key

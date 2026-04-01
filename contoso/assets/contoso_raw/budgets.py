@@ -21,7 +21,7 @@ description: |
   Links to downstream financial reporting in contoso_staging.financial_summary_monthly for comprehensive
   budget variance analysis and executive KPI dashboards. References contoso_raw.departments for organizational
   hierarchy and cost center mappings.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:finance
   - domain:planning

@@ -17,7 +17,7 @@ description: |
 
   Data is deduplicated by support_ticket_key using the most recent extraction timestamp
   to handle potential reprocessing scenarios.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - customer_support
   - operational_metrics

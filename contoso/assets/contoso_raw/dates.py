@@ -10,7 +10,7 @@ description: |
 
   Source: SQLBI Contoso Data Generator V2 (MIT license) - industry-standard reference dataset for retail analytics.
   Used as the primary time dimension for joins with fact tables across the entire Contoso data warehouse.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - dimension_table
   - reference_data

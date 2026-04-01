@@ -18,7 +18,7 @@ description: |
 
   Business applications: stock-out risk analysis, reorder optimization, demand forecasting,
   inventory turnover calculations, and cross-department operational reporting.
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.medium
 tags:
   - domain:operations
@@ -71,7 +71,7 @@ columns:
       Range: 0-499 units (randomly distributed)
     checks:
       - name: not_null
-      - name: positive
+      - name: non_negative
   - name: reorder_point
     type: INTEGER
     description: |
@@ -88,7 +88,7 @@ columns:
       Range: 0-299 units. Non-zero only when quantity_on_hand < reorder_point
     checks:
       - name: not_null
-      - name: positive
+      - name: non_negative
   - name: extracted_at
     type: TIMESTAMP
     description: |

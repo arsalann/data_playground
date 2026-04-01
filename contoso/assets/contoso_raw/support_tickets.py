@@ -23,7 +23,7 @@ description: |
   customer satisfaction monitoring, and resource planning. Contains typical support operation
   challenges like escalations (5%), open tickets requiring follow-up, and varying satisfaction
   scores across different issue types and resolution methods.
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.medium
 tags:
   - customer_support
@@ -42,7 +42,7 @@ image: python:3.11
 
 
 columns:
-  - name: SupportTicketKey
+  - name: support_ticket_key
     type: INTEGER
     description: |
       Sequential unique identifier for each support ticket (1-150,000).
@@ -52,7 +52,7 @@ columns:
     checks:
       - name: not_null
       - name: unique
-  - name: CustomerKey
+  - name: customer_key
     type: INTEGER
     description: |
       Foreign key reference to customers table. Every ticket is associated with a customer.
@@ -60,19 +60,19 @@ columns:
       No null values - all support interactions must have a customer context.
     checks:
       - name: not_null
-  - name: OrderKey
+  - name: order_key
     type: INTEGER
     description: |
       Foreign key reference to orders table. Populated for ~80% of tickets.
       Null for general account inquiries, technical support, or pre-purchase questions.
       When populated, indicates ticket relates to a specific transaction or delivery issue.
-  - name: ProductKey
+  - name: product_key
     type: INTEGER
     description: |
       Foreign key reference to products table. Populated for ~70% of tickets.
       Null for account management, billing, or general service inquiries.
       When populated, indicates product-specific issues like quality, compatibility, or usage questions.
-  - name: Channel
+  - name: channel
     type: VARCHAR
     description: |
       Customer communication channel used to submit the support request.
@@ -86,7 +86,7 @@ columns:
           - Email
           - Chat
           - Social
-  - name: Category
+  - name: category
     type: VARCHAR
     description: |
       Issue classification category assigned by support system or agent.
@@ -102,7 +102,7 @@ columns:
           - Billing
           - Account
           - Technical
-  - name: Priority
+  - name: priority
     type: VARCHAR
     description: |
       Business priority level assigned based on issue impact and urgency.
@@ -116,7 +116,7 @@ columns:
           - High
           - Medium
           - Low
-  - name: Status
+  - name: status
     type: VARCHAR
     description: |
       Current ticket resolution status. Distribution: Resolved (85%), Open (10%), Escalated (5%).
@@ -129,7 +129,7 @@ columns:
           - Resolved
           - Open
           - Escalated
-  - name: CreatedDate
+  - name: created_date
     type: DATE
     description: |
       Date when the support ticket was initially created (customer inquiry received).
@@ -137,13 +137,13 @@ columns:
       Used for trend analysis, volume planning, and seasonal pattern identification.
     checks:
       - name: not_null
-  - name: ResolvedDate
+  - name: resolved_date
     type: DATE
     description: |
       Date when the ticket was marked as resolved. Null for Open and Escalated tickets (~15%).
       Used to calculate resolution time SLAs and agent efficiency metrics.
       Always >= CreatedDate when populated (typical range: 0-3 days).
-  - name: SatisfactionScore
+  - name: satisfaction_score
     type: INTEGER
     description: |
       Post-resolution customer satisfaction rating on 1-5 scale (1=Very Dissatisfied, 5=Very Satisfied).
@@ -152,7 +152,7 @@ columns:
       Null values (~40% overall) represent non-responses or non-resolved tickets.
     checks:
       - name: positive
-  - name: AgentEmployeeKey
+  - name: agent_employee_key
     type: INTEGER
     description: |
       Foreign key to employees table identifying the support agent handling the ticket.

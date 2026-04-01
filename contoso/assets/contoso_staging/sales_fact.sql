@@ -43,7 +43,7 @@ description: |
   - Source data deduplication ensures referential integrity across dimension tables
   - Safe division operations prevent divide-by-zero errors in margin calculations
   - Maintains full history for trend analysis and comparative reporting
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - sales
   - fact_table

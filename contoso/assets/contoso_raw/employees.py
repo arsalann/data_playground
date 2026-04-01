@@ -20,7 +20,7 @@ description: |
   Key relationships: Links to departments (department_key), stores (store_key for retail roles),
   and self-referencing manager hierarchy. Supports cross-departmental analytics including
   payroll analysis, organizational reporting, workforce planning, and compensation benchmarking.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:hr
   - domain:workforce

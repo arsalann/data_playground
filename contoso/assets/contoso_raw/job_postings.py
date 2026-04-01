@@ -24,7 +24,7 @@ description: |
   joins. Supports talent acquisition analytics, departmental hiring velocity analysis,
   time-to-fill metrics, and organizational capacity planning. Links to departments
   and stores tables for comprehensive workforce analytics.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:hr
   - domain:talent_acquisition

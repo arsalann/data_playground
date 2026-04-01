@@ -15,7 +15,7 @@ description: |
   - Department coverage spans all business units (Sales, HR, Finance, etc.)
   - All amounts standardized in USD
   - Deterministic via seed=42 for reproducible testing
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:finance
   - data_type:fact_table

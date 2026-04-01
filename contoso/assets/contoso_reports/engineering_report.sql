@@ -26,7 +26,7 @@ description: |
   - Deploy frequency averages ~0.9 deployments per sprint (lower than industry benchmarks)
   - Bug ratio averages ~25% of total tickets, indicating moderate technical debt levels
   - Some months may have null rollback rates when no deployments occurred
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:engineering
   - domain:product

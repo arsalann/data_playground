@@ -23,7 +23,7 @@ description: |
   financial reporting, and international performance analysis.
 
   Source: SQLBI Contoso Data Generator V2 (MIT license)
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:sales
   - domain:finance
@@ -72,9 +72,7 @@ columns:
       Used for converting transaction amounts between currencies in financial analysis.
     checks:
       - name: not_null
-      - name: accepted_values
-        value:
-          - '>0'
+      - name: positive
   - name: extracted_at
     type: TIMESTAMP
     description: |-

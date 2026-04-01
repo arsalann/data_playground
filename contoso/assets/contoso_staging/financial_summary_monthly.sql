@@ -20,7 +20,7 @@ description: |
   - Budget data may be sparse (not all accounts have budgets) resulting in nulls for budget_amount and variance_pct
   - Balances are in USD; journal entries inherently balance (total_debit ≈ total_credit across all entries)
   - Account codes follow standard GL hierarchy with 4-digit numeric codes
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - finance
   - staging

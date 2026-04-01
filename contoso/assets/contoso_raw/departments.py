@@ -14,7 +14,7 @@ description: |
   ~3,000 employees and supports cross-departmental analytics including payroll,
   budget allocation, and organizational reporting. The hierarchy enables rollup
   calculations for management reporting and departmental KPIs.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:hr
   - domain:organizational

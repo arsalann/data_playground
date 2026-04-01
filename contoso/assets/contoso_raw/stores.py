@@ -16,7 +16,7 @@ description: |
   store operational efficiency.
 
   Source: SQLBI Contoso Data Generator V2 (MIT license) - retail electronics simulation data.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:retail
   - data_type:dimension_table

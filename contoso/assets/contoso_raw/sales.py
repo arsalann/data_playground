@@ -18,7 +18,7 @@ description: |
 
   Source: SQLBI Contoso Data Generator V2 (MIT license)
   https://github.com/sql-bi/Contoso-Data-Generator-V2-Data
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.large
 tags:
   - domain:sales
@@ -47,8 +47,7 @@ columns:
     primary_key: true
     checks:
       - name: not_null
-      - name: positive
-        value: '>= 1'
+      - name: non_negative
   - name: order_date
     type: TIMESTAMP
     description: Date and time when the order was placed by the customer

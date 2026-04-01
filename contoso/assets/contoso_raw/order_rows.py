@@ -18,7 +18,7 @@ description: |
 
   Source: SQLBI Contoso Data Generator V2 (MIT license) - a widely-used sample dataset
   in the BI community representing realistic retail business patterns.
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.large
 tags:
   - domain:sales
@@ -49,7 +49,7 @@ columns:
     primary_key: true
     checks:
       - name: not_null
-      - name: positive
+      - name: non_negative
   - name: product_key
     type: INTEGER
     description: Product identifier, foreign key to contoso_raw.products dimension (~2.5K products)

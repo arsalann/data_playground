@@ -33,7 +33,7 @@ description: |
   - Used downstream in contoso_staging.marketing_performance for aggregated campaign metrics
 
   Source: Synthetic data generated with Python Faker, deterministic with seed=42
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.large
 tags:
   - marketing

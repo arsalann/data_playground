@@ -12,7 +12,7 @@ description: |
   Data spans 2016-2026 with campaigns typically running 7-90 days. Budget ranges from $5K-$200K
   with actual spend varying ±30% from budget. Used downstream in marketing performance analytics
   to calculate ROAS, CPA, and channel effectiveness metrics.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - marketing
   - campaigns

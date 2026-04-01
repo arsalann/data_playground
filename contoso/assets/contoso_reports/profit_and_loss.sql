@@ -37,7 +37,7 @@ description: |
   - Budget variance analysis limited to OpEx categories where budgets exist
   - Supports drill-down analysis through upstream staging tables
   - Used as primary data source for executive financial reporting and board presentations
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - finance
   - reports

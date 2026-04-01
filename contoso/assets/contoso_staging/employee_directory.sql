@@ -21,7 +21,7 @@ description: |
   The dataset reflects Contoso's 7 business units with a leveled promotion structure (L1-L5),
   spanning from entry-level retail associates to C-level executives, with salary bands
   appropriate to each level and geographic market.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - hr
   - people_analytics

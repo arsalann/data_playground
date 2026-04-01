@@ -23,7 +23,7 @@ description: |
 
   Generated deterministically with seed=42 for reproducible synthetic data modeling realistic
   deployment cadences, failure patterns, and operational characteristics.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:engineering
   - domain:devops

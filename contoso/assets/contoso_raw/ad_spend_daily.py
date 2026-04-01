@@ -22,7 +22,7 @@ description: |
   Data spans 2016-2026 with records only for active campaign days (no padding for inactive periods).
   Synthetic data generated with deterministic patterns (seed=42) to ensure reproducible results.
   Used downstream in marketing performance analysis, ROI calculations, and budget optimization models.
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.medium
 tags:
   - marketing
@@ -39,7 +39,7 @@ image: python:3.11
 
 
 columns:
-  - name: AdSpendKey
+  - name: ad_spend_key
     type: INTEGER
     description: |
       Unique daily ad spend record identifier (primary key). Sequential integers starting from 1,
@@ -49,7 +49,7 @@ columns:
     checks:
       - name: not_null
       - name: unique
-  - name: CampaignKey
+  - name: campaign_key
     type: INTEGER
     description: |
       Foreign key to campaigns table linking to campaign master data. References contoso_raw.campaigns.campaign_key
@@ -57,7 +57,7 @@ columns:
       campaign-level performance aggregation and attribution analysis.
     checks:
       - name: not_null
-  - name: SpendDate
+  - name: spend_date
     type: DATE
     description: |
       Date of advertising activity and spend (dimension). Always falls within the campaign's active
@@ -65,7 +65,7 @@ columns:
       and daily performance tracking. Ranges from 2016-01-18 to 2026-11-17 across active campaigns.
     checks:
       - name: not_null
-  - name: Channel
+  - name: channel
     type: VARCHAR
     description: |
       Marketing channel (dimension). One of: Email, Paid Search, Social, Display, Referral.
@@ -74,7 +74,13 @@ columns:
     checks:
       - name: not_null
       - name: accepted_values
-  - name: Impressions
+        value:
+          - Email
+          - Paid Search
+          - Social
+          - Display
+          - Referral
+  - name: impressions
     type: INTEGER
     description: |
       Number of ad impressions served (metric). Calculated as daily_spend / CPM * 1000, where CPM
@@ -82,7 +88,7 @@ columns:
       Used for reach analysis and cost efficiency metrics. Always >= 0.
     checks:
       - name: not_null
-  - name: Clicks
+  - name: clicks
     type: INTEGER
     description: |
       Number of ad clicks received (metric). Calculated as impressions * channel_CTR with ±30% daily
@@ -90,7 +96,7 @@ columns:
       and click-through rate calculations. Always >= 0.
     checks:
       - name: not_null
-  - name: Conversions
+  - name: conversions
     type: INTEGER
     description: |
       Number of conversions (purchases) attributed to this campaign-day (metric). Calculated as
@@ -98,7 +104,7 @@ columns:
       to 5% (Referral). Used for ROI calculations and campaign effectiveness analysis. Always >= 0.
     checks:
       - name: not_null
-  - name: SpendAmount
+  - name: spend_amount
     type: DOUBLE
     description: |
       Daily advertising spend in USD (metric). Varies 50-150% of the campaign's average daily budget
@@ -106,7 +112,7 @@ columns:
       cost analysis, and ROAS calculations. Always > 0 for active campaign days.
     checks:
       - name: not_null
-  - name: Currency
+  - name: currency
     type: VARCHAR
     description: |
       Currency code for spend amounts. Always 'USD' in current dataset but included for potential
@@ -114,6 +120,8 @@ columns:
     checks:
       - name: not_null
       - name: accepted_values
+        value:
+          - USD
   - name: extracted_at
     type: TIMESTAMP
     description: |

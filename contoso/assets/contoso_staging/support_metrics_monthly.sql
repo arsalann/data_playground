@@ -38,7 +38,7 @@ description: |
   - Most common categories are "Product Quality" and "Shipping" issues
   - Resolution times are highly consistent (1.4-1.6 days) indicating mature processes
   - No missing data due to synthetic generation ensuring comprehensive coverage
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - customer_support
   - operational_metrics

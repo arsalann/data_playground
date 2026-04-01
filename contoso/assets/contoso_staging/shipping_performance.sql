@@ -19,7 +19,7 @@ description: |
 
   Downstream usage: Feeds delivery SLA reports, carrier performance dashboards, and operations
   cost analysis. Critical for identifying shipping bottlenecks and optimizing fulfillment strategies.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - operations
   - logistics
@@ -105,7 +105,7 @@ columns:
     description: Processing time metric - days from order placement to dispatch (0-3 day range typical)
     checks:
       - name: not_null
-      - name: positive
+      - name: non_negative
   - name: days_in_transit
     type: INTEGER
     description: Transit time metric - days from dispatch to delivery (2-14 day range typical)

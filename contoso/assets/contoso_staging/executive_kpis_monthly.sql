@@ -20,7 +20,7 @@ description: |
   customer experience quality. OpEx includes all operating expenses excluding payroll.
 
   Used for: monthly board reports, executive dashboards, trend analysis, and variance reporting.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - executive_reporting
   - finance

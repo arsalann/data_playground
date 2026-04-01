@@ -33,7 +33,7 @@ description: |
   - Performance varies significantly by channel (Paid Search typically highest volume)
   - Safe division used throughout to handle campaigns with zero attributed orders
   - All monetary values standardized to USD for cross-campaign comparison
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - marketing
   - performance

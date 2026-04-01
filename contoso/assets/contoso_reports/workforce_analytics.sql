@@ -19,7 +19,7 @@ description: |
   The composite primary key (year, quarter, department_name) ensures unique quarterly snapshots per department while supporting time-series analysis. Turnover rates are calculated as quarterly percentage (terminations/active_headcount) rather than annualized, providing precise period-over-period comparisons.
 
   Note: Only departments with active headcount > 0 are included to focus reporting on operational units. Cost calculations use actual gross payroll from bi-weekly/semi-monthly pay periods aggregated to quarterly totals.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - hr
   - people_analytics

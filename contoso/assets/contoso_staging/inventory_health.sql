@@ -23,7 +23,7 @@ description: |
   Critical for operations, purchasing, and finance teams to prevent stockouts (revenue loss),
   reduce carrying costs (working capital optimization), and maintain service level agreements
   with customers. Updated daily to support rapid response to inventory movements.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - operations
   - inventory_management

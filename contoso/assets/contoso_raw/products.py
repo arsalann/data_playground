@@ -17,7 +17,7 @@ description: |
   - Categories follow a two-level hierarchy (category -> subcategory)
 
   Source: SQLBI Contoso Data Generator V2 (MIT license)
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:sales
   - data_type:dimension_table

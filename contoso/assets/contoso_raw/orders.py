@@ -25,7 +25,7 @@ description: |
 
   Source: SQLBI Contoso Data Generator V2 (MIT license)
   Documentation: https://github.com/sql-bi/Contoso-Data-Generator-V2-Data
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.large
 tags:
   - fact_table

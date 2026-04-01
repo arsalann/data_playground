@@ -18,7 +18,7 @@ description: |
   - Assignee and reporter can be the same person (self-assigned work)
 
   Generated deterministically with seed=42 for reproducible synthetic data.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:engineering
   - data_type:fact_table
@@ -34,14 +34,14 @@ image: python:3.11
 
 
 columns:
-  - name: TicketKey
+  - name: ticket_key
     type: INTEGER
     description: Unique sequential ticket identifier (1-8000), serves as primary key for the ticket
     primary_key: true
     checks:
       - name: not_null
       - name: unique
-  - name: TicketCode
+  - name: ticket_code
     type: VARCHAR
     description: Human-readable ticket code following ENG-NNNN format (e.g. "ENG-0001", "ENG-7999"), used for external references
     checks:
@@ -51,7 +51,7 @@ columns:
     description: Descriptive ticket title generated from templates by ticket type, includes component names and actions (15-45 chars)
     checks:
       - name: not_null
-  - name: TicketType
+  - name: ticket_type
     type: VARCHAR
     description: |
       Type of engineering work represented by this ticket:
@@ -61,17 +61,18 @@ columns:
       - Improvement: Performance optimization and enhancements
     checks:
       - name: accepted_values
-  - name: AssigneeEmployeeKey
+        value: [Bug, Story, Task, Improvement]
+  - name: assignee_employee_key
     type: INTEGER
     description: Foreign key to contoso_raw.employees table, identifies the engineer responsible for completing this ticket (range 1201-1650)
     checks:
       - name: not_null
-  - name: ReporterEmployeeKey
+  - name: reporter_employee_key
     type: INTEGER
     description: Foreign key to contoso_raw.employees table, identifies the engineer who created/reported this ticket (range 1201-1650)
     checks:
       - name: not_null
-  - name: Priority
+  - name: priority
     type: VARCHAR
     description: |
       Business priority level determining urgency and scheduling:
@@ -81,7 +82,8 @@ columns:
       - Low: Nice-to-have, can be deferred
     checks:
       - name: accepted_values
-  - name: Status
+        value: [Critical, High, Medium, Low]
+  - name: status
     type: VARCHAR
     description: |
       Current workflow status of the ticket:
@@ -91,31 +93,34 @@ columns:
       - Closed: Administratively closed, may include resolved tickets
     checks:
       - name: accepted_values
-  - name: StoryPoints
+        value: [To Do, In Progress, Done, Closed]
+  - name: story_points
     type: INTEGER
     description: Agile story point estimate following Fibonacci sequence (1,2,3,5,8,13), represents relative complexity/effort
     checks:
       - name: not_null
       - name: accepted_values
-  - name: SprintName
+        value: [1, 2, 3, 5, 8, 13]
+  - name: sprint_name
     type: VARCHAR
     description: Sprint identifier using format "Sprint YYYY-WNN" based on ISO week of CreatedDate (e.g. "Sprint 2024-W03")
     checks:
       - name: not_null
-  - name: CreatedDate
+  - name: created_date
     type: DATE
     description: Date when the ticket was originally created/reported, used for sprint assignment and aging analysis
     checks:
       - name: not_null
-  - name: ResolvedDate
+  - name: resolved_date
     type: DATE
     description: Date when ticket was marked as resolved/completed, null for open tickets (~25% of dataset)
-  - name: DepartmentKey
+  - name: department_key
     type: INTEGER
     description: Foreign key to contoso_raw.departments table, always 6 (Engineering department) as tickets are scoped to engineering
     checks:
       - name: not_null
       - name: accepted_values
+        value: [6]
   - name: extracted_at
     type: TIMESTAMP
     description: UTC timestamp when this data was generated/loaded, used for data lineage and freshness tracking

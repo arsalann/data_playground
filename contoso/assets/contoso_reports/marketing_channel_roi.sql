@@ -35,7 +35,7 @@ description: |
   - Executive reporting on marketing ROI effectiveness
   - Seasonal trend analysis for strategic planning
   - Identification of underperforming channels requiring attention
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - marketing
   - roi

@@ -23,7 +23,7 @@ description: |
   - Data completeness is high with no null values in core metrics, indicating robust payroll processing
 
   Business context: Used for monthly workforce reporting, budget variance analysis, compensation benchmarking, and strategic workforce planning.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - hr
   - payroll
@@ -64,7 +64,10 @@ columns:
     primary_key: true
     checks:
       - name: not_null
-      - name: accepted_values
+      - name: min
+        value: 1
+      - name: max
+        value: 12
   - name: department_key
     type: INTEGER
     description: |

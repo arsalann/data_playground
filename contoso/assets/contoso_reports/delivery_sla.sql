@@ -15,7 +15,7 @@ description: |
 
   Refreshes daily as part of the operations reporting pipeline. Historical data spans 2016-present covering
   approximately 1M+ shipments aggregated to ~4,000+ monthly carrier-country combinations.
-connection: gcp-default
+connection: bruin-playground-eu
 tags:
   - domain:operations
   - domain:logistics

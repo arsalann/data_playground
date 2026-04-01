@@ -18,7 +18,7 @@ description: |
   data via OrderKey and fulfillment locations via StoreKey.
 
   Generated deterministically with seed=42 for reproducible analysis (~980K rows).
-connection: gcp-default
+connection: bruin-playground-eu
 instance: b1.large
 tags:
   - operations
@@ -36,59 +36,69 @@ image: python:3.11
 
 
 columns:
-  - name: ShipmentKey
+  - name: shipment_key
     type: INTEGER
     description: Unique shipment identifier (sequential 1 to N)
     primary_key: true
     checks:
       - name: not_null
       - name: unique
-  - name: OrderKey
+  - name: order_key
     type: INTEGER
     description: Foreign key linking to orders table (1:1 relationship) - identifies which customer order is being shipped
     checks:
       - name: not_null
-  - name: ShipDate
+  - name: ship_date
     type: TIMESTAMP
     description: Date and time when the shipment was dispatched from the fulfillment center (0-3 days after order date)
     checks:
       - name: not_null
-  - name: DeliveryDate
+  - name: delivery_date
     type: TIMESTAMP
     description: Actual date and time when the shipment was delivered to the customer (2-14 days after ship date)
     checks:
       - name: not_null
-  - name: Carrier
+  - name: carrier
     type: STRING
     description: Shipping carrier name (FedEx, UPS, DHL, or USPS) - selected based on weighted distribution favoring premium carriers
     checks:
       - name: not_null
       - name: accepted_values
-  - name: TrackingNumber
+        value:
+          - FedEx
+          - UPS
+          - DHL
+          - USPS
+  - name: tracking_number
     type: STRING
     description: Carrier-specific tracking reference number (12 characters) - format is 3-letter carrier code + 9-digit number
     checks:
       - name: not_null
-      - name: unique
-  - name: ShipmentStatus
+  - name: shipment_status
     type: STRING
     description: Final shipment outcome status - reflects realistic logistics outcomes with 93% delivery success rate
     checks:
       - name: not_null
       - name: accepted_values
-  - name: ShipCost
+        value:
+          - Delivered
+          - Returned
+          - Lost
+  - name: ship_cost
     type: FLOAT64
     description: Shipping cost charged to customer in USD - ranges from $5 to $45 based on realistic fulfillment pricing
     checks:
       - name: not_null
       - name: positive
-  - name: Currency
+  - name: currency
     type: STRING
     description: Currency code for shipping cost (always USD for Contoso operations)
     checks:
       - name: not_null
       - name: accepted_values
-  - name: StoreKey
+        value:
+          - USD
+  - name: store_key
     type: INTEGER
     description: Foreign key to stores table identifying which physical location fulfilled the order - enables geographic analysis of fulfillment patterns
     checks:

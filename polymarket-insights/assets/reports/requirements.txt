@@ -1,5 +1,6 @@
 streamlit
 google-cloud-bigquery
 db-dtypes
-altair
+altair>=5.0,<6.0
 pandas
+yfinance

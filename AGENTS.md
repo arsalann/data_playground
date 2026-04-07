@@ -301,16 +301,64 @@ def run_query(filename: str) -> pd.DataFrame:
 - Load main data with `run_raw()` for inline SQL, `run_query()` for SQL files in the same directory.
 - Use `@st.cache_resource` for the BigQuery client.
 
-**Altair Chart Conventions**:
+**Data Visualization Standards (Altair + Streamlit)**:
 
-- **All charts must be colorblind-friendly.** Use the Wong (2011) palette from *Nature Methods* (`#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey). Never rely on color alone to convey meaning — always pair color with a secondary visual channel (stroke dash pattern, marker shape, or direct labels). For heatmaps and diverging scales, use `blueorange` (not `redblue` or `redgreen`).
-- Use a consistent color palette with a highlight color for the "current" or "focus" item: `HIGHLIGHT = "#D55E00"`, `DEFAULT = "#56B4E9"`.
-- Use `alt.condition` to highlight a specific bar/point based on a boolean column (e.g. `is_current`).
-- Always include tooltips with `alt.Tooltip` for interactivity.
-- Set `height=340` as the default chart height (or `380` for taller charts).
+These rules are **mandatory** for every chart in every dashboard. They encode best practices from Tufte, Cleveland, Few, Munzner, and the ethical data visualization principles from the Data Visualization Society. Violations should be treated like bugs.
+
+#### Before You Build Any Chart
+
+- **Validate the data first.** Before writing any visualization code, query the data like a data analyst: check row counts, null rates, distributions, outliers, duplicates, and correlations. Understand what you actually have. Compute percentiles, check for join fanouts, verify dedup logic. Never visualize data you haven't inspected.
+- **Analyze, don't summarize.** A dashboard that just shows "here's the data" is not analysis. Find correlations, compute derived metrics (e.g. price/ELO, gap ratios), identify Pareto frontiers, test hypotheses. Each chart must prove or disprove something non-obvious. If the takeaway is "the data exists," the chart has failed.
+- **Follow the narrative arc.** Every dashboard tells a story structured as: (1) hypothesis/question, (2) evidence that the phenomenon exists, (3) evidence that it is systematic or repeatable, (4) quantification of the magnitude, (5) implications and limitations. If a chart doesn't advance this arc, cut it.
+- **Fewer charts, more narrative.** 2–4 well-chosen charts with clear explanatory text beats 8 charts that overwhelm the viewer. Every chart must earn its place by answering a specific question. If you can say it in a sentence, don't make a chart.
+- **Enrich aggressively.** Before building the dashboard, check what other datasets exist in BigQuery that could be joined. Cross-domain correlations (pricing + stock prices, quality rankings + prediction markets) are what make analysis interesting.
+- **Be honest about sample sizes.** If a data point is based on 3 observations, say so. Annotate sample sizes directly on charts. Small-n medians are noise, not signal.
+- **Explain the data.** Every dashboard must include: where the data comes from (with links), how it was collected and transformed, what the key metrics mean (with units), and what the limitations are. Put this in a dedicated methodology section, not hidden in tooltips. State explicitly what the data cannot tell you.
+- **Don't make claims the data doesn't support.** If only 18 of 348 models have quality rankings, don't title a chart "Every Arena-Ranked Model" — say "The 18 models we can actually rank." If early time periods have tiny samples, caveat the trend explicitly.
+- **Tables can be better than charts.** A 10-row dataset does not need a chart. Use `st.dataframe()` and let the reader scan the numbers. Charts are for patterns in data too large to read as a table.
+- **Interactive legends.** Use `alt.selection_point(fields=[...], bind="legend")` so viewers can click legend entries to isolate series. This replaces overcrowded charts with focused exploration.
+- **Quantify inline.** After every chart, include a `st.markdown("> ...")` blockquote that states the specific finding with numbers (e.g. "r = 0.23", "18x price difference for 5% quality gap"). The chart shows the pattern; the text states the magnitude.
+
+#### Color and Accessibility
+
+- **Colorblind-safe palette only.** Use the Wong (2011) palette from *Nature Methods*: `#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey. These 8 colors are the **maximum** for categorical encoding. If you need more categories, aggregate or facet — do not invent new colors.
+- **Never rely on color alone.** Every color-encoded dimension must also be conveyed through a second channel: shape (`alt.Shape`), stroke dash pattern (`strokeDash`), direct text labels, or spatial position (faceting). A viewer who cannot distinguish any two colors in the palette must still be able to read the chart.
+- **Highlight vs default.** For binary emphasis (e.g. "this item" vs "everything else"), use `HIGHLIGHT = "#D55E00"` and `DEFAULT = "#56B4E9"` with `alt.condition`. Never use red/green for binary states — use vermillion/sky-blue or vermillion/grey.
+- **Sequential and diverging scales.** For continuous color scales use `blues` or `viridis` (sequential) and `blueorange` (diverging). Never use `redgreen`, `redblue`, or `rainbow`/`jet` — all are colorblind-hostile or perceptually non-uniform.
+- **Overlaid series must have a legend.** If two series share the same positional axes and are distinguished only by color, a legend is required on the chart — not just in a `st.caption()`. Captions supplement; they do not replace legends.
+
+#### Truthful Representation
+
+- **Y-axis baseline.** Bar charts and area charts must start the quantitative axis at zero. A truncated axis exaggerates differences and misleads the viewer. Use `alt.Scale(zero=True)` (default for bars). If zero-baseline makes the data unreadable (e.g. ELO scores clustered in 1300–1500), switch to a dot plot or line chart — do not truncate a bar chart.
+- **Log scales must be labeled.** If you use `scale=alt.Scale(type="log")`, the axis title must include "(Log Scale)" and the chart title or a caption must explain *why* the log scale is used (e.g. "Log scale used because values span 3+ orders of magnitude"). Never use a log scale to make a trend look more dramatic.
+- **No dual Y-axes.** They are virtually always misleading — the viewer cannot compare magnitudes across two unrelated scales. Use faceted charts (side-by-side or vertically stacked) instead.
+- **No 3D, no pie charts.** 3D adds no information and distorts area/length perception. Pie charts are inferior to bar charts for comparing quantities (Cleveland & McGill 1984). Use horizontal bar charts sorted by value instead.
+- **No gradient fills for quantitative data.** Gradient fills (e.g. fading from color to white) obscure the data boundary, create phantom visual weight, and serve no analytical purpose. Use solid fills with reduced opacity (0.3–0.4 for area charts behind a line) or solid line charts.
+- **Aspect ratio matters.** Time-series should use a wide aspect ratio (~3:1). Use the banking-to-45-degrees heuristic: slopes of ~45 degrees maximize readability.
+
+#### Encoding Discipline
+
+- **Every visual encoding must be explained.** If a chart uses size, color, shape, opacity, or stroke as a data channel, each must have either a visible legend or a direct label on the chart. `legend=None` is only acceptable when the channel is redundant with another fully-explained encoding (e.g. color matching x-axis categories that are already labeled).
+- **Limit encodings to 3 channels max per chart.** Position (x, y) + one of {color, size, shape}. Adding a fourth channel (e.g. color + size + shape simultaneously) overloads working memory. If you need more dimensions, use faceting or a table.
+- **Tooltips are mandatory.** Every chart must include `alt.Tooltip` entries for all encoded fields plus any context fields the viewer would want on hover. Numeric tooltips must have format strings (e.g. `format=",.0f"` for integers, `format="$.3f"` for prices).
+- **Consistent chart heights.** Standard: `height=380`. Taller (scatter, dense): `height=480`. Never vary heights arbitrarily within a dashboard.
+- **Sort bars by value.** Categorical bar charts must be sorted by the quantitative axis (largest to smallest or vice versa) unless there is a natural order (e.g. time, tiers). Alphabetical sort is almost never useful.
+
+#### Annotation and Context
+
+- **Reference lines must be labeled on the chart.** Use `mark_rule` + `mark_text` layered with `+`. The label text should state *what* the line represents (e.g. "GPT-4 Launch Price") and be positioned to avoid overlapping data points.
+- **Chart titles state the insight, not the data.** Prefer "Median AI prices fell 98% in 3 years" over "Median Price by Quarter". The title tells the reader what to see; the axis labels tell them what is plotted.
+- **Axis titles are required** on both axes unless the meaning is unambiguous from context (e.g. a single-series time chart where the x-axis is clearly dates). Include units in axis titles (e.g. "Price ($/MTok)", not just "Price").
+- **Captions explain methodology.** Use `st.caption()` below the chart to explain filtering choices, what outliers were excluded and why, or caveats about the data. Never use captions as a substitute for a missing legend.
+
+#### Streamlit Layout
+
+- Use `st.altair_chart(..., use_container_width=True)` to render all charts.
 - Use `cornerRadiusTopLeft=4, cornerRadiusTopRight=4` on `mark_bar()` for rounded bar tops.
-- Overlay reference lines (e.g. historical average) using `mark_rule` + `mark_text` layered onto the main chart with `+`.
-- Use `st.altair_chart(..., use_container_width=True)` to render.
+- Place KPI metrics above the first chart. Use `st.metric()` with explicit delta values when comparing periods.
+- Use `st.columns(2)` for side-by-side comparisons of related charts. Never put unrelated charts side-by-side.
+- Use `st.divider()` between story sections, not between every chart.
+- **Data tables complement charts.** Show the underlying data (top N, summary) below the chart so the viewer can verify what they see. Use `st.dataframe(..., hide_index=True)`.
 
 ## Bruin Asset Metadata Reference
 

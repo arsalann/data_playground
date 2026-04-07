@@ -149,15 +149,15 @@ cheapest_pareto = pareto_df.loc[pareto_df["price_blended_per_mtok"].idxmin()]
 elo_gap_pct = round((best["arena_text_elo"] - cheapest_pareto["arena_text_elo"]) / best["arena_text_elo"] * 100, 1)
 price_ratio = round(best["price_blended_per_mtok"] / cheapest_pareto["price_blended_per_mtok"], 0)
 
-best_price = f"${best['price_blended_per_mtok']:.2f}"
-cheap_price = f"${cheapest_pareto['price_blended_per_mtok']:.2f}"
+best_price = f"{best['price_blended_per_mtok']:.2f}"
+cheap_price = f"{cheapest_pareto['price_blended_per_mtok']:.2f}"
 corr_val = f"{elo_models['price_blended_per_mtok'].corr(elo_models['arena_text_elo']):.2f}"
 
-st.markdown(
+st.text(
     f"The best model is {best['short_name']} (ELO {int(best['arena_text_elo'])}) "
-    f"at {best_price}/MTok. The cheapest model on the Pareto frontier is "
+    f"at ${best_price}/MTok. The cheapest model on the Pareto frontier is "
     f"{cheapest_pareto['short_name']} (ELO {int(cheapest_pareto['arena_text_elo'])}) "
-    f"at {cheap_price}/MTok — {elo_gap_pct}% less quality for {int(price_ratio)}x less money. "
+    f"at ${cheap_price}/MTok — {elo_gap_pct}% less quality for {int(price_ratio)}x less money. "
     f"The correlation between price and ELO across all 18 models is r = {corr_val}, "
     f"meaning price is a poor predictor of quality."
 )

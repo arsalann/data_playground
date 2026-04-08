@@ -1,4 +1,6 @@
-Polymarket: https://github.com/pmxt-dev/pmxt
+- Polymarket: https://github.com/pmxt-dev/pmxt
+
+- Google's Jobs API
 
 # Pipeline Ideas — March 2026
 

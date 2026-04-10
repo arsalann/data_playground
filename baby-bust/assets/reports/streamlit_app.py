@@ -86,13 +86,13 @@ MUTED = "#777777"       # Darker grey for reference lines and labels
 alt.themes.register("baby_bust", lambda: {
     "config": {
         "legend": {
-            "symbolSize": 200,
-            "labelFontSize": 13,
-            "titleFontSize": 14,
-            "symbolStrokeWidth": 1.5,
-            "labelLimit": 250,
-            "columnPadding": 16,
-            "rowPadding": 6,
+            "symbolSize": 266,
+            "labelFontSize": 17,
+            "titleFontSize": 19,
+            "symbolStrokeWidth": 2,
+            "labelLimit": 330,
+            "columnPadding": 21,
+            "rowPadding": 8,
         },
         "axis": {
             "titleFontSize": 13,

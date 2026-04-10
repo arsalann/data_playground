@@ -1,15 +1,25 @@
 # data_playground
 
-A collection of data pipelines for exploring public datasets.
+A collection of data pipelines for exploring public datasets, built with Bruin and warehoused in BigQuery.
 
 ## Pipelines
 
+- **ai-price-wars** — AI model pricing vs quality analysis
+- **baby-bust** — Global fertility decline vs economic development (World Bank, 217 countries, 1960-2024)
 - **berlin-weather** — Historical weather data for Berlin
-- **stackoverflow-trends** — Stack Overflow activity trends (2008–present)
-- **google-trends** — Google search trends analysis
-- **nyc-taxi** — NYC taxi trip data
-- **flightradar24** — Flight tracking data
+- **chess-analytics** — Chess game analytics
 - **chess-dot-com** — Chess.com game analytics
+- **contoso** — Contoso sample data
+- **epias-energy** — Turkish energy market data (EPIAS)
+- **flightradar24** — Flight tracking data
+- **ga_sample** — Google Analytics sample data
+- **google-takeout** — Google Takeout data analysis
+- **google-trends** — Google search trends analysis
+- **hormuz-effect** — Strait of Hormuz oil crisis impact on markets (FRED + S&P 500)
+- **nyc-taxi** — NYC taxi trip data
+- **polymarket-insights** — Prediction market analysis (Polymarket)
+- **stackoverflow-trends** — Stack Overflow activity trends (2008-present)
+- **stock-market** — S&P 500 stock market data (FMP API)
 
 ## Stack
 
@@ -21,9 +31,14 @@ A collection of data pipelines for exploring public datasets.
 
 ## Data Sources
 
-- BigQuery public datasets (Stack Overflow, Google Trends)
-- Stack Exchange API
-- Open-Meteo API
-- NYC TLC trip record data
+- BigQuery public datasets (Stack Overflow, Google Trends, Google Analytics)
 - Chess.com API
+- EPIAS (Turkish energy market)
 - Flightradar24
+- FMP (Financial Modeling Prep) API — S&P 500 stock data
+- FRED API — Federal Reserve economic data (oil prices, CPI, unemployment, yield curve)
+- NYC TLC trip record data
+- Open-Meteo API
+- Polymarket API — prediction market data
+- Stack Exchange API
+- World Bank Open Data API — development indicators, demographics, economics (217 countries, 1960-2024)

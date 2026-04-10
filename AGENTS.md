@@ -26,7 +26,7 @@ data_playground/
 
 ## Pipeline Structure
 
-Every pipeline follows the same three-layer pattern. Use `berlin-weather/` as the reference implementation and `stackoverflow-trends/` for advanced patterns (multiple data sources, API ingestion, append + dedup).
+Every pipeline follows the same three-layer pattern. Use `berlin-weather/` as the reference implementation, `stackoverflow-trends/` for advanced patterns (multiple data sources, API ingestion, append + dedup), and `baby-bust/` for a complete example with comprehensive data validation, `bruin ai enhance`, and a 4-chart Streamlit dashboard.
 
 ### 1. `pipeline.yml`
 
@@ -444,3 +444,9 @@ Bruin resolves Python dependencies by walking up the file tree from the asset to
 - Do not crash on API rate limits — return partial data and log a warning.
 - Do not skip logging — every Python asset must have structured logging with progress output.
 - Do not leave throwaway test scripts in the root directory or inside `assets/`.
+- When running `bruin run <pipeline>/` on pipelines with `append` raw assets, the default date interval is today — which may return no data for historical APIs. Run raw assets explicitly with `--start-date`/`--end-date` for initial loads, then run staging assets separately.
+- For flaky APIs (e.g., World Bank), use chunked requests (10-year windows) with high `per_page` values and retry logic with exponential backoff. Single large requests are more likely to timeout.
+- When pivoting long-to-wide in staging (e.g., indicator rows → columns), validate every pivoted column against raw by joining on natural key and checking for zero diff. This catches silent data loss from incorrect indicator codes or join fanout.
+- After running `bruin ai enhance`, always re-run `bruin validate` and `bruin run` on the affected assets to verify the enhanced metadata doesn't break anything. The enhance command adds quality checks (not_null, accepted_values, min/max) that may fail if the data has edge cases.
+- For Streamlit secrets: create `.streamlit/secrets.toml` in the reports directory (not root). Generate it from the GCP service account JSON in `credentials/`. This file is gitignored.
+- Use `python3 -m streamlit run` instead of bare `streamlit run` if the streamlit binary isn't on PATH.

@@ -23,14 +23,14 @@ Prediction market analysis for Q1 2026 using Polymarket data.
 
 - **Pipeline**: `polymarket-insights/`
 
-### 4. "Baby Bust — The Price Tag on the Next Generation"
-Global fertility decline correlated with economic development. Shows that as countries get richer and more urban, fertility drops below replacement — universally and irreversibly.
+### 4. "Baby Bust" - Global Fertility Trends
+Global fertility rate trends across 160+ countries (after microstate filtering), examining relationships with GDP, female labor participation, and demographic stages.
 
-- **Data sources**: World Bank Open Data API (10 indicators, 217 countries, 1960-2024)
+- **Data sources**: World Bank Open Data API (10 indicators, 160+ countries after filtering, 1960-2024), World Bank SP.POP.TOTL for population weighting
 - **Pipeline**: `baby-bust/`
-- **Dashboard**: 4 charts — income group convergence, GDP-fertility scatter, country trajectories, demographic stage shift
-- **Key findings**: 54% of countries below replacement, world avg fertility halved (5.4 → 2.4), South Korea at 0.75
-- **Reddit targets**: r/dataisbeautiful, r/economics, r/collapse, r/sociology
+- **Dashboard**: 10+ interactive Altair charts - income group trends, GDP-fertility scatter, demographic stage shifts, ex-communist trajectories, population-weighted sub-region bubble chart, largest TFR declines, fertility reversals, Sub-Saharan Africa analysis
+- **Features**: Microstate filtering (55 countries <1M pop), population-weighted sub-region aggregation, colorblind-safe Wong 2011 palette, interactive legend filtering, standardized data source/limitations footnotes on every chart
+- **Reddit targets**: r/dataisbeautiful, r/economics, r/sociology
 
 ## Backlog
 

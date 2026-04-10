@@ -5,7 +5,7 @@ A collection of data pipelines for exploring public datasets, built with Bruin a
 ## Pipelines
 
 - **ai-price-wars** — AI model pricing vs quality analysis
-- **baby-bust** — Global fertility decline vs economic development (World Bank, 217 countries, 1960-2024)
+- **baby-bust** — Global fertility trends: GDP, labor participation, and demographic stages (World Bank, 160+ countries, 1960-2024)
 - **berlin-weather** — Historical weather data for Berlin
 - **chess-analytics** — Chess game analytics
 - **chess-dot-com** — Chess.com game analytics
@@ -41,4 +41,4 @@ A collection of data pipelines for exploring public datasets, built with Bruin a
 - Open-Meteo API
 - Polymarket API — prediction market data
 - Stack Exchange API
-- World Bank Open Data API — development indicators, demographics, economics (217 countries, 1960-2024)
+- World Bank Open Data API — development indicators, demographics, economics (160+ countries after microstate filtering, 1960-2024)

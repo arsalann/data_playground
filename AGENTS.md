@@ -26,7 +26,7 @@ data_playground/
 
 ## Pipeline Structure
 
-Every pipeline follows the same three-layer pattern. Use `berlin-weather/` as the reference implementation, `stackoverflow-trends/` for advanced patterns (multiple data sources, API ingestion, append + dedup), and `baby-bust/` for a complete example with comprehensive data validation, `bruin ai enhance`, and a 4-chart Streamlit dashboard.
+Every pipeline follows the same three-layer pattern. Use `berlin-weather/` as the reference implementation, `stackoverflow-trends/` for advanced patterns (multiple data sources, API ingestion, append + dedup), and `baby-bust/` for a complete example with comprehensive data validation, `bruin ai enhance`, microstate filtering, population-weighted aggregation, and a 10+ chart Streamlit dashboard with colorblind-safe design.
 
 ### 1. `pipeline.yml`
 
@@ -450,3 +450,8 @@ Bruin resolves Python dependencies by walking up the file tree from the asset to
 - After running `bruin ai enhance`, always re-run `bruin validate` and `bruin run` on the affected assets to verify the enhanced metadata doesn't break anything. The enhance command adds quality checks (not_null, accepted_values, min/max) that may fail if the data has edge cases.
 - For Streamlit secrets: create `.streamlit/secrets.toml` in the reports directory (not root). Generate it from the GCP service account JSON in `credentials/`. This file is gitignored.
 - Use `python3 -m streamlit run` instead of bare `streamlit run` if the streamlit binary isn't on PATH.
+- Dashboard text (titles, descriptions, footnotes) must be factual and non-sensational. Avoid editorializing ("crash", "crisis", "trap", "standout"). Use neutral terms (e.g. "TFR declined" not "fertility plummeted"). r/dataisbeautiful requires plain descriptive titles.
+- When filtering entities by population (e.g. excluding microstates), clearly note the filter criteria and count at the bottom of every chart, and ensure the country count cited in titles/descriptions reflects the post-filter number, not the raw count.
+- For Altair text labels inside stacked bar segments: `transform_stack` + `transform_calculate` for midpoint positioning is fragile. If labels don't render correctly, remove them rather than shipping broken visuals.
+- `st.caption()` does not render HTML by default. Use `unsafe_allow_html=True` when using `<b>`, `<u>`, `<br>`, or other HTML tags.
+- When fetching supplementary data at dashboard runtime (e.g. population from World Bank API for weighting), use `@st.cache_data(ttl=86400)` and `countryiso3code` (not `country.id` which returns ISO2). The `mrnev` parameter is not supported; use `date=2023` instead.

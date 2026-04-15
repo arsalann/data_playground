@@ -2,6 +2,45 @@
 
 A collection of data pipelines for exploring public datasets, built with Bruin and warehoused in BigQuery.
 
+## Getting Started
+
+### Prerequisites
+
+1. **Python 3.10+** — install via [python.org](https://www.python.org/downloads/) or `brew install python`
+2. **Bruin CLI** — install with:
+   ```bash
+   curl -LsSf https://getbruin.com/install/cli | sh
+   ```
+3. **Google Cloud credentials** — place your service account key at `credentials/playground_key.json` (see `.bruin.yml` for the expected path)
+4. **Python dependencies** — install from the repo root:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Running a Pipeline
+
+Each subdirectory is a self-contained Bruin pipeline. Here's how to run the `berlin-weather` pipeline as an example:
+
+```bash
+# validate the pipeline
+bruin validate berlin-weather/
+
+# run the full pipeline (ingest → staging → reports)
+bruin run berlin-weather/
+
+# run just the raw ingest asset
+bruin run berlin-weather/assets/raw/weather_raw.py
+
+# run just the staging transformation
+bruin run berlin-weather/assets/staging/weather_daily.sql
+```
+
+To launch the dashboard:
+
+```bash
+streamlit run berlin-weather/assets/reports/streamlit_app.py
+```
+
 ## Pipelines
 
 - **ai-price-wars** — AI model pricing vs quality analysis

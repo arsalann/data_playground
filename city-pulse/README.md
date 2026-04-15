@@ -62,7 +62,7 @@ Combines the GHSL Urban Centre Database (~10K global cities with population, GDP
 
 ### Raw
 - **`raw.ghsl_urban_centers`** — Downloads GHSL Urban Centre Database R2024A GeoPackage. Reads 5 thematic layers and merges on urban center ID. Extracts city name, country, coordinates, population (multi-epoch), built-up area, GDP, building height, HDI, climate, elevation. ~11.4K rows. Create+replace strategy.
-- **`raw.street_networks`** — Uses OSMnx to download and analyze street network graphs for ~20 cities. Computes orientation entropy, intersection density, dead-end proportion, circuity, bearing distributions. Create+replace strategy.
+- **`raw.street_networks`** — Uses OSMnx to download and analyze street network graphs for 20 cities using `graph_from_point` with a consistent 10km radius from city center. Computes orientation entropy, intersection density, dead-end proportion, circuity, bearing distributions. Create+replace strategy.
 - **`raw.worldbank_urban`** — Fetches 6 urbanization indicators from World Bank API in 10-year chunks with retry logic. Append strategy with deduplication in staging.
 
 ### Staging
@@ -71,10 +71,12 @@ Combines the GHSL Urban Centre Database (~10K global cities with population, GDP
 
 ### Reports
 - **`streamlit_app.py`** — Interactive dashboard: "City Pulse — Decoding Urban Form"
-  - **Chart 1**: "Where the World Lives" — Pydeck ScatterplotLayer, ~10K cities, sized by population, colored by metric
-  - **Chart 2**: "City Fingerprints" — 3x3 grid of Matplotlib polar plots showing street orientation distributions
-  - **Chart 3**: "Urban Form vs. Wealth" — Altair scatter of GDP vs grid-ness for ~20 analyzed cities
-  - **Chart 4**: "The Urbanization Wave" — Altair spaghetti chart of country trajectories over time
+  - **Chart 1**: "Where the World Lives" — Pydeck ScatterplotLayer, ~10K cities, sized by population, colored by selectable metric
+  - **Chart 2**: "City Fingerprints" — 3x3 grid of Matplotlib polar plots showing street orientation distributions (North at top)
+  - **Chart 3**: "Grid order vs. population" — Altair scatter, 19 analyzed cities, dot size = intersection count, log-scale population axis
+  - **Chart 4**: "Building heights across major cities" — Altair scatter, filtered to 5M+ population, all cities labeled
+  - **Chart 5**: "Comparing the 20 analyzed cities" — Normalized heatmap of 7 metrics with units (pop density, grid order, building height, street length, intersections/km², dead ends %, route directness)
+  - **Chart 6**: "Climate vs. urban design" — Dual-dropdown explorer with all 12 indicators on both axes, city labels, GHSL mismatches filtered
 
 ## Run Commands
 
@@ -108,11 +110,23 @@ CITY_LIMIT=3 bruin run city-pulse/assets/raw/street_networks.py
 | Developing Megacities | Lagos, Mumbai, Jakarta, Cairo | Mixed/irregular |
 | Compact | Amsterdam, Singapore, Hong Kong, Seoul | Dense, variable patterns |
 
+## Street Network Methodology
+
+All 20 cities are analyzed with **identical spatial parameters** to ensure fair comparison:
+- **Query method**: `osmnx.graph_from_point(center, dist=10000, network_type="drive")`
+- **Radius**: 10 km from city center for all cities
+- **Center coordinates**: Hardcoded lat/lon for each city's urban center
+- **Network type**: Drivable roads only
+
+This replaces the original `graph_from_place` approach, which used admin boundaries of wildly different sizes (e.g., "City of London" = 1 sq mi vs "Chicago" = 234 sq mi), making cross-city comparison invalid.
+
 ## Known Limitations
 
 - GHSL population data has epochs (1975/1990/2000/2015) — not annual
 - GHSL GDP estimates are modeled, not directly measured
-- Street network analysis covers only ~20 cities (OSMnx/Overpass rate limits)
-- OSMnx Overpass API can be slow; downloads may take 30+ minutes for all cities
+- Street network analysis covers only 20 cities (OSMnx/Overpass rate limits)
+- OSMnx Overpass API can be slow; full 20-city analysis takes ~26 minutes
 - World Bank data has ~2 year publication lag
 - Climate zone classification is simplified (based on temperature + precipitation thresholds)
+- GHSL proximity matching can produce mismatches (e.g., Buenos Aires → "San Nicolás de los Arroyos", Brasilia → "Lago Norte") — these are filtered out in the dashboard
+- 10km radius captures the core urban area but may miss suburban patterns in sprawling cities

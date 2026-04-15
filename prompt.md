@@ -66,3 +66,30 @@ Start building the pipeline:
 - "use append-only strategy and deduplicate in staging"
 - "financial statements should fetch all available quarters regardless of date range"
 
+---
+
+## Lessons from Past Pipelines
+
+### Geospatial pipelines (city-pulse)
+
+When building pipelines that compare cities, regions, or geographic entities:
+
+1. **Use identical spatial parameters for all entities.** Never mix `graph_from_place` (admin boundaries) with different scope levels. Use `graph_from_point(center, dist=FIXED_RADIUS)` with hardcoded center coordinates for all cities. Admin boundaries vary wildly — "City of London" is 1 sq mi, "Chicago" is 234 sq mi.
+2. **Verify what each query actually returns** before building any charts. Log the bounding box/area, compare across entities.
+3. **GHSL GeoPackage** has 16 thematic layers joined on `ID_UC_G0`, Mollweide projection → WGS84. Use `pycountry` with fuzzy matching + manual overrides for country codes.
+4. **OSMnx**: Set `ox.settings.timeout = 300`, sleep 2s between cities, use `CITY_LIMIT` env var for testing. Full-city queries for megacities can hang.
+5. **Cross-dataset name matching**: Use proximity matching (lat/lon + country code), not string matching. Filter out mismatches from all charts.
+
+### bruin ai enhance
+
+- Always validate after running `bruin ai enhance` — it can add invalid `accepted_values` checks and corrupt YAML column definitions.
+- Never do bulk regex cleanups on YAML — rewrite the section manually if needed.
+
+### Dashboard iteration process
+
+1. Start by listing all available data fields and their distributions
+2. Find non-obvious insights (correlations, outliers, derived metrics)
+3. Build charts iteratively with user feedback — expect to remove boring charts and add analytical ones
+4. Filter aggressively (population thresholds, exclude data quality issues)
+5. Always include units on metrics and a methodology section
+

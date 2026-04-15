@@ -447,6 +447,59 @@ Bruin resolves Python dependencies by walking up the file tree from the asset to
 - When running `bruin run <pipeline>/` on pipelines with `append` raw assets, the default date interval is today — which may return no data for historical APIs. Run raw assets explicitly with `--start-date`/`--end-date` for initial loads, then run staging assets separately.
 - For flaky APIs (e.g., World Bank), use chunked requests (10-year windows) with high `per_page` values and retry logic with exponential backoff. Single large requests are more likely to timeout.
 - When pivoting long-to-wide in staging (e.g., indicator rows → columns), validate every pivoted column against raw by joining on natural key and checking for zero diff. This catches silent data loss from incorrect indicator codes or join fanout.
-- After running `bruin ai enhance`, always re-run `bruin validate` and `bruin run` on the affected assets to verify the enhanced metadata doesn't break anything. The enhance command adds quality checks (not_null, accepted_values, min/max) that may fail if the data has edge cases.
+- After running `bruin ai enhance`, always re-run `bruin validate` and `bruin run` on the affected assets to verify the enhanced metadata doesn't break anything. The enhance command adds quality checks (not_null, accepted_values, min/max) that may fail if the data has edge cases. **Never do bulk regex edits on YAML column definitions** — if `bruin ai enhance` corrupts the YAML, rewrite the section manually.
 - For Streamlit secrets: create `.streamlit/secrets.toml` in the reports directory (not root). Generate it from the GCP service account JSON in `credentials/`. This file is gitignored.
 - Use `python3 -m streamlit run` instead of bare `streamlit run` if the streamlit binary isn't on PATH.
+
+## Geospatial Data Rules
+
+These rules are **mandatory** when working with geospatial data (OSMnx, GeoPandas, GHSL, etc.):
+
+- **Consistent spatial methodology.** When comparing cities or regions, every entity MUST use identical spatial parameters: same query function, same radius, same resolution, same projection. Never mix `graph_from_place` (admin boundaries) across cities — admin boundary sizes vary wildly (e.g., "City of London" = 1 sq mi vs "Chicago" = 234 sq mi). Use `graph_from_point(center, dist=RADIUS)` with a fixed radius for all cities.
+- **Verify query scope before charting.** Before building any visualization, verify what each geospatial query actually returned. Log the bounding box or area. Compare areas across all entities to catch inconsistencies. A query for "Barcelona" might return the city, the province, or a single neighborhood depending on the API and query string.
+- **Document the methodology explicitly.** State the exact spatial parameters (radius, center coordinates, projection, data version) in the README and in the dashboard's methodology section. Future users must be able to reproduce the analysis.
+- **GHSL GeoPackage handling.** The GHSL R2024A release contains 16 thematic layers in a single GeoPackage that must be joined on `ID_UC_G0`. It uses Mollweide projection — convert centroids to WGS84 (EPSG:4326) for lat/lon coordinates. Use `pycountry` with fuzzy matching + manual overrides for country name → ISO code mapping.
+- **OSMnx Overpass API.** Set `ox.settings.timeout = 300` for large network downloads. Add `time.sleep(2)` between city downloads to respect rate limits. Use `CITY_LIMIT` env var for testing. Full-city queries for megacities (Tokyo, Istanbul) can exceed 2,000 km² and hang — always use bounded queries.
+- **Name matching across datasets.** When joining datasets from different sources (e.g., GHSL city names to OSMnx queries), use proximity matching (lat/lon within threshold + country code match) rather than string matching. City names vary across datasets (e.g., "Mumbai" vs "Bombay", "Brasília" vs "Lago Norte"). Filter out known mismatches from all charts.
+
+## Data Analysis Process
+
+This is the process for building analysis-driven dashboards. Follow this order:
+
+### Phase 1: Data inventory
+Before writing any chart code, list every field available across all data sources. Understand the data range, granularity, null rates, and distributions. Query the staging tables directly to verify what you actually have.
+
+### Phase 2: Find non-obvious insights
+A dashboard that just shows "here's the data" is not analysis. Look for:
+- **Correlations** — do two variables move together? (e.g., GDP vs grid-ness, temperature vs street length)
+- **Outliers** — which cities/countries break the pattern? Why?
+- **Derived metrics** — intersection density (intersections / area), orientation order (entropy-derived), population growth rates
+- **Cross-domain joins** — combine datasets that weren't designed to go together (GHSL urban data + OSMnx street analysis + World Bank economic indicators)
+
+### Phase 3: Build charts iteratively
+Start with the most insightful chart. Show it to the user. Get feedback. Iterate. Each chart must answer a specific question — if the takeaway is "the data exists," cut the chart. Expect to:
+- Remove boring or redundant charts
+- Add new charts based on what the data reveals
+- Filter aggressively (e.g., cities over 5M population only, exclude data mismatches)
+- Adjust visual encoding (dot sizes, label sizes, axis scales) based on what makes the data readable
+
+### Phase 4: Validate everything
+- Cross-check data claims against the actual data
+- Verify join quality (are matched cities actually correct?)
+- Filter out known data quality issues (e.g., GHSL proximity mismatches)
+- Include units on all metrics
+- Include methodology section with data source links and limitations
+
+## Altair Gotchas
+
+Lessons learned from building dashboards with Altair:
+
+- **Layered charts must share field names.** If a dot layer uses `population_2015` and a line layer uses `y`, Altair creates independent scales. Rename DataFrame columns to match across layers.
+- **Angle values must be 0-360.** `angle=-33` raises a validation error in newer Altair. Use `angle=327` instead (equivalent rotation).
+- **Log scales on all layers.** When using `alt.Scale(type="log")`, every layer sharing that axis must also specify the log scale explicitly — it does not propagate across layers.
+- **`zero=False` on Y-axis.** When data is clustered in a narrow range (e.g., building heights 10-50m), use `alt.Scale(zero=False)` on scatter/point charts to spread the data. Never do this on bar charts.
+- **Interactive legends.** Use `alt.selection_point(fields=[...], bind="legend")` so viewers can click legend entries to filter. Encode both color and shape on the same field for dual encoding (accessibility).
+
+## Matplotlib Polar Plot Gotchas
+
+- **Default orientation is wrong for compass bearings.** Matplotlib's default: 0° at East (right), counter-clockwise. For street orientation plots, set `ax.set_theta_zero_location("N")` and `ax.set_theta_direction(-1)` to get North at top, clockwise. Do this before drawing bars.

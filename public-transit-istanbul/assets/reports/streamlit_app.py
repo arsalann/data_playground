@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import altair as alt
+import numpy as np
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
@@ -14,6 +15,8 @@ base_path = Path(__file__).parent
 
 # Wong (2011) colorblind-safe palette
 PALETTE = ["#0072B2", "#D55E00", "#56B4E9", "#E69F00", "#009E73", "#CC79A7", "#F0E442", "#999999"]
+MODE_NAMES = {"OTOYOL": "Bus & Road", "RAYLI": "Rail", "DENİZ": "Ferry"}
+MODE_COLORS = {"Bus & Road": PALETTE[0], "Rail": PALETTE[2], "Ferry": PALETTE[4]}
 
 
 @st.cache_resource
@@ -36,213 +39,245 @@ def run_raw(sql: str) -> pd.DataFrame:
 
 # --- Header ---
 st.title("Istanbul Public Transit: Ridership & Metro Expansion")
+
 st.markdown(
-    "Rail ridership, ferry trends, station growth, and rider demographics "
-    "across Istanbul's public transit network (2021-2025)."
+    "This dashboard analyzes **9.4 billion** Istanbulkart tap records across Istanbul's "
+    "bus, metro, ferry, and Marmaray networks from January 2020 through October 2024. "
+    "The data covers **718 million** rows of hourly transport data, **1.9 million** "
+    "station-level rail records across **346 stations** on **23 lines**, and ferry "
+    "ridership across **73 piers** operated by 12 companies. All data sourced from the "
+    "[Istanbul Metropolitan Municipality (IBB) Open Data Portal](https://data.ibb.gov.tr/en/)."
 )
 
-# --- KPI Metrics ---
+# --- Load data ---
 rail_yearly = run_query("rail_ridership_by_year.sql")
+monthly = run_query("monthly_ridership.sql")
 ferry_yearly = run_query("ferry_trends.sql")
 
+# --- KPI Metrics ---
 latest_rail = rail_yearly[rail_yearly["transaction_year"] == 2024].iloc[0]
 prev_rail = rail_yearly[rail_yearly["transaction_year"] == 2023].iloc[0]
 latest_ferry = ferry_yearly[ferry_yearly["year"] == 2024].iloc[0]
 
+total_passages = monthly["monthly_passages"].sum()
+
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.metric(
-        "Rail Passages (2024)",
-        f"{latest_rail['total_passages'] / 1e9:.2f}B",
-        delta=f"{(latest_rail['total_passages'] - prev_rail['total_passages']) / prev_rail['total_passages'] * 100:.1f}%",
+        "Total Passages (2020-2024)",
+        f"{total_passages / 1e9:.1f}B",
     )
 with col2:
+    st.metric(
+        "Rail Passages (2024)",
+        f"{latest_rail['total_passages'] / 1e9:.2f}B",
+        delta=f"{(latest_rail['total_passages'] - prev_rail['total_passages']) / prev_rail['total_passages'] * 100:+.1f}%",
+    )
+with col3:
     st.metric(
         "Active Rail Stations (2024)",
         int(latest_rail["active_stations"]),
         delta=f"+{int(latest_rail['active_stations'] - prev_rail['active_stations'])} new",
     )
-with col3:
-    st.metric(
-        "Ferry Journeys (2024)",
-        f"{latest_ferry['total_journeys'] / 1e6:.1f}M",
-    )
 with col4:
     st.metric(
-        "Active Rail Lines (2024)",
-        int(latest_rail["active_lines"]),
-        delta=f"+{int(latest_rail['active_lines'] - prev_rail['active_lines'])} new",
+        "Ferry Journeys (2024)",
+        f"{latest_ferry['total_journeys'] / 1e6:.0f}M",
     )
 
 st.divider()
 
 # ===================================================================
-# CHART 1: Rail ridership grew 93% from 2021 to 2024
+# SECTION 1: COVID crash and recovery by mode
 # ===================================================================
-st.subheader("Rail ridership grew 93% from 2021 to 2024 as new lines opened")
+st.subheader("All three transit modes crashed 81-88% in April 2020 — rail recovered fastest")
 
-rail_yearly["passages_billions"] = rail_yearly["total_passages"] / 1e9
+monthly["mode"] = monthly["road_type"].map(MODE_NAMES)
+monthly["passages_millions"] = monthly["monthly_passages"] / 1e6
 
-bar = (
-    alt.Chart(rail_yearly)
-    .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4, color=PALETTE[0])
-    .encode(
-        x=alt.X("transaction_year:O", title="Year"),
-        y=alt.Y("passages_billions:Q", title="Total Passages (Billions)", scale=alt.Scale(zero=True)),
-        tooltip=[
-            alt.Tooltip("transaction_year:O", title="Year"),
-            alt.Tooltip("passages_billions:Q", title="Passages (B)", format=".2f"),
-            alt.Tooltip("active_stations:Q", title="Stations"),
-            alt.Tooltip("active_lines:Q", title="Lines"),
-        ],
-    )
-    .properties(height=380)
-)
-
-stations_line = (
-    alt.Chart(rail_yearly)
-    .mark_text(dy=-12, fontSize=12, fontWeight="bold", color=PALETTE[1])
-    .encode(
-        x=alt.X("transaction_year:O"),
-        y=alt.Y("passages_billions:Q"),
-        text=alt.Text("active_stations:Q"),
-    )
-)
-
-st.altair_chart(bar + stations_line, use_container_width=True)
-st.markdown(
-    "> Rail passages rose from **588M** in 2021 to **1.13B** in 2024 (+93%). "
-    "The network expanded from 274 to 346 active stations (+72 stations). "
-    "2022 shows an anomaly at 1.55B — likely data methodology differences for that year. "
-    "Numbers above bars show active station counts."
-)
-
-st.divider()
-
-# ===================================================================
-# CHART 2: Top rail lines by ridership
-# ===================================================================
-st.subheader("M2 Yenikapi-Haciosman carries the most passengers across all years")
-
-lines_df = run_query("top_rail_lines.sql")
-
-# Take top 8 lines by 2024 ridership
-top_lines_2024 = (
-    lines_df[lines_df["transaction_year"] == 2024]
-    .nlargest(8, "total_passages")["line"]
-    .tolist()
-)
-top_lines_data = lines_df[lines_df["line"].isin(top_lines_2024)].copy()
-top_lines_data["passages_millions"] = top_lines_data["total_passages"] / 1e6
-# Shorten line names for readability
-top_lines_data["line_short"] = top_lines_data["line"].str.split("-", n=1).str[0].str.strip()
-
-selection = alt.selection_point(fields=["line_short"], bind="legend")
+mode_order = ["Bus & Road", "Rail", "Ferry"]
+selection = alt.selection_point(fields=["mode"], bind="legend")
 
 line_chart = (
-    alt.Chart(top_lines_data)
-    .mark_line(point=True, strokeWidth=2)
+    alt.Chart(monthly)
+    .mark_line(strokeWidth=2)
     .encode(
-        x=alt.X("transaction_year:O", title="Year"),
-        y=alt.Y("passages_millions:Q", title="Passages (Millions)", scale=alt.Scale(zero=True)),
+        x=alt.X("month_date:T", title="Month"),
+        y=alt.Y("passages_millions:Q", title="Monthly Passages (Millions)", scale=alt.Scale(zero=True)),
         color=alt.Color(
-            "line_short:N",
-            title="Line",
-            scale=alt.Scale(range=PALETTE),
+            "mode:N",
+            title="Transit Mode",
+            scale=alt.Scale(domain=mode_order, range=[MODE_COLORS[m] for m in mode_order]),
+            sort=mode_order,
         ),
         opacity=alt.condition(selection, alt.value(1), alt.value(0.15)),
         tooltip=[
-            alt.Tooltip("line:N", title="Line"),
-            alt.Tooltip("transaction_year:O", title="Year"),
-            alt.Tooltip("passages_millions:Q", title="Passages (M)", format=",.0f"),
-            alt.Tooltip("stations:Q", title="Stations"),
+            alt.Tooltip("mode:N", title="Mode"),
+            alt.Tooltip("month_date:T", title="Month", format="%b %Y"),
+            alt.Tooltip("passages_millions:Q", title="Passages (M)", format=",.1f"),
         ],
     )
     .add_params(selection)
     .properties(height=380)
 )
 
-st.altair_chart(line_chart, use_container_width=True)
-st.markdown(
-    "> **M2 Yenikapi-Haciosman** leads all lines with 225M passages in 2024, "
-    "followed by M4 Kadikoy-Sabiha Gokcen (183M) and Marmaray (145M). "
-    "Click legend entries to isolate individual lines."
+# COVID lockdown reference line
+covid_rule = (
+    alt.Chart(pd.DataFrame({"date": [pd.Timestamp("2020-04-01")]}))
+    .mark_rule(color="#999999", strokeDash=[4, 4])
+    .encode(x="date:T")
 )
-st.caption("Note: Year-to-year fluctuations may reflect data collection methodology changes.")
+covid_label = (
+    alt.Chart(pd.DataFrame({"date": [pd.Timestamp("2020-04-01")], "label": ["COVID Lockdown"]}))
+    .mark_text(align="left", dx=5, dy=-170, fontSize=11, color="#999999")
+    .encode(x="date:T", text="label:N")
+)
+
+st.altair_chart(line_chart + covid_rule + covid_label, use_container_width=True)
+
+# Compute COVID recovery stats
+pre_covid = monthly[monthly["month_date"] < "2020-03-01"].groupby("mode")["monthly_passages"].mean()
+april_2020 = monthly[monthly["month_date"].dt.to_period("M") == "2020-04"].set_index("mode")["monthly_passages"]
+crash_pct = ((april_2020 / pre_covid - 1) * 100).round(1)
+
+st.markdown(
+    f"> Bus ridership crashed **{crash_pct.get('Bus & Road', -81):.0f}%**, rail **{crash_pct.get('Rail', -87):.0f}%**, "
+    f"and ferry **{crash_pct.get('Ferry', -88):.0f}%** in April 2020. "
+    "By 2023, bus and rail exceeded their 2020 baseline but ferry plateaued. "
+    "Road traffic congestion, meanwhile, surpassed pre-COVID levels by 2023 "
+    "(traffic index 31-34 vs pre-COVID 29-31), suggesting a lasting modal shift toward private vehicles. "
+    "Click legend entries to isolate individual modes."
+)
 
 st.divider()
 
 # ===================================================================
-# CHART 3: Station growth map
+# SECTION 2: Daily transit rhythm — heatmap
 # ===================================================================
-st.subheader("New metro lines on the Asian side drove the largest station ridership surges")
+st.subheader("Rail peaks at 6 PM, buses at 7 AM — each mode serves a different rhythm")
+
+hourly = run_query("hourly_heatmap.sql")
+hourly["mode"] = hourly["road_type"].map(MODE_NAMES)
+
+# Normalize within each mode to show relative patterns
+hourly["normalized"] = hourly.groupby("mode")["avg_passages"].transform(lambda x: x / x.max())
+
+# Fix day ordering: BigQuery DAYOFWEEK 1=Sun, 2=Mon, ..., 7=Sat
+day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+# Build 3 heatmaps side by side
+col_left, col_mid, col_right = st.columns(3)
+for col, mode_name in zip([col_left, col_mid, col_right], ["Rail", "Bus & Road", "Ferry"]):
+    mode_data = hourly[hourly["mode"] == mode_name].copy()
+    with col:
+        heat = (
+            alt.Chart(mode_data)
+            .mark_rect(cornerRadius=2)
+            .encode(
+                x=alt.X("transition_hour:O", title="Hour", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("day_name:N", sort=day_order, title=None),
+                color=alt.Color(
+                    "normalized:Q",
+                    title="Relative Intensity",
+                    scale=alt.Scale(scheme="blues"),
+                    legend=None,
+                ),
+                tooltip=[
+                    alt.Tooltip("day_name:N", title="Day"),
+                    alt.Tooltip("transition_hour:O", title="Hour"),
+                    alt.Tooltip("avg_passages:Q", title="Avg Passages", format=",.0f"),
+                ],
+            )
+            .properties(height=220, title=mode_name)
+        )
+        st.altair_chart(heat, use_container_width=True)
+
+st.markdown(
+    "> Rail shows a pronounced evening peak at **18:00** — 23% higher than the morning peak (08:00). "
+    "Bus ridership has a more symmetric pattern with **07:00** as the single busiest hour. "
+    "Ferry peaks in late afternoon and is **stronger on weekends** than weekdays at 17:00, "
+    "reflecting its role in tourism and leisure travel. "
+    "All modes see approximately **5x** more ridership on weekdays than weekends."
+)
+
+st.divider()
+
+# ===================================================================
+# SECTION 3: Metro expansion — 3D station map
+# ===================================================================
+st.subheader("59 new rail stations opened in 2024 — the largest expansion in recent history")
 
 growth_df = run_query("station_growth_map.sql")
+stations_2024 = growth_df[growth_df["transaction_year"] == 2024].copy()
+stations_2024 = stations_2024.drop_duplicates(subset=["station_name", "line"])
 
-# Filter to years with growth data
-growth_latest = growth_df[
-    (growth_df["transaction_year"] == 2024)
-    & (growth_df["yoy_growth_pct"].notna())
-    & (growth_df["prev_year_passages"] > 50000)
-].copy()
+# Color by growth rate (diverging: blue=growth, orange=decline, grey=new/no data)
+def growth_to_color(row):
+    pct = row.get("yoy_growth_pct")
+    if pd.isna(pct):
+        return [0, 158, 115, 200]  # green for new stations
+    if pct > 50:
+        return [0, 114, 178, 220]
+    if pct > 10:
+        return [86, 180, 233, 200]
+    if pct > -10:
+        return [153, 153, 153, 180]
+    if pct > -50:
+        return [230, 159, 0, 200]
+    return [213, 94, 0, 220]
 
-# Drop exact duplicates (some stations appear multiple times)
-growth_latest = growth_latest.drop_duplicates(subset=["station_name", "line"])
+stations_2024["color"] = stations_2024.apply(growth_to_color, axis=1)
 
-# Classify growth
-growth_latest["growth_category"] = pd.cut(
-    growth_latest["yoy_growth_pct"],
-    bins=[-1000, -50, -10, 10, 50, 1000],
-    labels=["Declined >50%", "Declined 10-50%", "Stable", "Grew 10-50%", "Grew >50%"],
-)
+# Height proportional to ridership (log scale for visual balance)
+stations_2024["elevation"] = np.log10(stations_2024["annual_passages"].clip(lower=10)) * 600
 
-# Color scale
-color_map = {
-    "Declined >50%": [213, 94, 0, 200],
-    "Declined 10-50%": [230, 159, 0, 180],
-    "Stable": [153, 153, 153, 150],
-    "Grew 10-50%": [86, 180, 233, 180],
-    "Grew >50%": [0, 114, 178, 200],
-}
-growth_latest["color"] = growth_latest["growth_category"].map(color_map)
-growth_latest["radius"] = (growth_latest["annual_passages"] / growth_latest["annual_passages"].max() * 800 + 200).clip(200, 1000)
-
-# PyDeck map
-view_state = pdk.ViewState(
-    latitude=41.015,
-    longitude=29.0,
-    zoom=10,
-    pitch=0,
-)
-
-layer = pdk.Layer(
-    "ScatterplotLayer",
-    data=growth_latest,
+column_layer = pdk.Layer(
+    "ColumnLayer",
+    data=stations_2024,
     get_position=["longitude", "latitude"],
-    get_radius="radius",
+    get_elevation="elevation",
+    elevation_scale=1,
     get_fill_color="color",
+    radius=180,
     pickable=True,
     auto_highlight=True,
+    extruded=True,
 )
 
-tooltip = {
-    "html": "<b>{station_name}</b><br>Line: {line}<br>Growth: {yoy_growth_pct}%<br>2024 Passages: {annual_passages}",
-    "style": {"backgroundColor": "#333", "color": "white", "fontSize": "12px"},
-}
+view_3d = pdk.ViewState(
+    latitude=41.02,
+    longitude=29.0,
+    zoom=10.3,
+    pitch=50,
+    bearing=-15,
+)
 
 st.pydeck_chart(
     pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip=tooltip,
+        layers=[column_layer],
+        initial_view_state=view_3d,
+        tooltip={
+            "html": "<b>{station_name}</b><br>Line: {line}<br>"
+                    "2024 Passages: {annual_passages}<br>"
+                    "YoY Growth: {yoy_growth_pct}%",
+            "style": {"backgroundColor": "#1a1a2e", "color": "white", "fontSize": "12px"},
+        },
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-    )
+    ),
+    height=550,
 )
 
-# Growth leaders table
-st.markdown("**Top 10 growth stations (2023 to 2024):**")
+col_legend1, col_legend2, col_legend3 = st.columns(3)
+with col_legend1:
+    st.markdown("**Blue** = Growing stations (>10% YoY)")
+with col_legend2:
+    st.markdown("**Orange** = Declining stations (<-10% YoY)")
+with col_legend3:
+    st.markdown("**Green** = New stations (no prior year data)")
+
+# Top growth table
 top_growth = (
-    growth_latest[growth_latest["yoy_growth_pct"] > 0]
+    stations_2024[stations_2024["yoy_growth_pct"].notna() & (stations_2024["annual_passages"] > 50000)]
     .nlargest(10, "yoy_growth_pct")[["station_name", "line", "town", "yoy_growth_pct", "annual_passages"]]
     .rename(columns={
         "station_name": "Station",
@@ -252,175 +287,161 @@ top_growth = (
         "annual_passages": "2024 Passages",
     })
 )
+st.markdown("**Top 10 fastest-growing stations (2023 to 2024, min 50K passages):**")
 st.dataframe(top_growth, hide_index=True, use_container_width=True)
 
 st.markdown(
-    "> M5 Uskudar-Cekmekoy metro stations on the Asian side saw the largest gains, "
-    "with Dudullu growing **+242%** year-over-year. Meanwhile, several Fatih district "
-    "stations along the T1 tram declined over 90% — likely due to line restructuring. "
-    "Blue = growing, orange = declining. Circle size = ridership volume."
+    "> The M5 Uskudar-Cekmekoy extension on the Asian side drove the largest growth, "
+    "with stations like Dudullu (+242%), Cekmekoy 1 (+438%), and Necip Fazil (+114%). "
+    "The new airport rail link (Gayrettepe-Istanbul Havalimani) carried 13M passengers "
+    "in its first year. Column height represents ridership volume (log scale). "
+    "Several T1 tram stations show 90%+ apparent declines, likely from line restructuring."
 )
 
 st.divider()
 
 # ===================================================================
-# CHART 4: Rider demographics by age group
+# SECTION 4: Network coverage and underserved districts
 # ===================================================================
-st.subheader("Working-age adults (20-60) account for 57% of rail ridership")
-
-age_df = run_query("age_group_trends.sql")
-# Standardize age group names
-age_df["age_group"] = age_df["age_group"].replace({"Unkown": "Unknown"})
-age_df["passages_millions"] = age_df["total_passages"] / 1e6
-
-# Exclude 2021 (very low counts, different methodology)
-age_df = age_df[age_df["transaction_year"] >= 2022]
-
-age_order = ["<20", "20-30", "30-60", "60+", "Unknown"]
-
-age_selection = alt.selection_point(fields=["age_group"], bind="legend")
-
-age_chart = (
-    alt.Chart(age_df)
-    .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
-    .encode(
-        x=alt.X("transaction_year:O", title="Year"),
-        y=alt.Y("passages_millions:Q", title="Passages (Millions)", stack="zero", scale=alt.Scale(zero=True)),
-        color=alt.Color(
-            "age_group:N",
-            title="Age Group",
-            scale=alt.Scale(domain=age_order, range=PALETTE[:5]),
-            sort=age_order,
-        ),
-        opacity=alt.condition(age_selection, alt.value(1), alt.value(0.2)),
-        tooltip=[
-            alt.Tooltip("age_group:N", title="Age Group"),
-            alt.Tooltip("transaction_year:O", title="Year"),
-            alt.Tooltip("passages_millions:Q", title="Passages (M)", format=",.0f"),
-        ],
-    )
-    .add_params(age_selection)
-    .properties(height=380)
-)
-
-st.altair_chart(age_chart, use_container_width=True)
-
-# 2024 breakdown
-age_2024 = age_df[age_df["transaction_year"] == 2024].copy()
-age_2024["pct"] = (age_2024["total_passages"] / age_2024["total_passages"].sum() * 100).round(1)
-age_2024 = age_2024[["age_group", "total_passages", "pct"]].rename(columns={
-    "age_group": "Age Group",
-    "total_passages": "2024 Passages",
-    "pct": "Share %",
-})
-st.dataframe(age_2024, hide_index=True, use_container_width=True)
-
-st.markdown(
-    "> The 30-60 age group dominates rail ridership at **33%** of all passages in 2024, "
-    "followed by 20-30 year olds at **24%**. Riders over 60 account for 13%. "
-    "The \"Unknown\" category (23%) includes unregistered Istanbulkart holders. "
-    "Click legend entries to isolate age groups."
-)
-
-st.divider()
-
-# ===================================================================
-# CHART 5: Ferry ridership recovery
-# ===================================================================
-st.subheader("Ferry ridership recovered from COVID and stabilized at 70-72M journeys/year")
-
-ferry_yearly["journeys_millions"] = ferry_yearly["total_journeys"] / 1e6
-
-ferry_bar = (
-    alt.Chart(ferry_yearly)
-    .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4, color=PALETTE[4])
-    .encode(
-        x=alt.X("year:O", title="Year"),
-        y=alt.Y("journeys_millions:Q", title="Total Journeys (Millions)", scale=alt.Scale(zero=True)),
-        tooltip=[
-            alt.Tooltip("year:O", title="Year"),
-            alt.Tooltip("journeys_millions:Q", title="Journeys (M)", format=",.1f"),
-            alt.Tooltip("active_piers:Q", title="Active Piers"),
-            alt.Tooltip("trips_per_person:Q", title="Trips/Person", format=".2f"),
-        ],
-    )
-    .properties(height=380)
-)
-
-trips_text = (
-    alt.Chart(ferry_yearly)
-    .mark_text(dy=-12, fontSize=11, fontWeight="bold", color=PALETTE[1])
-    .encode(
-        x=alt.X("year:O"),
-        y=alt.Y("journeys_millions:Q"),
-        text=alt.Text("trips_per_person:Q", format=".2f"),
-    )
-)
-
-st.altair_chart(ferry_bar + trips_text, use_container_width=True)
-st.markdown(
-    "> Ferry journeys surged from **47M** in 2021 to **72M** in 2022 (+52%), "
-    "then plateaued at 70-72M through 2025. Average trips per unique passenger "
-    "increased from 1.64 to 1.84, indicating more regular commuter usage. "
-    "Numbers above bars show average trips per person."
-)
-
-st.divider()
-
-# ===================================================================
-# Station map (all stations from GeoJSON)
-# ===================================================================
-st.subheader("Istanbul's rail network: 268 existing stations, 75 under construction")
+st.subheader("268 stations serve the city today, with 73 more under construction")
 
 geo_df = run_query("geo_stations.sql")
 
-phase_color = {
-    "Mevcut Hattaki \u0130stasyon": [0, 158, 115, 200],  # existing = green
-    "\u0130n\u015faat A\u015famas\u0131nda": [213, 94, 0, 200],  # construction = orange
-}
-geo_df["color"] = geo_df["project_phase"].map(phase_color).fillna([153, 153, 153, 150])
+# Separate existing and construction
+existing = geo_df[geo_df["project_phase"] == "Mevcut Hattaki \u0130stasyon"].copy()
+construction = geo_df[geo_df["project_phase"] == "\u0130n\u015faat A\u015famas\u0131nda"].copy()
 
-existing = geo_df[geo_df["project_phase"] == "Mevcut Hattaki \u0130stasyon"]
-construction = geo_df[geo_df["project_phase"] == "\u0130n\u015faat A\u015famas\u0131nda"]
+existing_count = len(existing)
+construction_count = len(construction)
 
 layer_existing = pdk.Layer(
     "ScatterplotLayer",
     data=existing,
     get_position=["longitude", "latitude"],
-    get_radius=200,
-    get_fill_color=[0, 158, 115, 200],
+    get_radius=250,
+    get_fill_color=[0, 158, 115, 220],
     pickable=True,
+    auto_highlight=True,
 )
 layer_construction = pdk.Layer(
     "ScatterplotLayer",
     data=construction,
     get_position=["longitude", "latitude"],
-    get_radius=200,
-    get_fill_color=[213, 94, 0, 200],
+    get_radius=250,
+    get_fill_color=[213, 94, 0, 220],
     pickable=True,
+    auto_highlight=True,
+    stroked=True,
+    get_line_color=[255, 255, 255, 100],
+    line_width_min_pixels=1,
 )
 
-view_full = pdk.ViewState(latitude=41.02, longitude=29.0, zoom=10.5, pitch=0)
+view_network = pdk.ViewState(latitude=41.02, longitude=29.0, zoom=10.5, pitch=0)
 
 st.pydeck_chart(
     pdk.Deck(
         layers=[layer_existing, layer_construction],
-        initial_view_state=view_full,
-        tooltip={"html": "<b>{station_name}</b><br>{line_name}<br>Type: {line_type}<br>{project_phase}"},
+        initial_view_state=view_network,
+        tooltip={
+            "html": "<b>{station_name}</b><br>{line_name}<br>Type: {line_type}<br>{project_phase}",
+            "style": {"backgroundColor": "#1a1a2e", "color": "white", "fontSize": "12px"},
+        },
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-    )
+    ),
+    height=500,
 )
 
 col_a, col_b = st.columns(2)
 with col_a:
-    st.markdown("**Green** = Existing stations (268)")
+    st.markdown(f"**Green** = Existing stations ({existing_count})")
 with col_b:
-    st.markdown("**Orange** = Under construction (75)")
+    st.markdown(f"**Orange** = Under construction ({construction_count})")
+
+# District underserved analysis
+district_df = run_query("district_ridership.sql")
+
+st.markdown("**District ridership and rail coverage (2023):**")
+
+# Show top districts sorted by total passages, highlighting rail share
+district_display = district_df[["town", "total_passages", "rail_passages", "bus_passages", "ferry_passages", "rail_share_pct"]].copy()
+district_display.columns = ["District", "Total Passages", "Rail", "Bus", "Ferry", "Rail Share %"]
+district_display = district_display.sort_values("Total Passages", ascending=False).head(20)
+st.dataframe(district_display, hide_index=True, use_container_width=True)
+
+# Underserved districts (no rail or low rail share)
+no_rail = district_df[(district_df["rail_share_pct"] == 0) | (district_df["rail_share_pct"].isna())]
+no_rail_list = no_rail.sort_values("total_passages", ascending=False).head(8)
+
+if not no_rail_list.empty:
+    districts_text = ", ".join(
+        f"**{r['town']}** ({r['total_passages'] / 1e6:.1f}M trips)"
+        for _, r in no_rail_list.iterrows()
+    )
+    st.markdown(
+        f"> **Rail deserts:** {districts_text} — "
+        "these districts have significant bus ridership but zero rail access. "
+        "The 73 stations under construction target underserved areas, "
+        "particularly on the Asian side and northern European side."
+    )
+
+st.divider()
+
+# ===================================================================
+# SECTION 5: Ridership density — heatmap layer
+# ===================================================================
+st.subheader("Ridership concentrates along the Bosphorus corridor and Marmaray crossings")
+
+# Use station growth data for density visualization
+density_df = growth_df[
+    (growth_df["transaction_year"] == 2024)
+    & (growth_df["latitude"].notna())
+    & (growth_df["longitude"].notna())
+].copy()
+density_df = density_df.drop_duplicates(subset=["station_name"])
+
+# HeatmapLayer for a glowing density effect
+heatmap_layer = pdk.Layer(
+    "HeatmapLayer",
+    data=density_df,
+    get_position=["longitude", "latitude"],
+    get_weight="annual_passages",
+    radius_pixels=60,
+    intensity=1,
+    threshold=0.05,
+    opacity=0.8,
+)
+
+# Scatter overlay showing individual stations
+scatter_overlay = pdk.Layer(
+    "ScatterplotLayer",
+    data=density_df,
+    get_position=["longitude", "latitude"],
+    get_radius=120,
+    get_fill_color=[255, 255, 255, 100],
+    pickable=True,
+)
+
+view_density = pdk.ViewState(latitude=41.01, longitude=29.0, zoom=11, pitch=0)
+
+st.pydeck_chart(
+    pdk.Deck(
+        layers=[heatmap_layer, scatter_overlay],
+        initial_view_state=view_density,
+        tooltip={
+            "html": "<b>{station_name}</b><br>Line: {line}<br>2024 Passages: {annual_passages}",
+            "style": {"backgroundColor": "#1a1a2e", "color": "white", "fontSize": "12px"},
+        },
+        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+    ),
+    height=500,
+)
 
 st.markdown(
-    "> Istanbul has 73 metro stations currently under construction, plus 2 new funicular stations. "
-    "The metro expansion is concentrated on the Asian side and northern European side, "
-    "aiming to connect underserved districts to the core network."
+    "> The ridership heatmap reveals a clear concentration along the Bosphorus strait "
+    "and the east-west Marmaray corridor. High-density clusters form around major "
+    "interchange stations: Yenikapi (M1/M2/Marmaray), Taksim (M2/F1), Kadikoy (M4/ferry), "
+    "and Uskudar (M5/Marmaray/ferry). The Asian side shows more dispersed ridership "
+    "patterns compared to the compact European core."
 )
 
 st.divider()
@@ -431,19 +452,25 @@ st.divider()
 st.subheader("Methodology")
 st.markdown("""
 **Data sources:**
-- [Hourly Public Transport Data](https://data.ibb.gov.tr/en/dataset/hourly-public-transport-data-set) — Istanbulkart tap data (2020-2024, monthly CSVs)
+- [Hourly Public Transport Data](https://data.ibb.gov.tr/en/dataset/hourly-public-transport-data-set) — Istanbulkart tap data, 60 monthly CSVs (Jan 2020 - Oct 2024, ~60 GB total)
 - [Rail Station Ridership](https://data.ibb.gov.tr/en/dataset/rayli-sistemler-istasyon-bazli-yolcu-ve-yolculuk-sayilari) — Daily station-level data with coordinates (2021-2025)
 - [Rail Ridership by Age Group](https://data.ibb.gov.tr/en/dataset/yas-grubuna-gore-rayli-sistemler-istasyon-bazli-yolcu-ve-yolculuk-sayilari) — Segmented by Istanbulkart registration age (2021-2025)
 - [Ferry Pier Passengers](https://data.ibb.gov.tr/en/dataset/istanbul-deniz-iskeleleri-yolcu-sayilari) — Monthly pier-level ridership (2021-2025)
-- [Rail Station GeoJSON](https://data.ibb.gov.tr/en/dataset/rayli-sistem-istasyon-noktalari-verisi) — Station points and lines (June 2025)
+- [Rail Station GeoJSON](https://data.ibb.gov.tr/en/dataset/rayli-sistem-istasyon-noktalari-verisi) — Station points and construction status (June 2025)
 - [Traffic Index](https://data.ibb.gov.tr/en/dataset/istanbul-trafik-indeksi) — Daily congestion index (2015-2024)
 
 All data from the Istanbul Metropolitan Municipality (IBB) Open Data Portal under the IBB Open Data License.
 
+**Processing:**
+- 718 million rows of hourly transport data loaded incrementally in 6-month batches via CKAN API
+- Station coordinates in 2023/2025 data corrected for Turkish locale formatting (dots as thousands separators)
+- 2021 age group data is monthly (not daily) and excluded from YoY comparisons
+- Semicolon-delimited CSVs in 2023/2025 auto-detected and handled
+
 **Limitations:**
-- 2022 rail station data shows anomalously high ridership — likely a methodology change in that year's data collection
-- 2021 age group data is monthly (not daily) and has only 17K rows vs 500K+ in other years
-- Some station coordinates in 2023/2025 data used Turkish locale formatting (dots as thousands separators) — corrected during ingestion but ~33 stations still have invalid coordinates
-- The hourly transport data (60 GB total) is loaded incrementally; dashboard coverage depends on which months have been backfilled
-- "Unknown" age group (23% of 2024 ridership) represents unregistered Istanbulkart holders — demographics are based on voluntary registration only
+- 2022 rail station data shows anomalously high ridership (1.55B vs ~1.0-1.1B in other years) — likely a data collection methodology change
+- 2024 hourly transport data ends October 18 (November-December files are empty placeholders on the portal)
+- "Unknown" age group (23% of 2024 ridership) represents unregistered Istanbulkart holders
+- Station growth figures showing >90% decline on T1/T5 tram lines likely reflect line restructuring, not actual ridership collapse
+- District coordinates are approximate centroids from rail station locations; districts without rail have no map coordinates
 """)

@@ -52,47 +52,38 @@ columns:
 
 @bruin */
 
-WITH transit_deduped AS (
-    SELECT *
-    FROM raw.istanbul_hourly_transport
-    WHERE transition_date IS NOT NULL
-    QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY transition_date, transition_hour, transport_type_id, road_type,
-                     line, transfer_type, product_kind, town, station_poi_desc_cd
-        ORDER BY extracted_at DESC
-    ) = 1
-),
-daily_transit AS (
+WITH daily_transit AS (
     SELECT
         transition_date AS traffic_date,
         SUM(COALESCE(number_of_passage, 0)) AS total_passages,
         SUM(COALESCE(number_of_passenger, 0)) AS total_passengers
-    FROM transit_deduped
+    FROM raw.istanbul_hourly_transport
+    WHERE transition_date IS NOT NULL
     GROUP BY transition_date
 ),
-traffic_deduped AS (
-    SELECT *
+traffic AS (
+    SELECT DISTINCT
+        traffic_date,
+        min_traffic_index,
+        max_traffic_index,
+        avg_traffic_index
     FROM raw.istanbul_traffic_index
     WHERE traffic_date IS NOT NULL
-    QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY traffic_date
-        ORDER BY extracted_at DESC
-    ) = 1
 )
 
 SELECT
-    COALESCE(t.traffic_date, ti.traffic_date) AS traffic_date,
+    COALESCE(t.traffic_date, tr.traffic_date) AS traffic_date,
     t.total_passages,
     t.total_passengers,
-    ti.min_traffic_index,
-    ti.max_traffic_index,
-    ti.avg_traffic_index,
-    EXTRACT(YEAR FROM COALESCE(t.traffic_date, ti.traffic_date)) AS year,
-    EXTRACT(MONTH FROM COALESCE(t.traffic_date, ti.traffic_date)) AS month,
-    EXTRACT(DAYOFWEEK FROM COALESCE(t.traffic_date, ti.traffic_date)) AS day_of_week,
-    FORMAT_DATE('%A', COALESCE(t.traffic_date, ti.traffic_date)) AS day_name,
-    EXTRACT(DAYOFWEEK FROM COALESCE(t.traffic_date, ti.traffic_date)) IN (1, 7) AS is_weekend
+    tr.min_traffic_index,
+    tr.max_traffic_index,
+    tr.avg_traffic_index,
+    EXTRACT(YEAR FROM COALESCE(t.traffic_date, tr.traffic_date)) AS year,
+    EXTRACT(MONTH FROM COALESCE(t.traffic_date, tr.traffic_date)) AS month,
+    EXTRACT(DAYOFWEEK FROM COALESCE(t.traffic_date, tr.traffic_date)) AS day_of_week,
+    FORMAT_DATE('%A', COALESCE(t.traffic_date, tr.traffic_date)) AS day_name,
+    EXTRACT(DAYOFWEEK FROM COALESCE(t.traffic_date, tr.traffic_date)) IN (1, 7) AS is_weekend
 FROM daily_transit t
-FULL OUTER JOIN traffic_deduped ti
-    ON t.traffic_date = ti.traffic_date
+FULL OUTER JOIN traffic tr
+    ON t.traffic_date = tr.traffic_date
 ORDER BY traffic_date

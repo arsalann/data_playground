@@ -63,17 +63,6 @@ columns:
 
 @bruin */
 
-WITH deduped AS (
-    SELECT *
-    FROM raw.istanbul_hourly_transport
-    WHERE transition_date IS NOT NULL
-    QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY transition_date, transition_hour, transport_type_id, road_type,
-                     line, transfer_type, product_kind, town, station_poi_desc_cd
-        ORDER BY extracted_at DESC
-    ) = 1
-)
-
 SELECT
     transition_date,
     road_type,
@@ -88,7 +77,8 @@ SELECT
     FORMAT_DATE('%A', transition_date) AS day_name,
     FORMAT_DATE('%B', transition_date) AS month_name,
     EXTRACT(DAYOFWEEK FROM transition_date) IN (1, 7) AS is_weekend
-FROM deduped
+FROM raw.istanbul_hourly_transport
+WHERE transition_date IS NOT NULL
 GROUP BY
     transition_date,
     road_type,

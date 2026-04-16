@@ -45,17 +45,7 @@ columns:
 
 @bruin */
 
-WITH deduped AS (
-    SELECT *
-    FROM raw.istanbul_hourly_transport
-    WHERE transition_date IS NOT NULL
-    QUALIFY ROW_NUMBER() OVER (
-        PARTITION BY transition_date, transition_hour, transport_type_id, road_type,
-                     line, transfer_type, product_kind, town, station_poi_desc_cd
-        ORDER BY extracted_at DESC
-    ) = 1
-),
-hourly_totals AS (
+WITH hourly_totals AS (
     SELECT
         road_type,
         transition_hour,
@@ -63,7 +53,8 @@ hourly_totals AS (
         EXTRACT(DAYOFWEEK FROM transition_date) AS day_of_week,
         SUM(COALESCE(number_of_passage, 0)) AS daily_passages,
         SUM(COALESCE(number_of_passenger, 0)) AS daily_passengers
-    FROM deduped
+    FROM raw.istanbul_hourly_transport
+    WHERE transition_date IS NOT NULL
     GROUP BY road_type, transition_hour, transition_date
 )
 

@@ -1,7 +1,7 @@
-# Viral Chess Shocks Dashboard
+# Chess Shocks Dashboard
 # Format reference: https://docs.rilldata.com/reference/project-files/canvas-dashboards
 type: canvas
-display_name: "🔥 Viral Chess Shocks"
+display_name: "Chess Shocks"
 defaults:
   time_range: inf
   comparison_mode: time

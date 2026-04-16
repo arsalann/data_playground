@@ -1,58 +1,46 @@
-# 🐉 Giant Killers
-# The nobodies who slay grandmasters
+# Giant Killers - Lightweight Canvas
+type: canvas
+display_name: "🐉 Giant Killer Board"
+defaults:
+  time_range: inf
+  comparison_mode: time
+  filters: {}
 
-type: metrics_view
-title: "🐉 Giant Killers"
-description: "A 486-rated player once beat a 3195-rated GM. Meet the heroes."
-model: shocking_insights
+rows:
+  - items:
+      - leaderboard:
+          metrics_view: giant_killers
+          dimension: opponent
+          measure: giant_kills
+        width: 6
+      - heatmap:
+          metrics_view: upset_watch
+          color:
+            colorRange:
+              mode: scheme
+              scheme: turbo
+            field: upset_rate
+            type: quantitative
+          x:
+            field: time_class
+            type: nominal
+          y:
+            field: rating_gap_bucket
+            type: nominal
+        width: 6
+    height: 420px
 
-dimensions:
-  - name: opponent
-    label: "Giant Killer"
-    column: opponent
-    description: "The underdog who won"
-  
-  - name: gm_player
-    label: "GM Victim"
-    column: gm_player
-  
-  - name: skill_gap_bucket
-    label: "Rating Gap"
-    column: skill_gap_bucket
-  
-  - name: time_class
-    label: "Speed"
-    column: time_class
-  
-  - name: gm_loss_type
-    label: "How GM Lost"
-    column: gm_loss_type
-
-measures:
-  - name: giant_kills
-    label: "Giant Kills"
-    expression: SUM(CASE WHEN is_giant_kill THEN 1 ELSE 0 END)
-    format_preset: humanize
-    description: "Wins against GM 300+ rating higher"
-  
-  - name: total_games_vs_gms
-    label: "Games vs GMs"
-    expression: COUNT(*)
-    format_preset: humanize
-  
-  - name: upset_rate
-    label: "Upset Rate"
-    expression: CAST(SUM(CASE WHEN is_giant_kill THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
-    format_d3: ".1%"
-    description: "% of games that were upsets"
-  
-  - name: avg_rating_deficit
-    label: "Avg Rating Deficit"
-    expression: ROUND(AVG(CASE WHEN gm_outcome = 'GM Lost' THEN rating_advantage ELSE NULL END), 0)
-    format_preset: humanize
-    description: "How outrated was the giant killer?"
-  
-  - name: biggest_upset
-    label: "Biggest Rating Gap"
-    expression: MAX(CASE WHEN gm_outcome = 'GM Lost' THEN rating_advantage ELSE NULL END)
-    format_preset: humanize
+  - items:
+      - table:
+          metrics_view: giant_killers
+          columns:
+            - field: opponent
+              type: dimension
+            - field: gm_player
+              type: dimension
+            - field: giant_kills
+              type: measure
+            - field: upset_rate
+              type: measure
+        width: 12
+    height: 320px

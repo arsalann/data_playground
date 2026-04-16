@@ -1,24 +1,35 @@
-# Loss Windows Metrics View
-type: metrics_view
-title: "Loss Windows"
-description: "Day/Hour patterns of how games end (checkmate, resignation, timeout)."
-model: game_insights
+# GM Loss Windows - Lightweight Canvas
+type: canvas
+display_name: "🔥 GM Loss Windows"
+defaults:
+  time_range: inf
+  comparison_mode: time
+  filters: {}
 
-dimensions:
-  - name: day_name
-    column: day_name
-  - name: hour_utc
-    column: hour_utc
-
-measures:
-  - name: total_games
-    expression: COUNT(*)
-  - name: checkmate_rate
-    expression: CAST(SUM(CASE WHEN termination_type = 'Checkmate' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
-    format_d3: ".1%"
-  - name: resignation_rate
-    expression: CAST(SUM(CASE WHEN termination_type = 'Resignation' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
-    format_d3: ".1%"
-  - name: timeout_rate
-    expression: CAST(SUM(CASE WHEN termination_type = 'Timeout' THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0)
-    format_d3: ".1%"
+rows:
+  - items:
+      - heatmap:
+          metrics_view: loss_windows
+          color:
+            colorRange:
+              mode: scheme
+              scheme: inferno
+            field: checkmate_rate
+            type: quantitative
+          x:
+            field: day_name
+            sort:
+              - Monday
+              - Tuesday
+              - Wednesday
+              - Thursday
+              - Friday
+              - Saturday
+              - Sunday
+            type: nominal
+          y:
+            field: hour_utc
+            type: nominal
+            sort: y
+        width: 12
+    height: 420px

@@ -1,0 +1,6 @@
+name: public-transit-analysis
+schedule: weekly
+start_date: "2002-01-01"
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"

@@ -157,7 +157,7 @@ def load_metro_recovery():
             recovery_pct,
             num_agencies
         FROM `bruin-playground-arsalan.staging.transit_metro_comparison`
-        WHERE report_year = 2024
+        WHERE report_year = 2023
           AND ridership_2019 > 500000
           AND recovery_pct IS NOT NULL
           AND uza_name NOT LIKE '%Non-UZA%'
@@ -334,15 +334,16 @@ st.divider()
 # ═══════════════════════════════════════════════════════════════════════
 # CHART 2: WFH vs Recovery
 # ═══════════════════════════════════════════════════════════════════════
-st.header("Work-from-home rate vs. ridership recovery by metro area")
+st.header("Work-from-home rate vs. ridership recovery by metro area (2023)")
 st.markdown(
     "Each dot is a metro area, positioned by its Census WFH rate (x-axis) and "
-    "2024 ridership as a percentage of 2019 (y-axis). Dot size reflects population. "
-    "The Pearson correlation is near zero (r ~ -0.05), indicating no meaningful linear "
+    "2023 ridership as a percentage of 2019 (y-axis), both from the same year. "
+    "Dot size reflects population. "
+    "The Pearson correlation is near zero, indicating no meaningful linear "
     "relationship between WFH rates and transit recovery. "
-    "For example, Austin (25% WFH) recovered to 84% while San Juan (5% WFH) "
-    "recovered to only 50%, suggesting service levels, fare policy, and rider "
-    "demographics matter more than remote work rates."
+    "For example, Austin (high WFH) shows stronger recovery than San Juan (low WFH), "
+    "suggesting service levels, fare policy, and rider demographics matter more "
+    "than remote work rates."
 )
 
 wfh_df = metro_df[metro_df["wfh_rate_pct"].notna()].copy()
@@ -373,7 +374,7 @@ wfh_scatter = (
     .encode(
         x=alt.X("wfh_rate_pct:Q", title="Work-from-Home Rate (%)",
                  scale=alt.Scale(zero=False)),
-        y=alt.Y("recovery_pct:Q", title="2024 Ridership Recovery (% of 2019)",
+        y=alt.Y("recovery_pct:Q", title="2023 Ridership Recovery (% of 2019)",
                  scale=alt.Scale(zero=False)),
         size=alt.Size("uza_population:Q", title="Metro Population",
                        scale=alt.Scale(range=[40, 700]),
@@ -388,7 +389,7 @@ wfh_scatter = (
             alt.Tooltip("recovery_pct:Q", title="Recovery %", format=".1f"),
             alt.Tooltip("wfh_rate_pct:Q", title="WFH Rate %", format=".1f"),
             alt.Tooltip("uza_population:Q", title="Population", format=",.0f"),
-            alt.Tooltip("total_upt:Q", title="2024 Trips (UPT)", format=",.0f"),
+            alt.Tooltip("total_upt:Q", title="2023 Trips (UPT)", format=",.0f"),
             alt.Tooltip("ridership_2019:Q", title="2019 Trips (UPT)", format=",.0f"),
         ],
     )
@@ -400,6 +401,7 @@ labels_below = {
     "Indianapolis", "Washington", "Philadelphia", "Seattle",
     "Denver", "San Juan", "Richmond", "Tucson",
     "Atlanta", "Minneapolis", "St. Louis",
+    "Charlotte", "Pittsburgh", "Virginia Beach", "Columbus",
 }
 labels_left = {"Jacksonville"}
 
@@ -409,7 +411,7 @@ wfh_df["label_pos"] = wfh_df["metro_short"].apply(
 
 wfh_labels_above = (
     alt.Chart(wfh_df[wfh_df["label_pos"] == "above"])
-    .mark_text(fontSize=11, dy=-13)
+    .mark_text(fontSize=11, dy=-18)
     .encode(
         x="wfh_rate_pct:Q",
         y="recovery_pct:Q",
@@ -444,7 +446,7 @@ st.altair_chart(wfh_scatter + wfh_labels_above + wfh_labels_below + wfh_labels_l
 
 st.markdown(
     f"<b>Source:</b> WFH rates from US Census Bureau ACS 1-Year Table B08301 (2023). "
-    f"Recovery from NTD Monthly Module (2024 vs 2019 UPT).<br>"
+    f"Recovery from NTD Monthly Module (2023 vs 2019 UPT). Both metrics from the same year.<br>"
     f"<b>Tools:</b> Bruin (pipeline), BigQuery (warehouse), Altair (visualization).<br>"
     f"<b>Calculation:</b> WFH rate = workers working from home / total workers. "
     f"Pearson r = {wfh_corr:.2f}, n = {len(wfh_df)} metros. "
@@ -461,7 +463,7 @@ st.divider()
 # ═══════════════════════════════════════════════════════════════════════
 # CHART 3: Spending Efficiency
 # ═══════════════════════════════════════════════════════════════════════
-st.header("Transit operating expense vs. ridership per capita, by metro (2024)")
+st.header("Transit operating expense vs. ridership per capita, by metro (2023)")
 st.markdown(
     "Each dot is a metro area with >500K population, positioned by operating expense per "
     "capita (x-axis) and annual trips per capita (y-axis), both on log scale. "
@@ -512,7 +514,7 @@ spend_scatter = (
             alt.Tooltip("metro_cost_per_trip:Q", title="Cost per Trip", format="$,.2f"),
             alt.Tooltip("metro_fare_recovery:Q", title="Fare Cost Coverage", format=".1%"),
             alt.Tooltip("uza_population:Q", title="Population", format=",.0f"),
-            alt.Tooltip("total_upt:Q", title="Total 2024 Trips", format=",.0f"),
+            alt.Tooltip("total_upt:Q", title="Total 2023 Trips", format=",.0f"),
         ],
     )
     .properties(height=480)
@@ -537,7 +539,7 @@ log_corr = np.corrcoef(
 )[0, 1]
 
 st.markdown(
-    f"<b>Source:</b> NTD Annual Metrics (2024) for operating expenses and UPT. "
+    f"<b>Source:</b> NTD Annual Metrics (2023) for operating expenses and UPT. "
     f"UZA population from NTD records.<br>"
     "<b>Tools:</b> Bruin (pipeline), BigQuery (warehouse), Altair (visualization).<br>"
     f"<b>Calculation:</b> Trips per capita = total UPT / UZA population. "

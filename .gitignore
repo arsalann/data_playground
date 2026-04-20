@@ -207,22 +207,36 @@ marimo/_lsp/
 __marimo__/
 
 
+# Bruin credentials and config
 .bruin.yml
+
+# Streamlit secrets (any location)
 .streamlit/secrets.toml
-logs/runs
-logs/*.log
-logs/queries
+**/secrets.toml
+
+# GCP / cloud credentials
+credentials/
+*.json
+!package.json
+!package-lock.json
+service_account*.json
+*_key.json
+*_credentials.json
+
+# API keys and environment files
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs and data
+logs/
 *.db
 *.DS_Store
 *.pyc
-
 __pycache__/
 *.py[cod]
-chess-dot-com/assets/reports/.streamlit/secrets.toml
-chess-dot-com/.streamlit/secrets.toml
-
-credentials/
-secrets.toml
-logs/*
 data/*
 cache/*

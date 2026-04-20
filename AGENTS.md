@@ -432,12 +432,46 @@ For financial or quarterly data: the source API may only return recent quarters 
 
 Bruin resolves Python dependencies by walking up the file tree from the asset to find the nearest `requirements.txt`. Keep a separate `requirements.txt` per layer (`raw/`, `reports/`) so dependencies stay isolated.
 
+## Secrets Management
+
+**No secrets, credentials, API keys, tokens, or passwords may ever be committed to this repository.** This is a hard rule with no exceptions.
+
+### What is gitignored
+
+The following are excluded via `.gitignore` and must never be committed:
+- `.bruin.yml` — contains connection credentials (API keys, passwords, service account paths)
+- `**/secrets.toml` — Streamlit secrets files in any directory
+- `credentials/` — service account JSON files
+- `*.pem`, `*.key`, `*.p12`, `*.pfx` — private key files
+- `.env`, `.env.*` — environment variable files
+
+### Rules
+
+- **Never hardcode secrets in Python or SQL.** Use `os.environ["KEY_NAME"]` in Python and Bruin `secrets:` declarations in the asset YAML header.
+- **Never commit `.streamlit/secrets.toml`** — generate it locally from the service account JSON in `credentials/`. See the Streamlit section below.
+- **Never commit `.bruin.yml`** — this file contains all connection credentials. It stays local.
+- **Never create service account JSON files outside `credentials/`** — that directory is gitignored.
+- **If you accidentally commit a secret, the credential must be rotated immediately.** Removing the file from git tracking does not remove it from history. Use `git-filter-repo` to rewrite history and force-push.
+
+### Streamlit secrets setup
+
+Each dashboard that queries BigQuery needs a `.streamlit/secrets.toml` in its reports directory. Create it from the GCP service account JSON:
+
+```bash
+# From the pipeline's reports directory:
+mkdir -p .streamlit
+# Then manually create secrets.toml with the service account fields
+# DO NOT copy the JSON file directly — use the TOML format shown in AGENTS.md
+```
+
+The `.streamlit/secrets.toml` file is gitignored globally via `**/secrets.toml`. Verify before committing: `git status` should never show a `secrets.toml` file.
+
 ## Things to Avoid
 
 - Do not put non-asset files inside `assets/`. Use separate directories for ad-hoc queries or analyses.
 - Do not hardcode dates in SQL — use Bruin templating or `BRUIN_START_DATE`/`BRUIN_END_DATE` in Python.
 - Do not use `.yml` extension for asset definitions — use `.asset.yml` if defining assets in YAML.
-- Do not commit `.bruin.yml`, credentials, or `.streamlit/secrets.toml` — they are gitignored.
+- **Do not commit `.bruin.yml`, credentials, `secrets.toml`, `.env`, private keys, or any file containing secrets** — they are all gitignored. If `git status` shows any of these files as untracked or modified, do not stage them.
 - Do not write `CREATE TABLE` or `INSERT` in SQL assets — let Bruin's `materialization` handle DDL.
 - Do not give the asset file a different name than the asset name (file name and asset name must match — asset name is `<dataset>.<table_name>` which is `<parent_folder_name>.<asset_file_name>`).
 - Do not use `create+replace` for large incremental data — use `append` and deduplicate in staging.

@@ -11,11 +11,22 @@ A collection of data pipelines for exploring public datasets, built with Bruin a
    ```bash
    curl -LsSf https://getbruin.com/install/cli | sh
    ```
-3. **Google Cloud credentials** — place your service account key at `credentials/playground_key.json` (see `.bruin.yml` for the expected path)
-4. **Python dependencies** — install from the repo root:
+3. **Google Cloud credentials** — place your service account key at `credentials/playground_key.json` (this directory is gitignored)
+4. **Bruin config** — create `.bruin.yml` at the repo root with your connection credentials (this file is gitignored — see `AGENTS.md` for the expected structure)
+5. **Python dependencies** — install from the repo root:
    ```bash
    pip install -r requirements.txt
    ```
+
+### Secrets
+
+**No secrets, API keys, or credentials are stored in this repository.** All sensitive configuration is managed locally:
+
+- `.bruin.yml` — Bruin connection credentials (gitignored)
+- `credentials/` — GCP service account JSON files (gitignored)
+- `.streamlit/secrets.toml` — Streamlit app credentials (gitignored)
+
+See `AGENTS.md` for full secrets management guidelines.
 
 ### Running a Pipeline
 

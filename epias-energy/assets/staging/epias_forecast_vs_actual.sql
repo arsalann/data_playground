@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.epias_forecast_vs_actual
+name: epias_staging.epias_forecast_vs_actual
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,8 +9,8 @@ description: |
   and for the total.
 
 depends:
-  - raw.epias_realtime_generation
-  - raw.epias_dpp_first_version
+  - epias_raw.epias_realtime_generation
+  - epias_raw.epias_dpp_first_version
 
 materialization:
   type: table
@@ -53,14 +53,14 @@ columns:
 
 WITH actual_deduped AS (
     SELECT *
-    FROM raw.epias_realtime_generation
+    FROM epias_raw.epias_realtime_generation
     WHERE date IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY date ORDER BY extracted_at DESC) = 1
 ),
 
 forecast_deduped AS (
     SELECT *
-    FROM raw.epias_dpp_first_version
+    FROM epias_raw.epias_dpp_first_version
     WHERE date IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY date ORDER BY extracted_at DESC) = 1
 ),
@@ -122,4 +122,5 @@ SELECT
 FROM forecast_daily f
 FULL OUTER JOIN actual_daily a
     ON f.date = a.date AND f.source_name = a.source_name
+WHERE COALESCE(f.date, a.date) < DATE_TRUNC(CURRENT_DATE(), MONTH)
 ORDER BY date, source_name

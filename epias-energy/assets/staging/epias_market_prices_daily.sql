@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.epias_market_prices_daily
+name: epias_staging.epias_market_prices_daily
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,8 +9,8 @@ description: |
   balancing costs.
 
 depends:
-  - raw.epias_mcp
-  - raw.epias_smp
+  - epias_raw.epias_mcp
+  - epias_raw.epias_smp
 
 materialization:
   type: table
@@ -69,14 +69,14 @@ columns:
 
 WITH mcp_deduped AS (
     SELECT *
-    FROM raw.epias_mcp
+    FROM epias_raw.epias_mcp
     WHERE date IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY date ORDER BY extracted_at DESC) = 1
 ),
 
 smp_deduped AS (
     SELECT *
-    FROM raw.epias_smp
+    FROM epias_raw.epias_smp
     WHERE date IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY date ORDER BY extracted_at DESC) = 1
 ),
@@ -125,4 +125,5 @@ SELECT
 
 FROM mcp_daily m
 FULL OUTER JOIN smp_daily s ON m.date = s.date
+WHERE COALESCE(m.date, s.date) < DATE_TRUNC(CURRENT_DATE(), MONTH)
 ORDER BY date

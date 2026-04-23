@@ -1,5 +1,5 @@
 """@bruin
-name: raw.epias_smp
+name: epias_raw.epias_smp
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan
@@ -126,7 +126,13 @@ def fetch_smp(tgt, start_date, end_date):
             "endDate": fmt_date(chunk_end),
         }
         logger.info("Fetching SMP %s to %s", current.date(), chunk_end.date())
-        data = epias_post("/v1/markets/bpm/data/system-marginal-price", body, tgt)
+        try:
+            data = epias_post("/v1/markets/bpm/data/system-marginal-price", body, tgt)
+        except Exception:
+            if all_rows:
+                logger.warning("Chunk %s-%s failed, returning %d rows collected so far", current.date(), chunk_end.date(), len(all_rows))
+                break
+            raise
         items = parse_items(data)
 
         for item in items:
@@ -159,7 +165,7 @@ def materialize():
         raise RuntimeError("No data fetched from SMP endpoint")
 
     df = pd.DataFrame(rows)
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"], utc=True)
     df["extracted_at"] = datetime.now()
 
     logger.info("Total records: %d", len(df))

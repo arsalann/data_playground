@@ -1,5 +1,5 @@
 """@bruin
-name: raw.epias_dpp_first_version
+name: epias_raw.epias_dpp_first_version
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan
@@ -207,7 +207,7 @@ def materialize():
         raise RuntimeError("No data fetched from dpp-first-version endpoint")
 
     df = pd.DataFrame(rows)
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"], utc=True)
     df["extracted_at"] = datetime.now()
 
     logger.info("Total records: %d", len(df))

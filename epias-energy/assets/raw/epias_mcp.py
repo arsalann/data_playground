@@ -1,5 +1,5 @@
 """@bruin
-name: raw.epias_mcp
+name: epias_raw.epias_mcp
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan
@@ -163,7 +163,7 @@ def materialize():
         raise RuntimeError("No data fetched from MCP endpoint")
 
     df = pd.DataFrame(rows)
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"], utc=True)
     df["extracted_at"] = datetime.now()
 
     logger.info("Total records: %d", len(df))

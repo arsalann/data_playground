@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.epias_generation_daily
+name: epias_staging.epias_generation_daily
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,7 +9,7 @@ description: |
   and computes each source's share of total daily generation.
 
 depends:
-  - raw.epias_realtime_generation
+  - epias_raw.epias_realtime_generation
 
 materialization:
   type: table
@@ -49,7 +49,7 @@ columns:
 
 WITH deduped AS (
     SELECT *
-    FROM raw.epias_realtime_generation
+    FROM epias_raw.epias_realtime_generation
     WHERE date IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (PARTITION BY date ORDER BY extracted_at DESC) = 1
 ),
@@ -114,4 +114,5 @@ SELECT
 
 FROM daily d
 LEFT JOIN daily_totals t ON d.date = t.date
+WHERE d.date < DATE_TRUNC(CURRENT_DATE(), MONTH)
 ORDER BY d.date, d.generation_mwh DESC

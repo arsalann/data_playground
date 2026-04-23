@@ -4,3 +4,5 @@ db-dtypes
 altair
 pandas
 pydeck
+requests
+openpyxl

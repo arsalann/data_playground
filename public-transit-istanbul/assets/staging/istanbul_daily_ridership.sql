@@ -63,6 +63,20 @@ columns:
 
 @bruin */
 
+WITH deduped AS (
+    -- Remove duplicate rows caused by multiple extraction batches (append strategy).
+    -- Partitions by the grain columns and keeps the latest extraction per row.
+    SELECT *
+    FROM raw.istanbul_hourly_transport
+    WHERE transition_date IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY transition_date, transition_hour, transport_type_id,
+                     road_type, line, town, transfer_type, product_kind,
+                     station_poi_desc_cd
+        ORDER BY extracted_at DESC
+    ) = 1
+)
+
 SELECT
     transition_date,
     road_type,
@@ -77,8 +91,7 @@ SELECT
     FORMAT_DATE('%A', transition_date) AS day_name,
     FORMAT_DATE('%B', transition_date) AS month_name,
     EXTRACT(DAYOFWEEK FROM transition_date) IN (1, 7) AS is_weekend
-FROM raw.istanbul_hourly_transport
-WHERE transition_date IS NOT NULL
+FROM deduped
 GROUP BY
     transition_date,
     road_type,

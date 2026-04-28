@@ -1,0 +1,102 @@
+name: contoso_dbt_raw.customers
+type: bq.source
+description: |-
+  Customer dimension table for the Contoso retail business, sourced from Microsoft's SQLBI Contoso V2 dataset. Contains demographic, geographic, and personal information for ~105K customers worldwide who have engaged with Contoso's retail operations.
+
+  This table implements a slowly changing dimension (SCD2) pattern with start_dt/end_dt for historical tracking of customer attribute changes. Geographic data includes precise coordinates for location-based analytics. Customer records span multiple continents with detailed address information.
+
+  The data is used extensively across the business for customer segmentation, geographic analysis, demographic reporting, and as the primary customer dimension in sales fact tables. The customer_key serves as the primary identifier linking to orders (~980K), sales transactions (~2.3M), and support interactions.
+
+  Note: Contains both abbreviated (country, state) and full-text (country_full, state_full) geographic descriptors for reporting flexibility.
+
+  Imported table: contoso_dbt_raw.customers
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:58Z
+  Last modified: 2026-04-24T13:44:12Z
+  Row count: 104,990
+  Size: 26.32 MB
+tags:
+  - domain:retail
+  - data_type:dimension_table
+  - pipeline_role:raw
+  - sensitivity:pii
+  - pattern:slowly_changing_dimension
+  - geography:global
+  - update_pattern:scd2
+
+columns:
+  - name: age
+    type: INTEGER
+    description: Customer's age in years at time of record creation
+  - name: birthday
+    type: TIMESTAMP
+    description: Customer's date of birth with full timestamp precision
+  - name: city
+    type: STRING
+    description: Customer's city of residence
+  - name: company
+    type: STRING
+    description: Customer's employer or company affiliation, may be null for unemployed/retired customers
+  - name: continent
+    type: STRING
+    description: Geographic continent where customer resides (e.g., North America, Europe, Asia)
+  - name: country
+    type: STRING
+    description: Customer's country of residence (abbreviated format, e.g., US, CA, UK)
+  - name: country_full
+    type: STRING
+    description: Customer's country of residence (full text format, e.g., United States, Canada, United Kingdom)
+  - name: customer_key
+    type: INTEGER
+    description: Primary surrogate key identifying unique customer records, used as foreign key in orders and sales tables
+  - name: end_dt
+    type: TIMESTAMP
+    description: End date for SCD2 historical tracking, null for current active records, populated when customer attributes change
+  - name: extracted_at
+    type: TIMESTAMP
+    description: System timestamp indicating when this record was extracted from source system during ETL processing
+  - name: gender
+    type: STRING
+    description: Customer's gender identifier, typically M/F or Male/Female values
+  - name: geo_area_key
+    type: INTEGER
+    description: Foreign key to geographic area dimension, likely references a standardized geographic hierarchy
+  - name: given_name
+    type: STRING
+    description: Customer's first name or given name
+  - name: latitude
+    type: NUMERIC
+    description: Geographic latitude coordinate of customer's address location, decimal degrees format
+  - name: longitude
+    type: NUMERIC
+    description: Geographic longitude coordinate of customer's address location, decimal degrees format
+  - name: middle_initial
+    type: STRING
+    description: Customer's middle initial, single character, may be null if not provided
+  - name: occupation
+    type: STRING
+    description: Customer's professional occupation or job title
+  - name: start_dt
+    type: TIMESTAMP
+    description: Start date for SCD2 historical tracking, indicates when this version of the customer record became active
+  - name: state
+    type: STRING
+    description: Customer's state/province of residence (abbreviated format, e.g., CA, NY, ON)
+  - name: state_full
+    type: STRING
+    description: Customer's state/province of residence (full text format, e.g., California, New York, Ontario)
+  - name: street_address
+    type: STRING
+    description: Customer's street address including number and street name
+  - name: surname
+    type: STRING
+    description: Customer's last name or family name
+  - name: title
+    type: STRING
+    description: Customer's title or honorific (e.g., Mr., Ms., Dr.), may be null
+  - name: vehicle
+    type: STRING
+    description: Type or model of vehicle owned by customer, used for demographic segmentation and product targeting
+  - name: zip_code
+    type: STRING
+    description: Customer's postal/ZIP code for geographic analysis and shipping logistics

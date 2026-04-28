@@ -1,0 +1,13 @@
+contoso_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: bruin-playground-arsalan
+      dataset: contoso_dbt
+      location: EU
+      threads: 4
+      timeout_seconds: 300
+      priority: interactive
+      job_retries: 1

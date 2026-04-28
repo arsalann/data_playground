@@ -1,0 +1,27 @@
+name: contoso_dbt
+version: "1.0.0"
+config-version: 2
+
+profile: contoso_dbt
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+analysis-paths: ["analyses"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+models:
+  contoso_dbt:
+    staging:
+      +materialized: table
+      +schema: staging
+    reports:
+      +materialized: table
+      +schema: reports

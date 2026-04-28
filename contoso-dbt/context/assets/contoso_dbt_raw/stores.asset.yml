@@ -1,0 +1,75 @@
+name: contoso_dbt_raw.stores
+type: bq.source
+description: |-
+  Store dimension table for Contoso retail business, sourced from Microsoft's SQLBI Contoso V2 dataset. Contains master data for 74 retail store locations across multiple countries, providing comprehensive information about physical store attributes, operational status, and geographic positioning.
+
+  This table serves as the primary store dimension in the data warehouse, enabling geographic analysis of sales performance, operational reporting by region, store capacity planning through square footage metrics, and historical tracking of store lifecycle events. Store records include both active and closed locations with precise operational date tracking.
+
+  The data is essential for location-based analytics, joined to sales fact tables via store_key to analyze performance by geography, store size, and operational tenure. Critical for territory planning, real estate decisions, inventory allocation, and regional performance reporting across the retail network.
+
+  Physical characteristics like square_meters enable capacity-based analysis and comparison, while the geographic hierarchy (country/state) supports regional rollups. Status tracking allows filtering for active locations vs historical analysis including closed stores.
+
+  Imported table: contoso_dbt_raw.stores
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:54Z
+  Last modified: 2026-04-24T13:42:02Z
+  Row count: 74
+  Size: 7.88 KB
+tags:
+  - domain:retail
+  - data_type:dimension_table
+  - pipeline_role:raw
+  - sensitivity:internal
+  - pattern:master_data
+  - update_pattern:slowly_changing
+  - business_area:store_operations
+  - geography:multi_country
+
+columns:
+  - name: close_date
+    type: TIMESTAMP
+    description: Date when store operations ceased, null for currently active stores, used for historical analysis and lifecycle tracking
+  - name: country_code
+    type: STRING
+    description: ISO country code or abbreviated country identifier (e.g., US, CA, UK) for geographic aggregation and regional analysis
+    checks:
+      - name: not_null
+  - name: country_name
+    type: STRING
+    description: Full country name for display purposes and reporting (e.g., United States, Canada, United Kingdom)
+    checks:
+      - name: not_null
+  - name: description
+    type: STRING
+    description: Textual description of store characteristics, location details, or special attributes for operational reference
+  - name: extracted_at
+    type: TIMESTAMP
+    description: dlt ingestion timestamp indicating when this record was loaded from source system during ETL processing
+    checks:
+      - name: not_null
+  - name: geo_area_key
+    type: INTEGER
+    description: Foreign key to geographic area dimension, links to standardized geographic hierarchy for regional reporting and territory management
+  - name: open_date
+    type: TIMESTAMP
+    description: Store opening date marking start of operations, used for tenure analysis and historical performance tracking
+  - name: square_meters
+    type: FLOAT
+    description: Total floor area of retail space in square meters, used for capacity planning, performance per square foot analysis, and operational comparisons
+  - name: state
+    type: STRING
+    description: State, province, or administrative region where store is located (e.g., CA, NY, TX) for sub-national geographic analysis
+  - name: status
+    type: STRING
+    description: Current operational status of store (e.g., Open, Closed, Under Construction) for filtering active locations and lifecycle reporting
+    checks:
+      - name: not_null
+  - name: store_code
+    type: INTEGER
+    description: Business identifier or internal store number used in operational systems and store management, may differ from store_key
+  - name: store_key
+    type: INTEGER
+    description: Primary key for store dimension, surrogate key used as foreign key in sales fact tables and other transactional data
+    checks:
+      - name: not_null
+      - name: unique

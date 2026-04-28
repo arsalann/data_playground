@@ -1,0 +1,51 @@
+name: contoso_dbt_raw.order_rows
+type: bq.source
+description: |-
+  Order line items containing detailed product-level transaction data for Contoso's e-commerce platform. Each row represents one product purchased within an order, capturing pricing, quantity, and cost information at the most granular level.
+
+  This fact table joins with the orders table (via order_key) for order-level information like customer, store, and dates, and with the products table (via product_key) for product attributes. With ~2.4 line items per order on average, this table captures the full detail needed for revenue analysis, inventory management, and profitability reporting.
+
+  Raw transactional data extracted from the operational system, typically used downstream for staging models (stg_sales_fact) and revenue reporting. The net_price field represents the final line total (quantity × unit_price with any line-level adjustments), making this the authoritative source for revenue calculations.
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:53Z
+  Last modified: 2026-04-24T13:46:18Z
+  Row count: 2,349,091
+  Size: 197.14 MB
+tags:
+  - domain:retail
+  - domain:e-commerce
+  - domain:sales
+  - type:fact_table
+  - type:transactional
+  - role:raw
+  - sensitivity:internal
+  - pattern:append_only
+  - layer:bronze
+
+columns:
+  - name: extracted_at
+    type: TIMESTAMP
+    description: ETL extraction timestamp indicating when this record was pulled from the source system
+  - name: net_price
+    type: NUMERIC
+    description: Final line item total in the order's currency, representing quantity × unit_price with any line-level adjustments applied. Primary metric for revenue calculations.
+  - name: order_key
+    type: INTEGER
+    description: Foreign key linking to the orders table. Identifies which order this line item belongs to.
+  - name: product_key
+    type: INTEGER
+    description: Foreign key linking to the products table. Identifies the specific product being purchased in this line item.
+  - name: quantity
+    type: INTEGER
+    description: Number of units of the product ordered in this line item. Multiplied by unit_price to calculate gross line value.
+  - name: row_number
+    type: INTEGER
+    description: Sequential line number within each order, indicating the position of this item in the order. Used for sorting and identifying specific line items.
+  - name: unit_cost
+    type: NUMERIC
+    description: Cost basis per unit in the order's currency. Used for gross margin and profitability analysis (net_price - quantity × unit_cost = gross profit).
+  - name: unit_price
+    type: NUMERIC
+    description: Sale price per unit in the order's currency, before any line-level adjustments. Base price used in revenue calculations.

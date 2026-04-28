@@ -1,0 +1,46 @@
+name: contoso_dbt_raw.currency_exchange
+type: bq.source
+description: |-
+  Daily foreign exchange rates for multi-currency financial calculations in the Contoso e-commerce platform.
+
+  This table provides currency conversion rates between different currency pairs, enabling accurate financial
+  reporting and analysis across the global Contoso business operations. The rates are used primarily by the
+  sales fact table to convert transaction amounts into a consistent reporting currency (typically USD).
+
+  The data represents market exchange rates captured daily and includes both major currency pairs (USD/EUR,
+  USD/GBP) and emerging market currencies to support Contoso's international customer base. Each row
+  represents a specific exchange rate between two currencies on a given date.
+
+  Source data comes from the SQLBI Contoso V2 dataset, providing realistic foreign exchange rate patterns
+  for business intelligence demonstrations and training scenarios.
+
+  Imported table: contoso_dbt_raw.currency_exchange
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:01Z
+  Last modified: 2026-04-24T13:42:11Z
+  Row count: 100,450
+  Size: 4.02 MB
+tags:
+  - domain:finance
+  - data_type:dimension_table
+  - pipeline_role:raw
+  - update_pattern:daily_append
+  - source:external_market_data
+  - usage:currency_conversion
+
+columns:
+  - name: date
+    type: TIMESTAMP
+    description: The date for which the exchange rate is valid (market close rates)
+  - name: exchange
+    type: NUMERIC
+    description: The exchange rate multiplier to convert from_currency to to_currency (decimal precision)
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp when this record was extracted from the source system during data ingestion
+  - name: from_currency
+    type: STRING
+    description: The base currency code (ISO 4217 format, e.g., USD, EUR, GBP)
+  - name: to_currency
+    type: STRING
+    description: The target currency code to convert to (ISO 4217 format, e.g., USD, EUR, GBP)

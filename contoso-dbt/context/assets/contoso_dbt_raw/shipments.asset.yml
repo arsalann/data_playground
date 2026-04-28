@@ -1,0 +1,109 @@
+name: contoso_dbt_raw.shipments
+type: bq.source
+description: |-
+  Order fulfillment records from Contoso's logistics system tracking the shipping and delivery lifecycle of customer orders.
+
+  This table captures detailed shipping information for each order fulfillment, including carrier details,
+  shipping costs, tracking information, and delivery status. Each row represents one shipment which may
+  contain all or part of a customer order. Multiple shipments may exist for a single order in cases of
+  split fulfillment (partial shipments, out-of-stock items, multi-warehouse fulfillment).
+
+  Key business characteristics:
+  - Critical for delivery SLA monitoring and shipping performance analysis
+  - Used to calculate fulfillment metrics: days-to-ship, transit times, delivery rates
+  - Enables carrier performance comparison and shipping cost optimization
+  - Links orders to their physical fulfillment via order_key foreign key
+  - Contains both successful deliveries and exceptions (returned, lost shipments)
+
+  Data relationships:
+  - shipments.order_key → orders.order_key (many-to-one, supports split shipments)
+  - shipments.store_key → stores.store_key (many-to-one, fulfillment location)
+  - Used downstream in stg_shipping_performance for analytics and rpt_delivery_sla for SLA reporting
+
+  Business rules and patterns:
+  - Shipment lifecycle: order placed → shipped → in-transit → delivered/returned/lost
+  - Ship_date should always be >= order_date (calculated in staging)
+  - Delivery_date may be null for in-transit/lost shipments or pickup orders
+  - Ship_cost includes carrier charges but excludes product costs
+  - Currency field indicates ship_cost denomination for multi-currency operations
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:01Z
+  Last modified: 2026-04-24T13:46:20Z
+  Row count: 980,666
+  Size: 85.67 MB
+tags:
+  - logistics
+  - fulfillment
+  - shipping
+  - fact_table
+  - raw
+  - append_only
+  - internal
+  - high_volume
+  - sla_critical
+
+materialization:
+  type: table
+
+columns:
+  - name: carrier
+    type: STRING
+    description: Shipping carrier company handling the delivery (e.g., "FedEx", "UPS", "DHL", "USPS"). Used for carrier performance analysis and cost comparison across providers.
+    checks:
+      - name: not_null
+  - name: currency
+    type: STRING
+    description: Currency code for ship_cost denomination (e.g., "USD", "EUR", "GBP"). Essential for multi-currency shipping cost analysis and currency conversion calculations.
+    checks:
+      - name: not_null
+  - name: delivery_date
+    type: TIMESTAMP
+    description: Actual delivery timestamp when shipment reached customer or pickup location. Null for in-transit, returned, or lost shipments. Used to calculate delivery SLA metrics and transit time analysis.
+  - name: extracted_at
+    type: TIMESTAMP
+    description: ETL extraction timestamp indicating when this record was ingested from the source logistics system. Used for incremental loading, data lineage tracking, and deduplication in downstream staging.
+    checks:
+      - name: not_null
+  - name: order_key
+    type: INTEGER
+    description: Foreign key linking shipment to the originating customer order. Multiple shipments may share the same order_key in cases of split fulfillment or partial shipments.
+    checks:
+      - name: not_null
+  - name: ship_cost
+    type: FLOAT
+    description: Total shipping charges for this shipment in the currency specified by the currency field. Includes carrier fees but excludes product costs. Used for shipping cost analysis and profitability calculations.
+    checks:
+      - name: not_null
+  - name: ship_date
+    type: TIMESTAMP
+    description: Timestamp when the shipment was dispatched from the fulfillment center or store. Used to calculate days-to-ship metrics and is the baseline for transit time calculations.
+    checks:
+      - name: not_null
+  - name: shipment_key
+    type: INTEGER
+    description: Unique identifier for each shipment record. Primary key used for deduplication and linking to downstream analytics. One shipment may contain multiple order line items.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: shipment_status
+    type: STRING
+    description: Current status of the shipment lifecycle (e.g., "Shipped", "Delivered", "Returned", "Lost", "In Transit"). Critical for delivery rate calculations and exception handling analysis.
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - Shipped
+          - Delivered
+          - Returned
+          - Lost
+          - In Transit
+  - name: store_key
+    type: INTEGER
+    description: Foreign key to the store or fulfillment center that processed this shipment. Used for geographic shipping analysis and fulfillment center performance comparison.
+    checks:
+      - name: not_null
+  - name: tracking_number
+    type: STRING
+    description: Unique carrier-provided tracking identifier for shipment visibility and customer service. Format varies by carrier. May be null for internal deliveries or legacy records.

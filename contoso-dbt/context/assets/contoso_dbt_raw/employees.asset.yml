@@ -1,0 +1,93 @@
+name: contoso_dbt_raw.employees
+type: bq.source
+description: |-
+  Core employee master table for Contoso retail operations, containing comprehensive personnel records for all current and former employees across the organization. This table serves as the primary source for employee demographics, organizational hierarchy, compensation, and employment lifecycle data.
+
+  The dataset represents a multinational retail workforce spanning 74 stores across multiple countries, with employees organized into 12 distinct departments. Contains both active employees and historical records for terminated staff, enabling workforce analytics, payroll processing, and organizational reporting.
+
+  Key relationships: References departments (department_key), stores (store_key for retail staff), and hierarchical management structure (manager_key). Feeds into staging models for employee directory and workforce analytics reporting.
+
+  Data characteristics: salary and manager_key stored as FLOAT due to nullable nature; store_key only populated for store-based roles (corporate employees have NULL store assignment); termination_date populated only for former employees.
+
+  Imported table: contoso_dbt_raw.employees
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:57Z
+  Last modified: 2026-04-24T13:42:06Z
+  Row count: 3,000
+  Size: 387.16 KB
+tags:
+  - domain:hr
+  - domain:workforce
+  - data_type:fact_table
+  - sensitivity:pii
+  - pipeline_role:raw
+  - update_pattern:slowly_changing
+
+columns:
+  - name: currency
+    type: STRING
+    description: ISO currency code for employee salary (e.g., USD, EUR, GBP), reflecting local compensation standards by geographic region
+  - name: department_key
+    type: INTEGER
+    description: Foreign key reference to departments table, identifying the organizational department where the employee is assigned (1-12 range covering all business functions)
+    checks:
+      - name: not_null
+  - name: email
+    type: STRING
+    description: Corporate email address for the employee, typically following firstname.lastname@contoso.com naming convention, used for authentication and communication
+    checks:
+      - name: not_null
+  - name: employee_key
+    type: INTEGER
+    description: Primary key identifier for each employee record, auto-generated sequential number serving as the unique employee ID across all systems
+    checks:
+      - name: unique
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp indicating when this employee record was extracted from the source system during ETL processing
+    checks:
+      - name: not_null
+  - name: first_name
+    type: STRING
+    description: Employee's given name as recorded in HR systems, used for display purposes and official documentation
+    checks:
+      - name: not_null
+  - name: hire_date
+    type: DATE
+    description: Date when the employee officially started their employment with Contoso, used for tenure calculations and benefits eligibility
+    checks:
+      - name: not_null
+  - name: job_title
+    type: STRING
+    description: Current position title describing the employee's role and responsibilities, ranging from entry-level retail to executive positions
+    checks:
+      - name: not_null
+  - name: last_name
+    type: STRING
+    description: Employee's family/surname as recorded in HR systems, combined with first_name to create full employee identification
+    checks:
+      - name: not_null
+  - name: level
+    type: STRING
+    description: Employment level or grade classification (e.g., Associate, Senior, Manager, Director) indicating career progression tier and compensation band
+  - name: manager_key
+    type: FLOAT
+    description: Foreign key reference to employee_key of the employee's direct supervisor, creating hierarchical reporting structure; NULL for CEO/top-level executives
+  - name: salary
+    type: FLOAT
+    description: Annual gross salary amount in the currency specified by currency field, representing base compensation excluding bonuses or benefits
+    checks:
+      - name: min
+        value: 0
+  - name: status
+    type: STRING
+    description: Current employment status code (e.g., Active, Terminated, On Leave) indicating the employee's current standing with the organization
+    checks:
+      - name: not_null
+  - name: store_key
+    type: FLOAT
+    description: Foreign key reference to stores table for store-based employees; NULL for corporate/head office employees who are not assigned to specific retail locations
+  - name: termination_date
+    type: DATE
+    description: Date when the employee's tenure ended, populated only for employees with 'Terminated' status; NULL for active employees

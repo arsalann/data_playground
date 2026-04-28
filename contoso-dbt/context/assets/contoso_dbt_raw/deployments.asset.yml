@@ -1,0 +1,113 @@
+name: contoso_dbt_raw.deployments
+type: bq.source
+description: |-
+  Comprehensive software deployment tracking for Contoso's consumer electronics platform,
+  containing 1,200 synthetic deployment records spanning 15 microservices across production,
+  staging, and development environments from 2016-2026.
+
+  This dataset represents the complete deployment lifecycle including successful deployments,
+  rollbacks, and failures. It captures realistic engineering deployment patterns where 90% of
+  deployments succeed, 7% require rollbacks, and 3% fail completely. About 80% of deployments
+  are linked to sprint tickets (planned work) while 20% represent hotfixes deployed outside
+  the normal sprint cycle.
+
+  The data spans 15 core services including checkout-api, inventory-service, payment-gateway,
+  search-service, auth-service, cart-service, catalog-api, shipping-service, analytics-pipeline,
+  notification-service, order-service, crm-api, web-frontend, mobile-bff, and admin-dashboard.
+
+  Key relationships: Links to employees table (deployed_by) for engineering team members
+  and sprint_tickets table (ticket_key) for planned work tracking. Supports deployment frequency
+  analysis, failure rate monitoring, rollback pattern analysis, and engineering velocity measurement.
+
+  Imported table: contoso_dbt_raw.deployments
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:03Z
+  Last modified: 2026-04-24T13:42:03Z
+  Row count: 1,200
+  Size: 87.66 KB
+tags:
+  - domain:engineering
+  - domain:devops
+  - data_type:fact_table
+  - sensitivity:internal
+  - pipeline_role:raw
+  - update_pattern:snapshot
+  - source:synthetic
+  - operational_data
+
+columns:
+  - name: deploy_date
+    type: DATE
+    description: |-
+      Date when the deployment was executed. Spans 2016-2026 with realistic clustering of deployments
+      on specific days. Critical for deployment frequency analysis, release cadence tracking,
+      and temporal pattern identification.
+    checks:
+      - name: not_null
+  - name: deployed_by
+    type: INTEGER
+    description: |-
+      Foreign key to employees table (employee_key) identifying the engineer who executed
+      the deployment. References engineering team members with employee_key in range 1201-1650.
+      Enables deployment workload analysis, individual engineer deployment patterns, and
+      responsibility tracking for deployment outcomes.
+    checks:
+      - name: not_null
+  - name: deployment_key
+    type: INTEGER
+    description: |-
+      Primary identifier for deployments, sequential integers from 1-1200. Serves as the
+      natural key for joining with other engineering datasets and tracking deployment
+      sequences over time.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: environment
+    type: STRING
+    description: |-
+      Target deployment environment with realistic distribution reflecting promotion patterns:
+      40% Production, 35% Staging, 25% Development. Critical for environment-specific deployment
+      analysis, promotion tracking, and risk assessment. Production deployments require higher
+      scrutiny and have different failure tolerances.
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: |-
+      UTC timestamp when deployment data was extracted and loaded into the warehouse. All records
+      share the same extraction timestamp as this is batch-loaded synthetic data. Used for
+      data lineage tracking, freshness monitoring, and ETL process validation.
+  - name: rollback_date
+    type: DATE
+    description: |-
+      Date when deployment was rolled back due to issues, null for successful deployments.
+      Only ~6.4% of deployments have rollback dates reflecting realistic operational patterns.
+      When populated, typically occurs within 0-2 days of original deployment. Used for
+      rollback frequency analysis, time-to-rollback metrics, and deployment stability assessment.
+  - name: service_name
+    type: STRING
+    description: |-
+      Name of the deployed microservice. Contains 15 distinct services representing Contoso's
+      modular architecture: checkout-api, inventory-service, payment-gateway, search-service,
+      auth-service, cart-service, catalog-api, shipping-service, analytics-pipeline,
+      notification-service, order-service, crm-api, web-frontend, mobile-bff, admin-dashboard.
+      Used for service-level deployment frequency and reliability analysis.
+    checks:
+      - name: not_null
+  - name: status
+    type: STRING
+    description: |-
+      Final deployment outcome following realistic distribution: ~90% Success, ~7% Rolled Back,
+      ~3% Failed. Success indicates stable deployment, Rolled Back means deployment was reverted
+      due to issues, Failed represents deployments that could not be completed or immediately
+      failed. Primary metric for deployment reliability and engineering process effectiveness.
+    checks:
+      - name: not_null
+  - name: ticket_key
+    type: FLOAT
+    description: |-
+      Foreign key to sprint_tickets table (ticket_key) for planned deployments, null for hotfixes.
+      About 80% of deployments are linked to tickets (planned work) while 20% represent emergency
+      hotfixes deployed outside normal sprint cycles. Range 25-7998 aligns with sprint ticket
+      key range. Enables traceability between development work and deployments, planned vs
+      unplanned deployment ratio analysis, and sprint delivery tracking.

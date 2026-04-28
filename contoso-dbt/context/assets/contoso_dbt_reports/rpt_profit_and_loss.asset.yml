@@ -1,0 +1,64 @@
+name: contoso_dbt_reports.rpt_profit_and_loss
+type: bq.source
+description: |-
+  Comprehensive monthly Profit & Loss statement for Contoso company, providing a complete financial performance view with budget variance analysis. This executive-level financial report consolidates revenue from sales transactions, cost of goods sold, and departmental operating expenses into a standard P&L format suitable for board reporting and financial analysis.
+
+  The report synthesizes data from multiple sources: actual revenue and COGS are calculated from transactional sales data (2.3M+ transactions), while operating expenses are sourced from general ledger journal entries aggregated by department and account code. Budget comparisons enable variance analysis to identify departments and expense categories that are over/under budget.
+
+  Line items follow standard accounting presentation order using sort_order for proper financial statement hierarchy: Revenue → COGS → Gross Profit → detailed OpEx by account → Total OpEx → Operating Income. Operating expense line items are indented with leading spaces to show the rollup structure, with detailed accounts (indented) rolling up to category totals.
+
+  The variance analysis compares actual vs budgeted amounts, calculating both absolute variance (amount - budget_amount) and percentage variance ((actual - budget) / budget * 100). This supports monthly financial close processes, department-level budget accountability, and executive dashboard reporting.
+
+  Key business insights: Enables identification of cost center performance, seasonal revenue patterns, margin analysis by period, and budget forecast accuracy. Synthetic data represents typical mid-market company financial structure with multiple departments and standard chart of accounts.
+
+  Imported table: contoso_dbt_reports.rpt_profit_and_loss
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:48:02Z
+  Last modified: 2026-04-24T13:48:02Z
+  Row count: 1,784
+  Size: 122.23 KB
+tags:
+  - finance
+  - profit_and_loss
+  - budget_variance
+  - financial_reporting
+  - executive_dashboard
+  - monthly_reporting
+  - variance_analysis
+  - fact_table
+
+columns:
+  - name: amount
+    type: FLOAT
+    description: Actual financial amount for the line item in USD. Revenue amounts are positive; expenses (COGS, OpEx) are negative following standard P&L presentation conventions. Calculated amounts for subtotals (Gross Profit, Operating Income) reflect proper accounting arithmetic. Rounded to 2 decimal places for financial precision.
+    checks:
+      - name: not_null
+  - name: budget_amount
+    type: FLOAT
+    description: Budgeted financial amount for the line item in USD, when available. NULL for calculated line items (Gross Profit, Operating Income) and revenue/COGS lines that don't have budget allocations. Only operating expense line items contain budget values for variance analysis. Rounded to 2 decimal places.
+  - name: line_item
+    type: STRING
+    description: Financial statement line item name following standard P&L presentation format. Top-level items (Revenue, Total Operating Expenses, Operating Income) appear without indentation. Detailed operating expense accounts are prefixed with spaces for hierarchical display. Account names correspond to chart of accounts descriptions from the GL system.
+    checks:
+      - name: not_null
+  - name: month
+    type: INTEGER
+    description: Calendar month number (1-12) for the financial reporting period. Combined with year to define the specific monthly period for P&L performance measurement and period-over-period trend analysis.
+    checks:
+      - name: not_null
+  - name: sort_order
+    type: INTEGER
+    description: Presentation sequence number ensuring proper P&L financial statement ordering. Lower values appear first (1=Revenue, 2=COGS, 3=Gross Profit). Detailed OpEx accounts use sort_order = 10 + account_code_prefix to maintain account number sequence within the OpEx section. Subtotal lines use fixed high values (90=Total OpEx, 100=Operating Income).
+    checks:
+      - name: not_null
+  - name: variance
+    type: FLOAT
+    description: Budget variance amount (actual - budget) for line items with budget allocations. Positive values indicate favorable variances for revenue or unfavorable for expenses. NULL for line items without budgets (revenue, COGS, calculated subtotals). Enables identification of departments and accounts that exceed or underperform budget expectations. Rounded to 2 decimal places.
+  - name: variance_pct
+    type: FLOAT
+    description: Budget variance as percentage of budget ((actual - budget) / budget * 100). Positive percentages indicate over-budget performance for expenses or over-achievement for revenue targets. NULL when budget_amount is zero or NULL. Used for relative performance assessment and materiality analysis of budget deviations. Rounded to 2 decimal places.
+  - name: year
+    type: INTEGER
+    description: Calendar year for the financial reporting period. Combined with month to define the temporal scope for P&L measurement. Enables year-over-year financial trend analysis and multi-year budget performance tracking.
+    checks:
+      - name: not_null

@@ -1,0 +1,102 @@
+name: contoso_dbt_raw.support_tickets
+type: bq.source
+description: |-
+  Imported table: contoso_dbt_raw.support_tickets
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:59Z
+  Last modified: 2026-04-24T13:43:12Z
+  Row count: 150,000
+  Size: 14.04 MB
+
+  Customer support ticket records for Contoso, capturing the complete lifecycle of
+  support interactions across multiple channels (phone, email, chat). This synthetic
+  dataset contains ~150K support tickets with detailed tracking of agent assignments,
+  customer satisfaction, resolution timelines, and categorization.
+
+  The table supports customer service analytics including resolution time tracking,
+  satisfaction scoring, channel performance analysis, and agent workload distribution.
+  Records may receive updates during the ticket lifecycle, so downstream processing
+  typically deduplicates by support_ticket_key using the latest extracted_at timestamp.
+
+  Key relationships: Links to customer dimension (customer_key), employee directory
+  (agent_employee_key), and optionally to specific orders (order_key) and products
+  (product_key) when tickets relate to purchase issues.
+tags:
+  - customer_support
+  - fact_table
+  - synthetic_data
+  - daily_updates
+  - customer_experience
+
+columns:
+  - name: agent_employee_key
+    type: INTEGER
+    description: Foreign key to employee dimension identifying the support agent assigned to this ticket
+    checks:
+      - name: not_null
+  - name: category
+    type: STRING
+    description: Support ticket category (e.g., Technical Issue, Billing Question, Product Inquiry, etc.)
+    checks:
+      - name: not_null
+  - name: channel
+    type: STRING
+    description: Communication channel through which the ticket was created (Phone, Email, Chat)
+    checks:
+      - name: not_null
+  - name: created_date
+    type: DATE
+    description: Date when the support ticket was first created by the customer
+    checks:
+      - name: not_null
+  - name: customer_key
+    type: INTEGER
+    description: Foreign key to customer dimension identifying the customer who submitted the ticket
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp when this record was extracted from the source system, used for deduplication in downstream processing
+    checks:
+      - name: not_null
+  - name: order_key
+    type: FLOAT
+    description: Optional foreign key to order dimension when the ticket relates to a specific purchase or order issue
+  - name: priority
+    type: STRING
+    description: Ticket priority level (Critical, High, Medium, Low) based on business impact assessment
+    checks:
+      - name: not_null
+  - name: product_key
+    type: FLOAT
+    description: Optional foreign key to product dimension when the ticket relates to a specific product issue
+  - name: resolved_date
+    type: DATE
+    description: Date when the ticket was marked as resolved, null for open or escalated tickets
+  - name: satisfaction_score
+    type: FLOAT
+    description: Customer satisfaction score (typically 1-5 scale) collected after ticket resolution, null for unresolved tickets
+    checks:
+      - name: accepted_values
+        value:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+  - name: status
+    type: STRING
+    description: Current ticket status (Open, Resolved, Escalated) indicating the stage in the support lifecycle
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - Open
+          - Resolved
+          - Escalated
+  - name: support_ticket_key
+    type: INTEGER
+    description: Primary identifier for the support ticket, unique across all support interactions
+    checks:
+      - name: not_null
+      - name: unique

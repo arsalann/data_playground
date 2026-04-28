@@ -1,0 +1,87 @@
+name: contoso_dbt_reports.rpt_customer_support_report
+type: bq.source
+description: |-
+  Customer Support KPI Report - Monthly aggregated metrics for support ticket performance analysis
+
+  This report provides comprehensive support operations insights aggregated by year, month, channel, and category.
+  Built from deduplicated support tickets (~150K raw records) to track key performance indicators including:
+  - Resolution rates and timeframes
+  - Agent productivity metrics
+  - Customer satisfaction scores
+  - Ticket volume and priority distributions
+  - Escalation patterns across channels
+
+  The data undergoes deduplication based on support_ticket_key (latest extracted_at wins) before aggregation.
+  Metrics exclude unresolved tickets from resolution time calculations but include them in volume counts.
+  This table serves as the primary source for support management dashboards and operational reporting.
+
+  Imported table: contoso_dbt_reports.rpt_customer_support_report
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:38Z
+  Last modified: 2026-04-24T13:47:38Z
+  Row count: 3,168
+  Size: 352.17 KB
+tags:
+  - customer_support
+  - operations
+  - kpi
+  - report_layer
+  - monthly_aggregated
+  - mart
+  - dashboard_ready
+
+columns:
+  - name: avg_resolution_days
+    type: FLOAT
+    description: Average days from ticket creation to resolution (rounded to 2 decimal places). Only includes resolved tickets in calculation.
+  - name: avg_satisfaction
+    type: FLOAT
+    description: Average customer satisfaction score for tickets in this grouping (rounded to 2 decimal places). Based on satisfaction_score from raw tickets.
+  - name: category
+    type: STRING
+    description: Support ticket category classification (e.g., Technical, Billing, General). Part of the aggregation key.
+    checks:
+      - name: not_null
+  - name: channel
+    type: STRING
+    description: Support channel through which ticket was submitted (e.g., Email, Phone, Chat, Web). Part of the aggregation key.
+    checks:
+      - name: not_null
+  - name: critical_count
+    type: INTEGER
+    description: Count of tickets with 'Critical' priority within this grouping.
+  - name: escalated_count
+    type: INTEGER
+    description: Count of tickets with 'Escalated' status within this grouping.
+  - name: high_count
+    type: INTEGER
+    description: Count of tickets with 'High' priority within this grouping.
+  - name: month
+    type: INTEGER
+    description: Month component (1-12) extracted from ticket creation date. Part of the time dimension for aggregation.
+    checks:
+      - name: not_null
+  - name: resolution_rate
+    type: FLOAT
+    description: Percentage of resolved tickets out of total tickets in this grouping (rounded to 2 decimal places). Calculated as (resolved_count / ticket_count) * 100.
+  - name: resolved_count
+    type: INTEGER
+    description: Count of tickets with 'Resolved' status within this grouping.
+  - name: ticket_count
+    type: INTEGER
+    description: Total count of support tickets within this grouping. Primary volume metric.
+    checks:
+      - name: not_null
+  - name: tickets_per_agent
+    type: FLOAT
+    description: Average number of tickets handled per agent in this grouping (rounded to 2 decimal places). Calculated as ticket_count / unique_agents.
+  - name: unique_agents
+    type: INTEGER
+    description: Count of distinct support agents who handled tickets in this grouping. Based on agent_employee_key.
+    checks:
+      - name: not_null
+  - name: year
+    type: INTEGER
+    description: Year component extracted from ticket creation date. Part of the time dimension for aggregation.
+    checks:
+      - name: not_null

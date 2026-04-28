@@ -1,0 +1,50 @@
+name: contoso_dbt_raw.departments
+type: bq.source
+description: |-
+  Department master table for Contoso retail operations, defining the organizational structure and hierarchy across all business units. This reference table contains the complete catalog of operational departments within the company, serving as the foundation for employee assignments, cost center allocation, and organizational reporting.
+
+  The dataset represents a flat organizational structure with 12 core departments spanning retail operations, corporate functions, and support services. Each department is assigned a unique cost center for financial tracking and budget allocation. The hierarchical structure is supported through parent-child relationships, enabling multi-level organizational analysis and reporting rollups.
+
+  Key relationships: Referenced by employees (department_key), payroll records, and budget allocation systems. Acts as a dimension table for all workforce and financial analytics, providing organizational context for performance metrics, headcount reporting, and cost center analysis.
+
+  Data characteristics: parent_department_key stored as FLOAT due to nullable nature (top-level departments have no parent); cost_center follows a standardized alphanumeric format for accounting integration; department names are standardized business function labels.
+
+  Imported table: contoso_dbt_raw.departments
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:51Z
+  Last modified: 2026-04-24T13:42:02Z
+  Row count: 12
+  Size: 523 bytes
+tags:
+  - domain:hr
+  - domain:finance
+  - data_type:dimension_table
+  - sensitivity:internal
+  - pipeline_role:raw
+  - update_pattern:slowly_changing
+
+columns:
+  - name: cost_center
+    type: STRING
+    description: Unique alphanumeric identifier used by finance and accounting systems to track departmental expenses, budgets, and cost allocation for financial reporting and analysis
+    checks:
+      - name: not_null
+  - name: department_key
+    type: INTEGER
+    description: Primary key identifier for each department, serving as the unique department ID referenced across all employee, payroll, and organizational systems
+    checks:
+      - name: unique
+      - name: not_null
+  - name: department_name
+    type: STRING
+    description: Human-readable business name of the department (e.g., Sales, Marketing, Engineering, HR) used for display purposes and organizational charts
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp indicating when this department record was extracted from the source system during ETL processing
+    checks:
+      - name: not_null
+  - name: parent_department_key
+    type: FLOAT
+    description: Foreign key reference to department_key of the parent department in organizational hierarchy; NULL for top-level departments, enabling recursive organizational structure queries

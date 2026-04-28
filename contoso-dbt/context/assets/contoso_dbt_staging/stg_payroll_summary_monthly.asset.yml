@@ -1,0 +1,99 @@
+name: contoso_dbt_staging.stg_payroll_summary_monthly
+type: bq.source
+description: |-
+  Monthly departmental payroll summary aggregating compensation data across all Contoso employees by department and month. This staging table transforms the granular semi-monthly payroll transactions into management-friendly monthly department-level metrics for workforce cost analysis, budgeting, and executive reporting.
+
+  Each row represents one department for one month, containing aggregated compensation metrics including total gross pay, deductions, net pay, headcount, and average per-employee calculations. Data is sourced from the raw payroll transactions joined with department master data to provide both numeric department keys and human-readable department names.
+
+  Key transformations: Semi-monthly payroll records are aggregated to monthly totals; employee counts represent unique active employees who received payroll during the month; monetary amounts are summed across all currencies (requires currency conversion in upstream processes); averages are calculated as total compensation divided by headcount.
+
+  Downstream usage: Feeds executive KPI dashboards for workforce cost monitoring; supports departmental budget variance analysis; enables headcount trend reporting; used for year-over-year departmental cost comparison and per-employee compensation benchmarking across the organization.
+
+  Data characteristics: Time-series data spanning ~3 years with monthly grain; 12 departments typically represented each month; headcount fluctuates with seasonal hiring/attrition; avg_gross_per_employee provides normalized cost comparison across departments of varying sizes.
+
+  Imported table: contoso_dbt_staging.stg_payroll_summary_monthly
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:42Z
+  Last modified: 2026-04-24T13:47:42Z
+  Row count: 2,573
+  Size: 190.95 KB
+tags:
+  - domain:hr
+  - domain:finance
+  - data_type:fact_table
+  - sensitivity:pii
+  - pipeline_role:staging
+  - update_pattern:monthly_snapshot
+  - contains:compensation_metrics
+  - contains:headcount_data
+  - refresh_cadence:monthly
+
+columns:
+  - name: avg_gross_per_employee
+    type: FLOAT
+    description: Average gross pay per employee for the department and month, calculated as total_gross_pay divided by headcount; provides normalized compensation metric for cross-departmental comparison in USD
+    checks:
+      - name: min
+        value: 0
+  - name: department_key
+    type: INTEGER
+    description: Foreign key identifier linking to departments table, uniquely identifying the department for this payroll summary record
+    checks:
+      - name: not_null
+  - name: department_name
+    type: STRING
+    description: Human-readable department name joined from departments table (e.g., Sales, Marketing, Engineering, HR) for display and filtering purposes
+    checks:
+      - name: not_null
+  - name: headcount
+    type: INTEGER
+    description: Count of unique employees who received payroll payments in this department during the month; represents active workforce size for the period
+    checks:
+      - name: not_null
+      - name: min
+        value: 1
+  - name: month
+    type: INTEGER
+    description: Month number (1-12) representing the calendar month for this payroll summary aggregation
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+          - 9
+          - 10
+          - 11
+          - 12
+  - name: total_deductions
+    type: FLOAT
+    description: Sum of all deductions across employees in the department for the month, including taxes, benefits, retirement contributions, and other authorized withholdings in USD
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: total_gross_pay
+    type: FLOAT
+    description: Sum of all gross pay amounts across employees in the department for the month, including salary, overtime, bonuses, and commissions before deductions in USD
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: total_net_pay
+    type: FLOAT
+    description: Sum of all net pay amounts across employees in the department for the month, representing actual take-home pay after all deductions in USD; should approximately equal total_gross_pay minus total_deductions
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: year
+    type: INTEGER
+    description: Four-digit calendar year for this payroll summary record, used with month for temporal analysis and time-series reporting
+    checks:
+      - name: not_null

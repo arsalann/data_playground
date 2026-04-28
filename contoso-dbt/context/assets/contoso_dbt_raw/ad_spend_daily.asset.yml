@@ -1,0 +1,73 @@
+name: contoso_dbt_raw.ad_spend_daily
+type: bq.source
+description: |-
+  Daily advertising spend performance data for marketing campaigns across various channels. This synthetic dataset (Faker-generated) tracks daily-level spend allocation, audience reach, and engagement metrics for each campaign.
+
+  The table serves as the primary source for marketing performance analysis, feeding into campaign ROI calculations and channel-level spend efficiency reporting. Each record represents a single campaign's performance on a specific date, capturing the full marketing funnel from impressions to conversions.
+
+  Used extensively in downstream models to calculate key marketing metrics including CTR (click-through rate), conversion rates, CPA (cost per acquisition), and ROAS (return on ad spend). Data is aggregated by campaign in the staging layer and rolled up by channel and time periods for executive reporting.
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:52Z
+  Last modified: 2026-04-24T13:42:11Z
+  Row count: 9,754
+  Size: 746.92 KB
+tags:
+  - domain:marketing
+  - data_type:fact_table
+  - pipeline_role:raw
+  - update_pattern:daily
+  - sensitivity:internal
+  - contains:performance_metrics
+
+columns:
+  - name: ad_spend_key
+    type: INTEGER
+    description: Unique identifier for each daily advertising spend record. Primary key ensuring each campaign-date combination has a distinct entry.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: campaign_key
+    type: INTEGER
+    description: Foreign key reference to the campaigns table. Links spend data to campaign metadata including name, channel, duration, and budget information.
+    checks:
+      - name: not_null
+  - name: channel
+    type: STRING
+    description: Marketing channel or platform where ads were placed (e.g., Google Ads, Facebook, LinkedIn, Display). Used for channel-level ROI analysis and budget allocation decisions.
+    checks:
+      - name: not_null
+  - name: clicks
+    type: INTEGER
+    description: Total number of ad clicks received on this campaign for this date. Key engagement metric used to calculate click-through rate and cost-per-click.
+    checks:
+      - name: not_null
+  - name: conversions
+    type: INTEGER
+    description: Number of desired actions completed (purchases, signups, etc.) attributed to this campaign on this date. Used to calculate conversion rate and cost-per-acquisition.
+    checks:
+      - name: not_null
+  - name: currency
+    type: STRING
+    description: Currency code for the spend_amount field. Important for multi-currency campaigns before conversion to USD in downstream models.
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Technical metadata timestamp indicating when this record was last extracted/loaded by the dlt pipeline. Used for data lineage and deduplication logic.
+    checks:
+      - name: not_null
+  - name: impressions
+    type: INTEGER
+    description: Total number of times ads were displayed to users for this campaign on this date. Top-of-funnel metric used to calculate reach and click-through rates.
+    checks:
+      - name: not_null
+  - name: spend_amount
+    type: FLOAT
+    description: Total advertising spend amount for this campaign on this date in the specified currency. Core metric for ROI calculations and budget tracking.
+    checks:
+      - name: not_null
+  - name: spend_date
+    type: DATE
+    description: Date when the advertising spend and performance metrics occurred. Provides daily granularity for time-series analysis and period-over-period reporting.
+    checks:
+      - name: not_null

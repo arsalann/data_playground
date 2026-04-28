@@ -1,0 +1,113 @@
+name: contoso_dbt_reports.rpt_marketing_channel_roi
+type: bq.source
+description: |-
+  Quarterly marketing channel performance and ROI analysis report, providing executive-level insights into channel effectiveness and spend efficiency across all marketing campaigns.
+
+  This report aggregates campaign-level performance data (from stg_marketing_performance) by channel and quarter, calculating key marketing efficiency metrics including average ROAS, CPA, CTR, and conversion rates. Each row represents a channel's performance for a specific quarter, with totals for spend, impressions, clicks, conversions, and attributed revenue.
+
+  The spend_efficiency field categorizes channels as 'High', 'Medium', or 'Low' efficiency based on ROAS thresholds, enabling quick identification of top-performing channels for budget allocation decisions. The table powers executive dashboards and quarterly business reviews, showing trends in channel performance over time.
+
+  Used extensively for:
+  - Marketing budget planning and allocation
+  - Channel performance benchmarking
+  - ROI trend analysis and forecasting
+  - Executive reporting on marketing effectiveness
+  - Strategic decisions on channel mix optimization
+
+  Data flows from ad_spend_daily (raw campaign performance) → stg_marketing_performance (campaign aggregation) → rpt_marketing_channel_roi (channel/quarter rollup).
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:55Z
+  Last modified: 2026-04-24T13:47:55Z
+  Row count: 140
+  Size: 18.02 KB
+tags:
+  - domain:marketing
+  - data_type:fact_table
+  - pipeline_role:mart
+  - update_pattern:quarterly
+  - sensitivity:internal
+  - contains:roi_metrics
+  - contains:performance_metrics
+  - aggregation_level:channel
+  - time_grain:quarterly
+  - use_case:executive_reporting
+  - use_case:budget_planning
+
+columns:
+  - name: attributed_orders
+    type: INTEGER
+    description: Total number of orders/purchases attributed to this channel during the quarter. Core business impact metric showing direct revenue generation from marketing efforts.
+    checks:
+      - name: not_null
+  - name: attributed_revenue_usd
+    type: NUMERIC
+    description: Total revenue in USD attributed to this channel during the quarter. Primary ROI calculation numerator, converted from original currencies for consistent reporting.
+    checks:
+      - name: not_null
+  - name: avg_conversion_rate
+    type: FLOAT
+    description: Average conversion rate across all campaigns in this channel for the quarter (conversions/clicks). Key efficiency metric showing how well traffic converts to desired actions.
+    checks:
+      - name: not_null
+  - name: avg_cpa
+    type: FLOAT
+    description: Average cost per acquisition in USD across campaigns in this channel for the quarter (total_spend/total_conversions). Critical efficiency metric for budget allocation decisions.
+    checks:
+      - name: not_null
+  - name: avg_ctr
+    type: FLOAT
+    description: Average click-through rate across all campaigns in this channel for the quarter (clicks/impressions). Measures ad creative effectiveness and audience targeting quality.
+    checks:
+      - name: not_null
+  - name: avg_roas
+    type: FLOAT
+    description: Average return on ad spend across campaigns in this channel for the quarter (attributed_revenue/total_spend). Primary profitability metric for channel evaluation.
+    checks:
+      - name: not_null
+  - name: campaign_count
+    type: INTEGER
+    description: Number of distinct marketing campaigns run in this channel during the quarter. Indicates campaign diversity and testing volume within the channel.
+    checks:
+      - name: not_null
+  - name: channel
+    type: STRING
+    description: Marketing channel or platform name (e.g., Google Ads, Facebook, LinkedIn, Display). Primary dimension for performance analysis and budget allocation.
+    checks:
+      - name: not_null
+  - name: quarter
+    type: INTEGER
+    description: Quarter number (1-4) for the performance period. Time dimension for seasonal analysis and quarterly business reporting.
+    checks:
+      - name: not_null
+  - name: spend_efficiency
+    type: STRING
+    description: Categorical efficiency rating based on ROAS performance thresholds (High/Medium/Low). Quick visual indicator for executive reporting and channel prioritization.
+    checks:
+      - name: not_null
+  - name: total_clicks
+    type: INTEGER
+    description: Sum of all clicks across campaigns in this channel during the quarter. Engagement volume metric for traffic generation analysis.
+    checks:
+      - name: not_null
+  - name: total_conversions
+    type: INTEGER
+    description: Sum of all conversions across campaigns in this channel during the quarter. Total desired actions completed, used for conversion rate and CPA calculations.
+    checks:
+      - name: not_null
+  - name: total_impressions
+    type: INTEGER
+    description: Sum of all ad impressions across campaigns in this channel during the quarter. Reach metric indicating total audience exposure for the channel.
+    checks:
+      - name: not_null
+  - name: total_spend
+    type: FLOAT
+    description: Sum of all advertising spend in USD across campaigns in this channel during the quarter. Total investment metric for ROI calculations and budget tracking.
+    checks:
+      - name: not_null
+  - name: year
+    type: INTEGER
+    description: Year for the performance period. Time dimension enabling year-over-year trend analysis and long-term performance tracking.
+    checks:
+      - name: not_null

@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: rpt_revenue_by_segment
+    description: Monthly revenue/profit by store_country x category with MoM and YoY growth. Ported from contoso_reports.revenue_by_segment.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month, store_country, category_name]
+    columns:
+      - name: year
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+      - name: store_country
+        tests: [not_null]
+      - name: category_name
+        tests: [not_null]
+
+  - name: rpt_profit_and_loss
+    description: Monthly P&L with actuals vs budget and variance. Ported from contoso_reports.profit_and_loss.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month, line_item]
+
+  - name: rpt_marketing_channel_roi
+    description: Quarterly marketing KPIs by channel with spend-efficiency classification. Ported from contoso_reports.marketing_channel_roi.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [channel, year, quarter]
+    columns:
+      - name: channel
+        tests:
+          - accepted_values:
+              values: ["Paid Search", "Social", "Display", "Email", "Referral"]
+      - name: spend_efficiency
+        tests:
+          - accepted_values:
+              values: ["Excellent", "Good", "Fair", "Poor"]
+
+  - name: rpt_workforce_analytics
+    description: Quarterly headcount, turnover, tenure, and payroll cost by department. Ported from contoso_reports.workforce_analytics.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, quarter, department_name]
+
+  - name: rpt_delivery_sla
+    description: Monthly shipping SLA metrics by carrier and country including P95 lead time. Ported from contoso_reports.delivery_sla.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month, carrier, store_country]
+    columns:
+      - name: carrier
+        tests:
+          - accepted_values:
+              values: ["FedEx", "UPS", "DHL", "USPS"]
+
+  - name: rpt_customer_support_report
+    description: Monthly support KPIs by channel and category (resolution rate, satisfaction, agent load). Ported from contoso_reports.customer_support_report.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month, channel, category]
+
+  - name: rpt_engineering_report
+    description: Monthly engineering velocity and DORA-adjacent metrics. Ported from contoso_reports.engineering_report.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month]

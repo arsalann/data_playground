@@ -1,0 +1,102 @@
+name: contoso_dbt_reports.rpt_revenue_by_segment
+type: bq.source
+description: |-
+  Monthly revenue performance report for Contoso retail business, aggregated by geographic (store country) and product (category) segments. This executive-level business intelligence report provides comprehensive sales analytics by combining transactional data from 2.3M+ sales records into strategic insights for category management, territory performance analysis, and growth trend monitoring.
+
+  The report aggregates granular sales transactions from the staging sales fact table into monthly summaries, calculating key performance indicators including revenue, costs, profits, margins, and growth metrics. Each row represents a unique combination of time period (month/year), geographic market (store_country), and product category (category_name), enabling multidimensional analysis of business performance.
+
+  Key business applications include: territory manager performance tracking, product category profitability analysis, seasonal trend identification, market penetration assessment, and executive dashboard reporting. The growth metrics (revenue_mom, revenue_yoy) support trend analysis and forecasting initiatives for strategic planning.
+
+  Data transformations include: aggregation of transactional sales data by segment dimensions, calculation of average order values and margin percentages, computation of month-over-month and year-over-year growth rates, and standardization to USD for consistent financial reporting across international operations.
+
+  This report serves as a foundational dataset for business intelligence tools, feeding into executive dashboards, territory planning systems, and category management analytics. The aggregated nature (8,352 rows vs 2.3M transaction records) provides optimal performance for analytical queries while preserving essential business insights.
+
+  Imported table: contoso_dbt_reports.rpt_revenue_by_segment
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:48:03Z
+  Last modified: 2026-04-24T13:48:03Z
+  Row count: 8,352
+  Size: 1.35 MB
+tags:
+  - domain:retail
+  - data_type:fact_table
+  - pipeline_role:mart
+  - business_area:sales_analytics
+  - executive_reporting
+  - segment_analysis
+  - geography:multi_country
+  - update_pattern:monthly_append
+  - sensitivity:internal
+
+columns:
+  - name: avg_margin_pct
+    type: NUMERIC
+    description: Average gross margin percentage for the segment, calculated as (profit / revenue * 100). Represents profitability efficiency across product categories and geographic markets, used for pricing strategy and category performance evaluation.
+  - name: avg_order_value
+    type: NUMERIC
+    description: Average order value in USD for the segment, calculated as total revenue divided by order count. Key metric for customer behavior analysis, pricing strategy, and market comparison across segments and time periods.
+  - name: category_name
+    type: STRING
+    description: Product category dimension (e.g., Electronics, Clothing, Home & Garden) representing high-level product classification. Part of the segment key enabling product performance analysis and category management reporting.
+    checks:
+      - name: not_null
+  - name: cost_usd
+    type: NUMERIC
+    description: Total cost of goods sold in USD for the segment, aggregated from product-level cost data. Used for margin analysis, profitability reporting, and cost management tracking across categories and markets.
+    checks:
+      - name: not_null
+  - name: month
+    type: INTEGER
+    description: Calendar month number (1-12) for the reporting period. Part of the temporal dimension enabling seasonal analysis, month-over-month comparisons, and periodic business reporting cycles.
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+          - 9
+          - 10
+          - 11
+          - 12
+  - name: order_count
+    type: INTEGER
+    description: Total number of distinct orders placed in the segment during the reporting period. Operational metric for volume analysis, customer engagement tracking, and transaction velocity measurement.
+    checks:
+      - name: not_null
+  - name: profit_usd
+    type: NUMERIC
+    description: Total gross profit in USD for the segment, calculated as revenue minus cost of goods sold. Core profitability metric for financial reporting, category evaluation, and territory performance assessment.
+    checks:
+      - name: not_null
+  - name: revenue_mom
+    type: NUMERIC
+    description: Month-over-month revenue growth rate as decimal (e.g., 0.15 = 15% growth). Calculated as (current month revenue - previous month revenue) / previous month revenue, enabling trend analysis and growth tracking.
+  - name: revenue_usd
+    type: NUMERIC
+    description: Total revenue in USD for the segment during the reporting period. Primary financial metric aggregated from transactional sales data, standardized to USD for consistent cross-market analysis and reporting.
+    checks:
+      - name: not_null
+  - name: revenue_yoy
+    type: NUMERIC
+    description: Year-over-year revenue growth rate as decimal (e.g., 0.25 = 25% growth). Calculated as (current year revenue - previous year revenue) / previous year revenue, used for annual performance assessment and strategic planning.
+  - name: store_country
+    type: STRING
+    description: Country where retail stores are located (e.g., United States, Canada, United Kingdom). Geographic dimension enabling territory analysis, international performance comparison, and regional business insights.
+    checks:
+      - name: not_null
+  - name: units_sold
+    type: INTEGER
+    description: Total quantity of units sold across all products in the segment during the reporting period. Volume metric for inventory planning, demand forecasting, and operational capacity analysis.
+    checks:
+      - name: not_null
+  - name: year
+    type: INTEGER
+    description: Calendar year for the reporting period. Temporal dimension enabling year-over-year analysis, historical trend identification, and multi-year strategic planning and forecasting.
+    checks:
+      - name: not_null

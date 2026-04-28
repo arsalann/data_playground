@@ -1,0 +1,101 @@
+name: contoso_dbt_staging.stg_engineering_velocity
+type: bq.source
+description: |-
+  Imported table: contoso_dbt_staging.stg_engineering_velocity
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:37Z
+  Last modified: 2026-04-24T13:47:37Z
+  Row count: 571
+  Size: 56.80 KB
+
+  Engineering velocity metrics aggregated by sprint, combining agile development tracking data
+  from sprint tickets with production deployment statistics. This staging table transforms and
+  joins deduped sprint_tickets and deployments data to provide sprint-level KPIs for measuring
+  engineering team performance and delivery quality.
+
+  The table correlates development work (stories, bugs, cycle times) with deployment activity
+  (production releases, rollbacks) by mapping deployments to sprints using ISO week calculations.
+  Sprint names follow the pattern 'Sprint YYYY-WWW' format. Deployment metrics are filtered to
+  production environment only to focus on customer-facing releases.
+
+  Primarily used for engineering management dashboards, velocity trending, and capacity planning.
+  Downstream consumption includes monthly aggregations in rpt_engineering_report for executive
+  reporting on engineering productivity and quality metrics.
+tags:
+  - domain:engineering
+  - domain:devops
+  - data_type:fact_table
+  - pipeline_role:staging
+  - update_pattern:append_only
+  - sensitivity:internal
+  - business_function:velocity_tracking
+  - business_function:performance_management
+
+columns:
+  - name: avg_cycle_time_days
+    type: FLOAT
+    description: Average time in days from ticket creation to resolution for completed tickets within the sprint, calculated only for resolved tickets
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: bug_count
+    type: INTEGER
+    description: Total number of tickets classified as 'Bug' type within the sprint, indicating defect work
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: completed_story_points
+    type: INTEGER
+    description: Sum of story points for tickets marked as 'Done' or 'Closed', representing actual delivered velocity
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: completed_tickets
+    type: INTEGER
+    description: Count of tickets with status 'Done' or 'Closed', indicating successfully delivered work items
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: deployment_count
+    type: INTEGER
+    description: Number of production deployments that occurred during the sprint week (ISO week-based mapping)
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: rollback_count
+    type: INTEGER
+    description: Number of production deployments that were rolled back, indicating deployment quality issues
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: rollback_rate
+    type: FLOAT
+    description: Percentage of deployments that were rolled back, calculated as (rollback_count / deployment_count) * 100
+  - name: sprint_name
+    type: STRING
+    description: Sprint identifier following 'Sprint YYYY-WWW' pattern where YYYY is ISO year and WWW is zero-padded ISO week number
+    checks:
+      - name: not_null
+  - name: sprint_start_date
+    type: DATE
+    description: Earliest ticket creation date within the sprint, serving as proxy for sprint start date
+    checks:
+      - name: not_null
+  - name: story_count
+    type: INTEGER
+    description: Total number of tickets classified as 'Story' type within the sprint, representing feature development work
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: total_story_points
+    type: INTEGER
+    description: Sum of story points for all tickets in the sprint regardless of completion status, representing planned capacity
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: total_tickets
+    type: INTEGER
+    description: Total count of tickets in the sprint regardless of status or type, representing overall work volume
+    checks:
+      - name: non_negative
+        value: '>= 0'

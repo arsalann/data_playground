@@ -1,0 +1,81 @@
+name: contoso_dbt_raw.payroll
+type: bq.source
+description: |-
+  Semi-monthly payroll transaction history for all Contoso employees, containing detailed compensation records for payroll processing, workforce analytics, and financial reporting across the multinational retail organization.
+
+  This table captures individual payroll transactions for each employee per pay period, representing approximately 2-3 years of comprehensive payroll data for Contoso's 3,000-employee workforce spanning 74 retail stores and corporate locations worldwide. Records include gross pay calculations, various deductions (taxes, benefits, garnishments), and net pay amounts in local currency.
+
+  Key relationships: Links to employees table via employee_key for demographic and organizational details. Currency field corresponds to currency_exchange table for multi-currency financial consolidation. Feeds into staging models for monthly departmental payroll summaries and executive reporting.
+
+  Data characteristics: Semi-monthly pay frequency results in ~26 records per employee per year; currency reflects local compensation standards by geographic region; deductions include all pre-tax and post-tax withholdings; gross_pay represents base salary plus overtime, bonuses, and other compensation before deductions.
+
+  Business usage: Primary source for payroll expense reporting, tax filing, benefits administration, workforce cost analysis, and compliance auditing. Used downstream for departmental budget variance analysis and headcount cost modeling.
+
+  Imported table: contoso_dbt_raw.payroll
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:00Z
+  Last modified: 2026-04-24T13:44:53Z
+  Row count: 613,686
+  Size: 40.38 MB
+tags:
+  - domain:hr
+  - domain:finance
+  - data_type:fact_table
+  - sensitivity:pii
+  - pipeline_role:raw
+  - update_pattern:append_only
+  - refresh_cadence:semi_monthly
+
+columns:
+  - name: currency
+    type: STRING
+    description: ISO currency code indicating the local currency for this payroll record (e.g., USD, EUR, GBP), reflecting regional compensation standards and legal requirements for international operations
+    checks:
+      - name: not_null
+  - name: deductions
+    type: FLOAT
+    description: Total amount withheld from gross pay including taxes, benefits premiums, retirement contributions, and other authorized deductions; currency amount in local currency specified by currency field
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: employee_key
+    type: INTEGER
+    description: Foreign key reference to employees table identifying the specific employee for this payroll transaction; primary link for joining employee demographics and organizational details
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: ETL timestamp indicating when this payroll record was extracted from the source payroll system during data ingestion processing
+    checks:
+      - name: not_null
+  - name: gross_pay
+    type: FLOAT
+    description: Total compensation amount before any deductions, including base salary, overtime, bonuses, commissions, and other earnings for the pay period; currency amount in local currency
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: net_pay
+    type: FLOAT
+    description: Final take-home pay amount after all deductions have been subtracted from gross pay; actual amount deposited to employee bank account; should equal gross_pay minus deductions
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: pay_period_end
+    type: DATE
+    description: Last day of the semi-monthly pay period covered by this payroll transaction; used to determine which earnings and time records are included in this pay cycle
+    checks:
+      - name: not_null
+  - name: pay_period_start
+    type: DATE
+    description: First day of the semi-monthly pay period covered by this payroll transaction; pay periods typically run 1st-15th and 16th-end of month
+    checks:
+      - name: not_null
+  - name: payroll_key
+    type: INTEGER
+    description: Primary key identifier for this specific payroll transaction record; unique identifier enabling precise tracking of individual pay events across the payroll history
+    checks:
+      - name: unique
+      - name: not_null

@@ -1,0 +1,9 @@
+dlt[bigquery]>=1.0.0
+dbt-bigquery>=1.8.0
+dbt-core>=1.8.0
+pandas>=2.0.0
+pyarrow>=14.0.0
+py7zr>=0.21.0
+faker>=24.0.0
+numpy>=1.26.0
+requests>=2.31.0

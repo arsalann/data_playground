@@ -1,0 +1,114 @@
+name: contoso_dbt_staging.stg_sales_fact
+type: bq.source
+description: |-
+  Denormalized sales fact table for Contoso consumer electronics retail chain. Combines sales transactions with customer, product, store, and date dimensions for analytics and reporting. Each row represents a line item from a customer order, with standardized USD amounts calculated using daily exchange rates.
+
+  This staging model deduplicates raw source tables and enriches sales transactions with dimensional attributes including customer demographics, product categories, store locations, and calendar dimensions. All monetary values are converted to USD for consistent cross-currency analysis.
+
+  Derived metrics include profit calculations and margin percentages. The table supports retail analytics across customer segments, product performance, geographic regions, and time periods. Typically used for revenue analysis, customer behavior studies, and operational reporting.
+
+  Source data spans ~2.3M order line items from the Contoso V2 dataset with synthetic enhancements.
+
+  Imported table: contoso_dbt_staging.stg_sales_fact
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:50Z
+  Last modified: 2026-04-24T13:47:50Z
+  Row count: 2,349,091
+  Size: 790.58 MB
+tags:
+  - domain:sales
+  - domain:retail
+  - layer:staging
+  - data_type:fact_table
+  - update_pattern:daily
+  - currency:multi_currency
+  - business_unit:sales
+  - contains:customer_data
+  - contains:financial_data
+  - aggregation_level:line_item
+
+columns:
+  - name: brand
+    type: STRING
+    description: Product manufacturer brand (e.g., "Contoso", "Adventure Works")
+  - name: category_name
+    type: STRING
+    description: High-level product category grouping for merchandising and reporting
+  - name: cost_usd
+    type: NUMERIC
+    description: Total cost of goods sold for this line item in USD, calculated as quantity * unit_cost_usd
+  - name: currency_code
+    type: STRING
+    description: Original transaction currency code (ISO 4217 format) before USD conversion
+  - name: customer_country
+    type: STRING
+    description: Customer's home country, used for geographic analysis and regional performance reporting
+  - name: customer_gender
+    type: STRING
+    description: Customer gender demographic attribute for segmentation analysis
+  - name: customer_key
+    type: INTEGER
+    description: Unique customer identifier, foreign key to customer dimension
+  - name: customer_name
+    type: STRING
+    description: Customer full name (concatenated given_name + surname) for personalized reporting
+  - name: customer_occupation
+    type: STRING
+    description: Customer's profession or job category for demographic segmentation
+  - name: dayof_week
+    type: STRING
+    description: Day of the week for the order_date, used for seasonality and operational analysis
+  - name: delivery_date
+    type: DATE
+    description: Actual product delivery date, may be null for orders not yet delivered
+  - name: line_number
+    type: INTEGER
+    description: Line item sequence number within an order, part of composite primary key with order_key
+  - name: margin_pct
+    type: NUMERIC
+    description: Gross margin percentage calculated as ((unit_price - unit_cost) / unit_price) * 100
+  - name: month_number
+    type: INTEGER
+    description: Month number (1-12) extracted from order_date for time-based aggregations
+  - name: order_date
+    type: DATE
+    description: Date when the customer placed the order, primary temporal dimension for sales analysis
+  - name: order_key
+    type: INTEGER
+    description: Unique order identifier, part of composite primary key with line_number
+  - name: product_key
+    type: INTEGER
+    description: Unique product identifier, foreign key to product dimension
+  - name: product_name
+    type: STRING
+    description: Full product name or description for detailed product analysis
+  - name: profit_usd
+    type: NUMERIC
+    description: Total gross profit for this line item in USD, calculated as quantity * (unit_price - unit_cost)
+  - name: quantity
+    type: INTEGER
+    description: Number of units sold for this line item
+  - name: quarter
+    type: STRING
+    description: Calendar quarter (Q1, Q2, Q3, Q4) extracted from order_date for seasonal reporting
+  - name: revenue_usd
+    type: NUMERIC
+    description: Total revenue for this line item in USD, calculated as quantity * unit_price
+  - name: store_country
+    type: STRING
+    description: Country where the selling store is located, used for geographic performance analysis
+  - name: store_key
+    type: INTEGER
+    description: Unique store identifier, foreign key to store dimension
+  - name: sub_category_name
+    type: STRING
+    description: Detailed product subcategory within the broader category_name hierarchy
+  - name: unit_cost_usd
+    type: NUMERIC
+    description: Cost per unit in USD after currency conversion, used for margin calculations
+  - name: unit_price_usd
+    type: NUMERIC
+    description: Selling price per unit in USD after currency conversion
+  - name: year
+    type: INTEGER
+    description: Calendar year extracted from order_date for annual reporting and trending

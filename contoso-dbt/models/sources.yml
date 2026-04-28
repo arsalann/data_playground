@@ -1,0 +1,149 @@
+version: 2
+
+sources:
+  - name: contoso_raw
+    description: |
+      Raw tables loaded by the dlt pipeline in ingest/pipeline.py. 8 tables come
+      from the SQLBI Contoso V2 parquet release; 15 are synthetic (Faker-generated).
+      dlt normalizes column names to snake_case during load.
+    database: bruin-playground-arsalan
+    schema: contoso_dbt_raw
+    tables:
+      # ----- Contoso V2 parquet-backed tables -----
+      - name: customers
+        description: Customer dimension (~105K rows)
+        columns:
+          - name: customer_key
+            tests:
+              - not_null
+          - name: country
+            tests:
+              - not_null
+
+      - name: dates
+        description: Date dimension (2016-2026)
+        columns:
+          - name: date
+            tests:
+              - not_null
+
+      - name: orders
+        description: Order headers (~980K)
+        columns:
+          - name: order_key
+            tests:
+              - not_null
+              - unique
+
+      - name: sales
+        description: Order line items (~2.3M rows, the primary fact table)
+        columns:
+          - name: order_key
+            tests:
+              - not_null
+          - name: line_number
+            tests:
+              - not_null
+
+      - name: products
+        description: Product master (~2.5K rows)
+        columns:
+          - name: product_key
+            tests:
+              - not_null
+              - unique
+
+      - name: stores
+        description: Store dimension (74 rows)
+        columns:
+          - name: store_key
+            tests:
+              - not_null
+              - unique
+
+      - name: order_rows
+        description: Alias line item table (~2.3M rows)
+
+      - name: currency_exchange
+        description: Daily FX rates (~100K rows)
+        columns:
+          - name: date
+            tests:
+              - not_null
+
+      # ----- Synthetic Faker-generated tables -----
+      - name: employees
+        description: Employee master (~3K rows)
+        columns:
+          - name: employee_key
+            tests:
+              - not_null
+              - unique
+
+      - name: departments
+        description: Org hierarchy (12 rows)
+        columns:
+          - name: department_key
+            tests:
+              - not_null
+              - unique
+
+      - name: payroll
+        description: Semi-monthly payroll history (~613K rows)
+
+      - name: campaigns
+        description: Marketing campaign master (~200 rows)
+        columns:
+          - name: campaign_key
+            tests:
+              - not_null
+
+      - name: ad_spend_daily
+        description: Daily ad spend, impressions, clicks by campaign (~50K rows)
+
+      - name: campaign_attribution
+        description: Last-touch attribution rows (~400K)
+
+      - name: gl_journal_entries
+        description: Double-entry GL transactions (~1.9M rows)
+
+      - name: budgets
+        description: Monthly budgets by department and account (~2.2K rows)
+
+      - name: accounts_payable
+        description: AP invoices (~12K rows)
+        columns:
+          - name: ap_key
+            tests:
+              - not_null
+              - unique
+
+      - name: inventory_snapshots
+        description: Stock snapshots by store and product (~300K rows)
+
+      - name: shipments
+        description: Order fulfillment records (~980K rows)
+        columns:
+          - name: shipment_key
+            tests:
+              - not_null
+
+      - name: support_tickets
+        description: Customer support tickets (~150K rows)
+        columns:
+          - name: support_ticket_key
+            tests:
+              - not_null
+
+      - name: sprint_tickets
+        description: Engineering sprint tickets (~8K rows)
+        columns:
+          - name: ticket_key
+            tests:
+              - not_null
+
+      - name: deployments
+        description: Software deployment records (~1.2K rows)
+
+      - name: job_postings
+        description: Historical job postings (~800 rows)

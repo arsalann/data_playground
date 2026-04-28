@@ -1,0 +1,61 @@
+name: contoso_dbt_raw.campaign_attribution
+type: bq.source
+description: |-
+  Marketing attribution data tracking customer touchpoints and their connection to campaigns and orders.
+
+  This table forms the foundation of the marketing attribution model by recording each interaction between
+  a customer and a marketing campaign that ultimately contributed to an order. Each row represents a single
+  touchpoint in the customer journey, with flags indicating whether it was the first or last interaction
+  before conversion.
+
+  The data supports multi-touch attribution analysis, allowing measurement of campaign effectiveness across
+  the entire customer journey rather than just final-click attribution. Feeds into marketing performance
+  reporting and ROI analysis via staging transformations.
+
+  Data source: Customer journey tracking system capturing campaign interactions
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:55Z
+  Last modified: 2026-04-24T13:44:25Z
+  Row count: 678,223
+  Size: 33.38 MB
+tags:
+  - domain:marketing
+  - data_type:fact_table
+  - pipeline_role:raw
+  - update_pattern:append_only
+  - sensitivity:internal
+
+columns:
+  - name: attribution_key
+    type: INTEGER
+    description: Primary key - unique identifier for each attribution record
+    checks:
+      - name: not_null
+      - name: unique
+  - name: campaign_key
+    type: INTEGER
+    description: Foreign key to campaigns table - identifies which campaign generated this touchpoint
+    checks:
+      - name: not_null
+  - name: channel
+    type: STRING
+    description: Marketing channel name (e.g., 'email', 'social', 'search', 'display') - denormalised from campaigns table for analysis convenience
+  - name: extracted_at
+    type: TIMESTAMP
+    description: ETL timestamp when this record was extracted from the source system (UTC)
+    checks:
+      - name: not_null
+  - name: is_first_touch
+    type: BOOLEAN
+    description: Flag indicating if this was the customer's first interaction with any campaign before the order
+  - name: is_last_touch
+    type: BOOLEAN
+    description: Flag indicating if this was the customer's final interaction before placing the order (last-click attribution)
+  - name: order_key
+    type: INTEGER
+    description: Foreign key to orders table - identifies which order this attribution contributes to
+    checks:
+      - name: not_null
+  - name: touchpoint_date
+    type: DATE
+    description: Date when the customer interaction occurred - used for attribution timing analysis

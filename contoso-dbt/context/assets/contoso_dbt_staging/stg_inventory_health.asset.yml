@@ -1,0 +1,81 @@
+name: contoso_dbt_staging.stg_inventory_health
+type: bq.source
+description: |-
+  Imported table: contoso_dbt_staging.stg_inventory_health
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:43Z
+  Last modified: 2026-04-24T13:47:43Z
+  Row count: 14,800
+  Size: 1.88 MB
+
+  Staging table providing real-time inventory health metrics for the Contoso retail organization. This asset combines the latest inventory snapshots with product and store dimensional data to create a comprehensive view of stock levels, reorder requirements, and stockout risks across all store locations.
+
+  Key transformations applied:
+  - Deduplicates inventory snapshots, products, and stores using latest extracted_at timestamp
+  - Selects most recent snapshot per store/product combination based on snapshot_date
+  - Derives is_below_reorder boolean flag comparing quantity_on_hand to reorder_point
+  - Creates stockout_risk categorization: Critical (0 stock), Low Stock (below reorder), Adequate (1-3x reorder point), Overstocked (>3x reorder point)
+  - Enriches with product names, categories, and store country information via dimensional joins
+
+  This staging table serves as the foundation for inventory management dashboards, automated reorder alerts, and stockout prevention analytics. Each row represents the current inventory position for a specific product at a specific store. The stockout_risk field enables priority-based inventory management, while is_below_reorder provides a simple trigger for reorder workflows.
+
+  Data represents the latest snapshot for each store/product combination from the ~300K rows in the raw inventory_snapshots table, filtered to active inventory positions only.
+tags:
+  - inventory
+  - supply_chain
+  - fact_table
+  - staging
+  - daily_snapshot
+  - operational
+  - retail
+
+columns:
+  - name: store_key
+    type: INTEGER
+    description: Primary identifier for retail store location. Foreign key reference to stores dimension table.
+    checks:
+      - name: not_null
+  - name: product_key
+    type: INTEGER
+    description: Primary identifier for product catalog items. Foreign key reference to products dimension table.
+    checks:
+      - name: not_null
+  - name: snapshot_date
+    type: DATE
+    description: Business date of the inventory snapshot. Represents when the inventory count was taken, used to get latest position per store/product.
+    checks:
+      - name: not_null
+  - name: store_country
+    type: STRING
+    description: Country where the retail store is located. Derived from stores dimension table for geographic analysis and reporting.
+  - name: product_name
+    type: STRING
+    description: Human-readable product name from products dimension table. Used for display purposes in inventory reports and dashboards.
+  - name: category_name
+    type: STRING
+    description: Product category classification from products dimension table. Enables category-level inventory analysis and management.
+  - name: quantity_on_hand
+    type: INTEGER
+    description: Current physical inventory count for this product at this store location. Core metric for availability and stockout analysis.
+    checks:
+      - name: not_null
+  - name: reorder_point
+    type: INTEGER
+    description: Inventory threshold level that triggers reorder workflow. When quantity_on_hand falls below this level, replenishment is required.
+    checks:
+      - name: not_null
+  - name: quantity_on_order
+    type: INTEGER
+    description: Units of this product already ordered but not yet received at this store. Used to calculate total available inventory including pipeline stock.
+    checks:
+      - name: not_null
+  - name: is_below_reorder
+    type: BOOLEAN
+    description: Derived flag indicating whether current stock level (quantity_on_hand) is below the reorder point threshold. Enables automated reorder alerting and filtering.
+    checks:
+      - name: not_null
+  - name: stockout_risk
+    type: STRING
+    description: Categorized risk level for stockout based on current inventory position. Critical (0 stock), Low Stock (below reorder), Adequate (1-3x reorder point), Overstocked (>3x reorder point).
+    checks:
+      - name: not_null

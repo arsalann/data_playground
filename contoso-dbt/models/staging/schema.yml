@@ -1,0 +1,101 @@
+version: 2
+
+models:
+  - name: stg_sales_fact
+    description: Denormalized sales fact with customer/product/store/date dimensions, USD currency conversion, and margin calculations. Ported from contoso_staging.sales_fact.
+    columns:
+      - name: order_key
+        tests: [not_null]
+      - name: line_number
+        tests: [not_null]
+      - name: currency_code
+        tests:
+          - accepted_values:
+              values: ["USD", "EUR", "GBP", "CAD", "AUD"]
+      - name: quarter
+        tests:
+          - accepted_values:
+              values: ["Q1", "Q2", "Q3", "Q4"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_key, line_number]
+
+  - name: stg_employee_directory
+    description: Enriched employee records with department, store, manager, and tenure. Ported from contoso_staging.employee_directory.
+    columns:
+      - name: employee_key
+        tests: [not_null, unique]
+
+  - name: stg_financial_summary_monthly
+    description: Monthly GL actuals vs budget by department and account. Ported from contoso_staging.financial_summary_monthly.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [fiscal_year, fiscal_month, department_key, account_code]
+    columns:
+      - name: account_category
+        tests:
+          - accepted_values:
+              values: ["Revenue", "COGS", "OpEx", "Assets", "Other"]
+
+  - name: stg_marketing_performance
+    description: Campaign-level KPIs (ROAS, CPA, CTR, conversion rate) via last-touch attribution. Ported from contoso_staging.marketing_performance.
+    columns:
+      - name: campaign_key
+        tests: [not_null, unique]
+      - name: channel
+        tests:
+          - accepted_values:
+              values: ["Paid Search", "Social", "Display", "Email", "Referral"]
+
+  - name: stg_support_metrics_monthly
+    description: Monthly support KPIs — volume, resolution time, CSAT, channel mix. Ported from contoso_staging.support_metrics_monthly.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month]
+
+  - name: stg_inventory_health
+    description: Latest inventory snapshot per store-product with stockout risk classification. Ported from contoso_staging.inventory_health.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [store_key, product_key]
+    columns:
+      - name: stockout_risk
+        tests:
+          - accepted_values:
+              values: ["Critical", "Low Stock", "Adequate", "Overstocked"]
+
+  - name: stg_shipping_performance
+    description: Per-shipment delivery metrics with carrier, timing, and cost. Ported from contoso_staging.shipping_performance.
+    columns:
+      - name: shipment_key
+        tests: [not_null, unique]
+      - name: carrier
+        tests:
+          - accepted_values:
+              values: ["FedEx", "UPS", "DHL", "USPS"]
+      - name: shipment_status
+        tests:
+          - accepted_values:
+              values: ["Delivered", "Returned", "Lost"]
+
+  - name: stg_engineering_velocity
+    description: Per-sprint ticket velocity + deployment quality (rollback rate). Ported from contoso_staging.engineering_velocity.
+    columns:
+      - name: sprint_name
+        tests: [not_null, unique]
+
+  - name: stg_payroll_summary_monthly
+    description: Monthly payroll by department with headcount and per-employee averages. Ported from contoso_staging.payroll_summary_monthly.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month, department_key]
+      - dbt_utils.expression_is_true:
+          expression: "ABS(total_net_pay - (total_gross_pay - total_deductions)) <= 0.01"
+          config:
+            severity: warn
+
+  - name: stg_executive_kpis_monthly
+    description: Monthly cross-department executive KPIs (revenue, margin, headcount, support). Ported from contoso_staging.executive_kpis_monthly.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [year, month]

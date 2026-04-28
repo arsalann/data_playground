@@ -1,0 +1,129 @@
+name: contoso_dbt_staging.stg_marketing_performance
+type: bq.source
+description: |-
+  Marketing campaign performance analytics combining campaign metadata with ad spend metrics and last-touch attribution data.
+
+  This staging table aggregates daily ad spend data to campaign level and joins with attribution analysis to calculate key marketing performance indicators including CTR, conversion rates, cost per acquisition (CPA), and return on ad spend (ROAS). The data is deduplicated from source tables using the latest extracted_at timestamp.
+
+  Key transformations include:
+  - Campaign-level aggregation of daily ad spend, impressions, clicks, and conversions
+  - Last-touch attribution linking campaigns to revenue via the sales fact table
+  - Calculation of derived metrics using SAFE_DIVIDE to handle edge cases
+  - Revenue normalization to USD using exchange rate conversions
+
+  Primary use cases: marketing ROI analysis, campaign optimization, channel performance comparison, and executive marketing dashboards.
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:39Z
+  Last modified: 2026-04-24T13:47:39Z
+  Row count: 200
+  Size: 34.24 KB
+tags:
+  - domain:marketing
+  - data_type:fact_table
+  - pipeline_role:staging
+  - update_pattern:daily_refresh
+  - sensitivity:internal
+  - business_function:campaign_analytics
+  - aggregation_level:campaign
+
+columns:
+  - name: attributed_orders
+    type: INTEGER
+    description: Count of distinct orders attributed to this campaign via last-touch attribution. Zero if campaign has no attributed sales.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: attributed_revenue_usd
+    type: NUMERIC
+    description: Total revenue in USD from orders attributed to this campaign via last-touch attribution. Calculated as quantity * net_price * exchange_rate summed across attributed sales lines.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: budget_amount
+    type: FLOAT
+    description: Original planned budget amount for the campaign in local currency. May exceed actual spend due to budget optimization or early termination.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: campaign_key
+    type: INTEGER
+    description: Primary identifier for the marketing campaign. Links to campaigns table in raw data.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: campaign_name
+    type: STRING
+    description: Human-readable campaign name as defined by marketing team. Not guaranteed unique across time periods.
+    checks:
+      - name: not_null
+  - name: channel
+    type: STRING
+    description: Marketing channel or platform where campaign was executed (e.g., Facebook, Google Ads, Email, Display).
+    checks:
+      - name: not_null
+  - name: conversion_rate
+    type: FLOAT
+    description: Percentage of clicks that resulted in conversions, calculated as (total_conversions / total_clicks) * 100. NULL if no clicks.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: cpa
+    type: FLOAT
+    description: Cost per acquisition in local currency, calculated as total_spend / attributed_orders. NULL if no attributed orders.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: ctr
+    type: FLOAT
+    description: Click-through rate as percentage, calculated as (total_clicks / total_impressions) * 100. Industry benchmark varies by channel.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: duration_days
+    type: INTEGER
+    description: Campaign duration in days, calculated as DATE_DIFF between end_date and start_date. Useful for normalizing spend rates.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: end_date
+    type: DATE
+    description: Campaign end date. May be in the future for currently running campaigns.
+    checks:
+      - name: not_null
+  - name: roas
+    type: FLOAT
+    description: Return on ad spend ratio, calculated as attributed_revenue_usd / total_spend. Values > 1.0 indicate profitable campaigns.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: start_date
+    type: DATE
+    description: Campaign start date. Used with end_date to calculate duration and filter active campaigns.
+    checks:
+      - name: not_null
+  - name: total_clicks
+    type: INTEGER
+    description: Sum of daily clicks across campaign duration. Aggregated from ad_spend_daily table.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: total_conversions
+    type: INTEGER
+    description: Sum of daily conversions across campaign duration. Conversion definition varies by channel and campaign type.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: total_impressions
+    type: INTEGER
+    description: Sum of daily impressions across campaign duration. Represents total ad exposures to users.
+    checks:
+      - name: non_negative
+        value: '>= 0'
+  - name: total_spend
+    type: FLOAT
+    description: Total actual spend in local currency across campaign duration. May differ from budget_amount due to optimization or early termination.
+    checks:
+      - name: non_negative
+        value: '>= 0'

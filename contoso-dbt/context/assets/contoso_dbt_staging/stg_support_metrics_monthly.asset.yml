@@ -1,0 +1,82 @@
+name: contoso_dbt_staging.stg_support_metrics_monthly
+type: bq.source
+description: |-
+  Monthly aggregated customer support metrics for Contoso, providing a comprehensive
+  view of support operations performance by month. This staging table transforms the
+  raw support_tickets data (~150K records) into monthly rollups for executive reporting
+  and operational analysis.
+
+  The transformation deduplicates support tickets by support_ticket_key using the
+  latest extracted_at timestamp, then aggregates key metrics including resolution
+  times, satisfaction scores, channel distribution, and priority breakdowns. Each
+  row represents one month's worth of support activity with the most common ticket
+  category identified as the "top_category" for that period.
+
+  This table serves as the foundation for support dashboards, monthly business reviews,
+  and trend analysis. Resolution time calculations only include tickets that have been
+  resolved (resolved_date is not null), while satisfaction scores are averaged across
+  all tickets with recorded feedback.
+
+  Part of the dbt+dlt comparison pipeline that mirrors the original Bruin contoso
+  pipeline for benchmarking purposes.
+
+  Imported table: contoso_dbt_staging.stg_support_metrics_monthly
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:38Z
+  Last modified: 2026-04-24T13:47:38Z
+  Row count: 132
+  Size: 14.10 KB
+tags:
+  - customer_support
+  - staging
+  - monthly_aggregation
+  - kpi_metrics
+  - customer_experience
+  - synthetic_data
+
+columns:
+  - name: avg_resolution_days
+    type: FLOAT
+    description: Average time in days from ticket creation to resolution for tickets that were resolved in this month, rounded to 2 decimal places
+  - name: avg_satisfaction
+    type: FLOAT
+    description: Average customer satisfaction score (1-5 scale) for tickets with recorded feedback in this month, rounded to 2 decimal places
+  - name: chat_count
+    type: INTEGER
+    description: Number of support tickets submitted via chat channel in this month
+  - name: critical_count
+    type: INTEGER
+    description: Number of tickets with 'Critical' priority level created in this month
+  - name: email_count
+    type: INTEGER
+    description: Number of support tickets submitted via email channel in this month
+  - name: escalated_count
+    type: INTEGER
+    description: Number of tickets with 'Escalated' status in this month
+  - name: month
+    type: INTEGER
+    description: Calendar month (1-12) extracted from ticket creation date
+    checks:
+      - name: not_null
+  - name: open_count
+    type: INTEGER
+    description: Number of tickets with 'Open' status in this month
+  - name: phone_count
+    type: INTEGER
+    description: Number of support tickets submitted via phone channel in this month
+  - name: resolved_count
+    type: INTEGER
+    description: Number of tickets with 'Resolved' status in this month
+  - name: ticket_count
+    type: INTEGER
+    description: Total number of support tickets created in this month across all channels and statuses
+    checks:
+      - name: not_null
+  - name: top_category
+    type: STRING
+    description: The most frequently occurring support ticket category for this month (e.g., Technical Issue, Billing Question, Product Inquiry)
+  - name: year
+    type: INTEGER
+    description: Calendar year extracted from ticket creation date
+    checks:
+      - name: not_null

@@ -1,0 +1,72 @@
+name: contoso_dbt_raw.budgets
+type: bq.source
+description: |-
+  Monthly financial budgets by department and account for Contoso company. This table contains planned revenue and expense amounts across all organizational departments and chart of accounts, enabling budget vs actual variance analysis and financial forecasting. The data is synthetic (Faker-generated) and represents a typical corporate budgeting structure.
+
+  Budget amounts follow standard accounting conventions where account codes indicate financial statement categories: 4xxx for Revenue, 5xxx for Cost of Goods Sold (COGS), 6xxx for Operating Expenses (OpEx), and 1xxx for Assets. Each budget entry specifies planned amounts for a specific fiscal period, department, and account combination.
+
+  This table feeds downstream financial reporting models, particularly for variance analysis comparing planned budgets against actual general ledger transactions. The data supports monthly financial close processes, department-level cost tracking, and executive financial dashboards.
+
+  Key characteristics: Multi-currency support, monthly granularity, departmental allocation, and standard chart of accounts integration. Budget entries may have multiple records per period/department/account that get aggregated in staging transformations.
+
+  Imported table: contoso_dbt_raw.budgets
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:01Z
+  Last modified: 2026-04-24T13:42:08Z
+  Row count: 12,672
+  Size: 952.88 KB
+tags:
+  - finance
+  - budgeting
+  - raw_data
+  - dimension_table
+  - monthly_granularity
+  - multi_currency
+  - synthetic_data
+  - variance_analysis
+
+columns:
+  - name: account_code
+    type: STRING
+    description: Chart of accounts identifier following standard numbering convention (4xxx=Revenue, 5xxx=COGS, 6xxx=OpEx, 1xxx=Assets). Used to categorize budget line items and link to general ledger transactions for variance analysis.
+    checks:
+      - name: not_null
+  - name: account_name
+    type: STRING
+    description: Human-readable description of the account for reporting and analysis. Provides business context for the numerical account code (e.g., "Marketing Expenses", "Software Licenses").
+    checks:
+      - name: not_null
+  - name: budget_amount
+    type: FLOAT
+    description: Planned financial amount for this account/department/period combination, denominated in the specified currency. Positive values typically indicate expenses or assets, negative values may indicate revenue depending on accounting conventions.
+  - name: budget_key
+    type: INTEGER
+    description: Primary identifier for each budget entry. Used for deduplication during data processing and ensures unique identification across fiscal periods and organizational dimensions.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: currency
+    type: STRING
+    description: Currency denomination for the budget_amount (e.g., USD, EUR, GBP). Enables multi-currency budgeting for global operations and proper financial consolidation.
+    checks:
+      - name: not_null
+  - name: department_key
+    type: INTEGER
+    description: Foreign key linking to the departments dimension table. Enables budget allocation and tracking by organizational unit, supporting departmental cost center accounting and management reporting.
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: ETL timestamp indicating when this record was loaded from the source system. Used for data lineage tracking, incremental processing, and deduplication logic in downstream transformations.
+    checks:
+      - name: not_null
+  - name: fiscal_month
+    type: INTEGER
+    description: Fiscal month number (1-12) for the budget period. Combined with fiscal_year to define the specific monthly period this budget applies to, supporting time-series budget analysis.
+    checks:
+      - name: not_null
+  - name: fiscal_year
+    type: INTEGER
+    description: Fiscal year for the budget period. Combined with fiscal_month to define the temporal scope of budget planning and enable year-over-year budget comparisons.
+    checks:
+      - name: not_null

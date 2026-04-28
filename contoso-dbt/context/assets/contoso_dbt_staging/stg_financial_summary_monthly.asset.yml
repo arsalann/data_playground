@@ -1,0 +1,87 @@
+name: contoso_dbt_staging.stg_financial_summary_monthly
+type: bq.source
+description: |-
+  Imported table: contoso_dbt_staging.stg_financial_summary_monthly
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:43Z
+  Last modified: 2026-04-24T13:47:43Z
+  Row count: 15,222
+  Size: 1.60 MB
+
+  Monthly financial summary aggregating actual GL journal entries against budget data for variance analysis and management reporting. Combines debits/credits from the general ledger with departmental budget allocations to calculate performance metrics by account and department. Each row represents one account within one department for a specific month, showing actual activity, budgeted amounts, and calculated variances.
+
+  Source data is deduplicated using ROW_NUMBER() over extracted_at timestamps to handle potential duplicate loads. Account categories are automatically derived from account code patterns following standard chart of accounts conventions (4xx=Revenue, 5xx=COGS, 6xx=OpEx, 1xx=Assets).
+tags:
+  - domain:finance
+  - data_type:fact_table
+  - pipeline_role:staging
+  - update_pattern:monthly_snapshot
+  - contains:financial_metrics
+  - contains:budget_variance
+
+columns:
+  - name: account_category
+    type: STRING
+    description: High-level account classification derived from account_code patterns (Revenue=4xx, COGS=5xx, OpEx=6xx, Assets=1xx, Other=all else)
+    checks:
+      - name: not_null
+  - name: account_code
+    type: STRING
+    description: Chart of accounts identifier, typically 3-4 digit numeric code following standard accounting practices
+    checks:
+      - name: not_null
+  - name: account_name
+    type: STRING
+    description: Human-readable account description matching the account_code
+    checks:
+      - name: not_null
+  - name: budget_amount
+    type: FLOAT
+    description: Budgeted amount for this account/department/month combination in USD, sourced from budgets table
+  - name: department_key
+    type: INTEGER
+    description: Foreign key identifier linking to departments table
+    checks:
+      - name: not_null
+  - name: department_name
+    type: STRING
+    description: Human-readable department name joined from departments table
+  - name: fiscal_month
+    type: INTEGER
+    description: Month number (1-12) extracted from GL entry dates
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+          - 9
+          - 10
+          - 11
+          - 12
+  - name: fiscal_year
+    type: INTEGER
+    description: Four-digit year extracted from GL entry dates
+    checks:
+      - name: not_null
+  - name: net_amount
+    type: FLOAT
+    description: Net actual amount calculated as total_debit minus total_credit for the month in USD
+  - name: total_credit
+    type: FLOAT
+    description: Sum of all credit amounts for this account/department/month from GL journal entries in USD
+  - name: total_debit
+    type: FLOAT
+    description: Sum of all debit amounts for this account/department/month from GL journal entries in USD
+  - name: variance
+    type: FLOAT
+    description: Budget variance calculated as net_amount minus budget_amount, rounded to 2 decimal places in USD
+  - name: variance_pct
+    type: FLOAT
+    description: Budget variance percentage calculated as (variance / budget_amount) * 100, rounded to 2 decimal places, null-safe division

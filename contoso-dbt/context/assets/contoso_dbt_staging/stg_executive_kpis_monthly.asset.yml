@@ -1,0 +1,82 @@
+name: contoso_dbt_staging.stg_executive_kpis_monthly
+type: bq.source
+description: |-
+  Executive monthly KPI dashboard table aggregating key performance indicators across all business functions
+  of Contoso (a fictional consumer electronics retailer). This table provides C-level executives with a
+  unified view of business performance by combining financial, operational, and customer metrics.
+
+  The table joins data from 4 upstream staging models:
+  - Sales performance (revenue, costs, profit, orders) from sales transactions
+  - Financial operations (OpEx) from general ledger actuals
+  - Workforce metrics (headcount, payroll) from HR systems
+  - Customer support performance (tickets, satisfaction) from support systems
+
+  Key derived metrics include gross margin percentage and revenue per employee efficiency ratios.
+  Each row represents one month of cross-departmental business performance for executive reporting.
+
+  Data spans 9+ years of monthly business operations. Used primarily for executive dashboards,
+  board reporting, and high-level trend analysis across all business functions.
+
+  Technical notes: Uses LEFT JOINs with COALESCE to handle missing data in supporting departments.
+  SAFE_DIVIDE prevents division-by-zero errors in ratio calculations.
+
+  Source: dbt model that aggregates from contoso_dbt_staging tables (sales_fact, financial_summary_monthly,
+  payroll_summary_monthly, support_metrics_monthly)
+
+  Imported table: contoso_dbt_staging.stg_executive_kpis_monthly
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:48:03Z
+  Last modified: 2026-04-24T13:48:03Z
+  Row count: 116
+  Size: 16.31 KB
+tags:
+  - executive
+  - kpi
+  - finance
+  - cross_department
+  - monthly_reporting
+  - fact_table
+  - staging
+
+columns:
+  - name: year
+    type: INTEGER
+    description: Calendar year (YYYY format) for the reporting period
+    primary_key: true
+  - name: month
+    type: INTEGER
+    description: Calendar month (1-12) for the reporting period
+    primary_key: true
+  - name: total_revenue_usd
+    type: NUMERIC
+    description: Total gross revenue in US dollars for all sales transactions during the month, converted from original currencies
+  - name: total_cost_usd
+    type: NUMERIC
+    description: Total cost of goods sold (COGS) in US dollars for all products sold during the month
+  - name: gross_profit_usd
+    type: NUMERIC
+    description: Gross profit in US dollars (total_revenue_usd - total_cost_usd) before operating expenses
+  - name: gross_margin_pct
+    type: NUMERIC
+    description: Gross profit margin as a percentage (gross_profit_usd / total_revenue_usd * 100), key profitability metric
+  - name: total_opex_usd
+    type: FLOAT
+    description: Total operating expenses in US dollars from general ledger, includes all non-COGS operational costs
+  - name: headcount
+    type: INTEGER
+    description: Total number of employees on payroll during the month, used for efficiency calculations
+  - name: total_payroll_usd
+    type: FLOAT
+    description: Total gross payroll expenses in US dollars for all employees during the month
+  - name: revenue_per_employee
+    type: NUMERIC
+    description: Revenue efficiency ratio in USD (total_revenue_usd / headcount), measures workforce productivity
+  - name: order_count
+    type: INTEGER
+    description: Total number of unique sales orders processed during the month, indicates business volume
+  - name: support_tickets
+    type: INTEGER
+    description: Total number of customer support tickets opened during the month, service demand indicator
+  - name: avg_satisfaction
+    type: FLOAT
+    description: Average customer satisfaction score (0-10 scale) for resolved support tickets during the month

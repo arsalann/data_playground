@@ -1,0 +1,84 @@
+name: contoso_dbt_raw.campaigns
+type: bq.source
+description: |-
+  Master table for marketing campaigns at Contoso, containing campaign definitions, budgets, and basic metadata.
+
+  This table serves as the central repository for campaign planning and tracking across all marketing channels.
+  Each campaign targets specific product segments and customer demographics, with defined budgets and time periods.
+
+  **Data Sources**: Imported from Contoso's marketing planning system via dlt ingestion
+  **Business Purpose**: Campaign planning, budget allocation, performance tracking foundation
+  **Update Pattern**: Batch daily updates, primarily append-only with occasional updates to active campaigns
+
+  **Relationships**:
+  - Links to products table via product_key (many campaigns can promote the same product)
+  - Feeds into ad_spend_daily via campaign_key for granular spend tracking (1:many)
+  - Connects to campaign_attribution for customer journey analysis (1:many)
+  - Aggregated in stg_marketing_performance for executive reporting with calculated ROAS, CPA, and CTR metrics
+
+  **Key Business Logic**: Budget vs actual spend variance analysis, campaign duration tracking, channel performance comparison
+
+  Imported table: contoso_dbt_raw.campaigns
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:02Z
+  Last modified: 2026-04-24T13:42:03Z
+  Row count: 200
+  Size: 23.55 KB
+tags:
+  - domain:marketing
+  - data_type:dimension_table
+  - sensitivity:internal
+  - pipeline_role:raw
+  - update_pattern:batch_daily
+  - source_system:marketing_planning
+  - business_criticality:high
+owner: marketing_team
+
+columns:
+  - name: budget_amount
+    type: FLOAT
+    description: Planned budget allocation for the campaign in the specified currency. Used for variance analysis against actual spend_amount.
+  - name: campaign_key
+    type: INTEGER
+    description: Primary key identifier for the campaign. Links to ad_spend_daily and campaign_attribution tables for detailed performance tracking.
+    primary_key: true
+    checks:
+      - name: not_null
+      - name: unique
+  - name: campaign_name
+    type: STRING
+    description: Human-readable campaign name for identification and reporting. Typically includes product/segment indicators.
+    checks:
+      - name: not_null
+  - name: channel
+    type: STRING
+    description: Marketing channel for the campaign (e.g., 'social_media', 'search', 'display', 'email'). Used for channel performance comparison.
+    checks:
+      - name: not_null
+  - name: currency
+    type: STRING
+    description: Currency code for budget_amount and spend_amount values. Likely ISO 4217 format (USD, EUR, etc.).
+    checks:
+      - name: not_null
+  - name: end_date
+    type: DATE
+    description: Campaign end date. Used with start_date to calculate campaign duration and performance periods.
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp when this record was ingested from the source system. Used for data lineage and debugging.
+    checks:
+      - name: not_null
+  - name: product_key
+    type: FLOAT
+    description: Foreign key reference to products.product_key. Links campaigns to specific products they promote. Note unusual FLOAT type suggests possible data quality issue.
+  - name: spend_amount
+    type: FLOAT
+    description: Actual amount spent on the campaign to date in the specified currency. Compared against budget_amount for variance analysis.
+  - name: start_date
+    type: DATE
+    description: Campaign launch date. Used with end_date to define campaign duration and active periods for performance calculations.
+    checks:
+      - name: not_null
+  - name: target_segment
+    type: STRING
+    description: Target customer segment or demographic for the campaign (e.g., 'millennials', 'enterprise', 'SMB'). Used for audience analysis and personalization.

@@ -1,0 +1,66 @@
+name: contoso_dbt_raw.job_postings
+type: bq.source
+description: |-
+  Historical job posting records for Contoso retail operations, tracking recruitment activities across all store locations and corporate departments. This table contains comprehensive hiring data including posting timelines, application volumes, and job classifications for workforce planning and recruitment analytics.
+
+  The dataset represents recruiting efforts across Contoso's 74-store retail network and 12 organizational departments, with postings ranging from store-level positions (sales associates, cashiers) to corporate roles. Each posting captures the full recruitment lifecycle from initial posting through closure, including applicant tracking for recruitment effectiveness analysis.
+
+  Key relationships: References departments (department_key) for organizational context and stores (store_key) for location-based positions. Corporate roles typically have NULL store_key as they are not location-specific. Feeds into staging models for HR analytics and recruitment reporting.
+
+  Data characteristics: store_key stored as FLOAT due to nullable nature (corporate positions); status field tracks posting lifecycle; applicant counts provide recruitment funnel metrics; posting/closure dates enable time-to-fill analysis.
+
+  Imported table: contoso_dbt_raw.job_postings
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:51Z
+  Last modified: 2026-04-24T13:42:07Z
+  Row count: 800
+  Size: 61.30 KB
+tags:
+  - domain:hr
+  - domain:recruitment
+  - data_type:fact_table
+  - pipeline_role:raw
+  - update_pattern:append_only
+  - sensitivity:internal
+
+columns:
+  - name: applicants
+    type: INTEGER
+    description: Total number of applications received for this job posting, used for recruitment funnel analysis and position competitiveness metrics
+  - name: closed_date
+    type: DATE
+    description: Date when the job posting was closed or removed from active recruiting, marking end of application acceptance period
+  - name: department_key
+    type: INTEGER
+    description: Foreign key reference to departments table, identifying the organizational department for this position (1-12 range covering all business functions)
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Technical timestamp indicating when this record was extracted from the source system, used for data lineage and freshness tracking
+    checks:
+      - name: not_null
+  - name: job_title
+    type: STRING
+    description: Descriptive title of the position being recruited, ranging from store roles (Sales Associate, Cashier) to corporate positions (Manager, Analyst)
+    checks:
+      - name: not_null
+  - name: posted_date
+    type: DATE
+    description: Date when the job posting was published and became available for applications, marking start of recruitment timeline
+    checks:
+      - name: not_null
+  - name: posting_key
+    type: INTEGER
+    description: Primary identifier for each job posting record, unique across all recruitment activities and time periods
+    checks:
+      - name: not_null
+      - name: unique
+  - name: status
+    type: STRING
+    description: Current lifecycle status of the job posting (e.g., Active, Closed, Filled, Cancelled), indicating recruitment stage and availability
+    checks:
+      - name: not_null
+  - name: store_key
+    type: FLOAT
+    description: Foreign key reference to stores table for location-specific positions; NULL for corporate roles that are not tied to specific store locations

@@ -1,0 +1,73 @@
+name: contoso_dbt_raw.orders
+type: bq.source
+description: |-
+  Order headers table from Contoso retail transaction system containing high-level order information.
+
+  This table represents the header-level data for retail orders in the Contoso business, capturing
+  essential order metadata like timing, customer, store, and currency. Each row represents one
+  complete order transaction. The actual line items with product details, quantities, and pricing
+  are stored separately in the order_rows/sales table, linked by order_key.
+
+  Key characteristics:
+  - Primary entity in the retail data model, joined with order_rows for complete transaction data
+  - Used downstream in stg_sales_fact to create the main analytical fact table
+  - Contains temporal ordering data (order_date, delivery_date) for time-series analysis
+  - Links customers to stores via foreign keys for customer journey analysis
+  - Currency_code enables multi-currency revenue analysis when joined with exchange rates
+
+  Data lineage: Raw source → stg_sales_fact → reports (revenue_by_segment, profit_and_loss, etc.)
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:52Z
+  Last modified: 2026-04-24T13:44:30Z
+  Row count: 980,666
+  Size: 49.57 MB
+tags:
+  - retail
+  - commerce
+  - transactions
+  - fact_table
+  - raw
+  - append_only
+  - internal
+  - high_volume
+
+materialization:
+  type: table
+
+columns:
+  - name: currency_code
+    type: STRING
+    description: ISO currency code for the transaction (e.g., USD, EUR, GBP). Used for multi-currency revenue analysis when combined with exchange rates.
+    checks:
+      - name: not_null
+  - name: customer_key
+    type: INTEGER
+    description: Foreign key to customers dimension table. Links each order to the purchasing customer for customer journey analysis and segmentation.
+    checks:
+      - name: not_null
+  - name: delivery_date
+    type: TIMESTAMP
+    description: Actual or planned delivery timestamp for the order. May be null for orders not yet delivered or pickup orders. Used to calculate delivery SLA metrics.
+  - name: extracted_at
+    type: TIMESTAMP
+    description: ETL extraction timestamp indicating when this row was ingested from the source system. Used for incremental loading and data lineage tracking.
+    checks:
+      - name: not_null
+  - name: order_date
+    type: TIMESTAMP
+    description: Date and time when the order was placed by the customer. Primary temporal dimension for sales analytics and time-series analysis.
+    checks:
+      - name: not_null
+  - name: order_key
+    type: INTEGER
+    description: Unique identifier for each order transaction. Primary key that links to order_rows/sales table for complete order details including line items.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: store_key
+    type: INTEGER
+    description: Foreign key to stores dimension table. Identifies the retail location or channel where the order was processed for geographic and channel analysis.
+    checks:
+      - name: not_null

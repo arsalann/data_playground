@@ -1,0 +1,87 @@
+name: contoso_dbt_raw.products
+type: bq.source
+description: |-
+  Product dimension table for Contoso retail business, sourced from Microsoft's SQLBI Contoso V2 dataset. Contains master product catalog with ~2.5K consumer goods across multiple categories including clothing, electronics, accessories, and home goods.
+
+  This table serves as the primary product dimension in the data warehouse, providing hierarchical product classification through category/subcategory structure, cost and pricing information for margin analysis, physical attributes for shipping calculations, and brand/manufacturer details for vendor management.
+
+  The data is heavily used in sales analytics, joined to the sales fact table (~2.3M transactions) via product_key to enrich sales transactions with product attributes. Essential for product performance analysis, pricing strategy, inventory management, and category reporting.
+
+  Product catalog includes international brands with pricing in various currencies, weight specifications for logistics planning, and color variants for inventory tracking. The cost vs price spread enables margin analysis across the product portfolio.
+
+  Imported table: contoso_dbt_raw.products
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:55Z
+  Last modified: 2026-04-24T13:42:05Z
+  Row count: 2,517
+  Size: 506.49 KB
+tags:
+  - domain:retail
+  - data_type:dimension_table
+  - pipeline_role:raw
+  - sensitivity:internal
+  - pattern:master_data
+  - update_pattern:slowly_changing
+  - business_area:product_management
+
+columns:
+  - name: brand
+    type: STRING
+    description: Product brand name as marketed to consumers (e.g., Contoso, Tailspin Toys, Adventure Works), may differ from manufacturer for licensed products
+  - name: category_key
+    type: INTEGER
+    description: Primary key for product category, foreign key to product category hierarchy (dimension identifier)
+    checks:
+      - name: not_null
+  - name: category_name
+    type: STRING
+    description: High-level product category name (e.g., Electronics, Clothing, Home & Garden, Sports & Outdoors)
+    checks:
+      - name: not_null
+  - name: color
+    type: STRING
+    description: Product color variant for inventory tracking and customer selection (e.g., Black, White, Navy, Red)
+  - name: cost
+    type: NUMERIC
+    description: Manufacturing or procurement cost per unit in original currency, used for margin analysis
+  - name: extracted_at
+    type: TIMESTAMP
+    description: dlt ingestion timestamp indicating when this record was loaded into the data warehouse
+    checks:
+      - name: not_null
+  - name: manufacturer
+    type: STRING
+    description: Company that produces or manufactures the product, may be different from brand for OEM/licensed products
+  - name: price
+    type: NUMERIC
+    description: Retail sale price per unit in original currency, represents list price before discounts
+  - name: product_code
+    type: STRING
+    description: Internal product SKU or identifier code used for inventory management and ordering systems
+  - name: product_key
+    type: INTEGER
+    description: Primary key for product dimension, used as foreign key in sales fact table and other transactional data
+    checks:
+      - name: not_null
+      - name: unique
+  - name: product_name
+    type: STRING
+    description: Full product name as displayed to customers and in marketing materials
+    checks:
+      - name: not_null
+  - name: sub_category_key
+    type: INTEGER
+    description: Primary key for product subcategory, provides granular classification within broader categories
+    checks:
+      - name: not_null
+  - name: sub_category_name
+    type: STRING
+    description: Detailed product subcategory name (e.g., Smartphones, T-Shirts, Kitchen Appliances) for granular reporting
+    checks:
+      - name: not_null
+  - name: weight
+    type: NUMERIC
+    description: Product weight measurement for shipping cost calculations and logistics planning
+  - name: weight_unit
+    type: STRING
+    description: Unit of measurement for product weight (e.g., kg, lb, oz, g) corresponding to weight field

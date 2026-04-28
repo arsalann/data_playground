@@ -1,0 +1,81 @@
+name: contoso_dbt_reports.rpt_engineering_report
+type: bq.source
+description: |-
+  Monthly engineering metrics report aggregating sprint-level KPIs and DORA metrics for software development performance tracking.
+
+  This report consolidates engineering velocity data from Agile sprints with deployment metrics to provide comprehensive monthly views of development team performance. The data combines sprint tickets (stories, bugs, cycle times) with production deployment records (frequency, rollback rates) to calculate standard engineering KPIs.
+
+  Key use cases:
+  - Monthly engineering performance reviews
+  - DORA metrics tracking (deployment frequency, rollback rates)
+  - Sprint velocity and completion rate analysis
+  - Bug ratio and quality trending
+  - Engineering team capacity planning
+
+  Data sources: Aggregates from stg_engineering_velocity which combines contoso_raw.sprint_tickets and contoso_raw.deployments (synthetic Faker-generated data for demo purposes).
+
+  Refresh: Daily via dbt transformation pipeline, with monthly grain aggregation.
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:54Z
+  Last modified: 2026-04-24T13:47:54Z
+  Row count: 131
+  Size: 16.33 KB
+tags:
+  - engineering_metrics
+  - dora_metrics
+  - agile_velocity
+  - monthly_report
+  - fact_table
+  - kpi_dashboard
+
+columns:
+  - name: avg_cycle_time_days
+    type: FLOAT
+    description: 'Average time from ticket creation to resolution across all completed tickets in the month. Key DORA metric for development efficiency. Units: days (decimal precision)'
+  - name: avg_rollback_rate
+    type: FLOAT
+    description: 'Average percentage of deployments that were rolled back, calculated across all sprints in the month. DORA reliability metric. Units: percentage (0-100)'
+  - name: avg_velocity
+    type: FLOAT
+    description: 'Average story points completed per sprint in the month. Core agile velocity metric for capacity planning. Units: story points per sprint'
+  - name: bug_ratio
+    type: FLOAT
+    description: 'Percentage of total tickets that were bugs (vs features/stories). Quality indicator for technical debt management. Units: percentage (0-100)'
+  - name: completed_story_points
+    type: INTEGER
+    description: 'Total story points for tickets marked as Done/Closed in the month. Measure of delivered business value. Units: story points'
+  - name: completed_tickets
+    type: INTEGER
+    description: 'Count of tickets completed (Done/Closed status) in the month. Throughput metric for team productivity. Units: count'
+  - name: completion_rate
+    type: FLOAT
+    description: 'Percentage of tickets that were completed vs total tickets started. Sprint commitment reliability metric. Units: percentage (0-100)'
+  - name: deploy_frequency
+    type: FLOAT
+    description: 'Average number of deployments per sprint in the month. Key DORA metric for development agility. Units: deployments per sprint'
+  - name: month
+    type: INTEGER
+    description: 'Calendar month (1-12) for the reporting period. Part of natural date partitioning. Units: integer month'
+  - name: total_bugs
+    type: INTEGER
+    description: 'Count of bug tickets worked on in the month. Quality metric for defect volume tracking. Units: count'
+  - name: total_deployments
+    type: INTEGER
+    description: 'Total production deployments across all sprints in the month. Delivery frequency metric. Units: count'
+  - name: total_rollbacks
+    type: INTEGER
+    description: 'Count of deployments that were rolled back due to issues. Reliability and quality metric. Units: count'
+  - name: total_sprints
+    type: INTEGER
+    description: 'Number of engineering sprints that occurred in the month. Denominator for calculating per-sprint averages. Units: count'
+  - name: total_story_points
+    type: INTEGER
+    description: 'Sum of story points for all tickets (completed and incomplete) worked in the month. Capacity planning metric. Units: story points'
+  - name: total_tickets
+    type: INTEGER
+    description: 'Count of all tickets (bugs, stories, tasks) active in sprints during the month. Workload volume metric. Units: count'
+  - name: year
+    type: INTEGER
+    description: 'Calendar year (YYYY) for the reporting period. Part of natural date partitioning for time series analysis. Units: 4-digit year'

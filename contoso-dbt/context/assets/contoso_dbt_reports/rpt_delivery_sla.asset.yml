@@ -1,0 +1,77 @@
+name: contoso_dbt_reports.rpt_delivery_sla
+type: bq.source
+description: |-
+  Monthly delivery service level agreement (SLA) performance metrics aggregated by carrier and store country for Contoso's e-commerce shipping operations. This report provides key insights into delivery performance, shipping costs, and operational efficiency across different regions and carriers.
+
+  The data is derived from order-to-delivery journey analysis, joining shipments with their corresponding orders and store locations. Each row represents aggregated delivery metrics for a specific month, carrier, and origin country combination.
+
+  Key business use cases:
+  - Monitor carrier performance against SLA targets
+  - Analyze geographic variations in delivery efficiency
+  - Track cost optimization opportunities across regions
+  - Identify delivery bottlenecks and operational improvements
+
+  Imported table: contoso_dbt_reports.rpt_delivery_sla
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:59Z
+  Last modified: 2026-04-24T13:47:59Z
+  Row count: 4,176
+  Size: 490.62 KB
+tags:
+  - domain:logistics
+  - domain:operations
+  - type:fact_table
+  - grain:monthly_carrier_country
+  - pipeline_role:mart
+  - update_pattern:snapshot
+  - data_freshness:daily
+  - business_critical:high
+  - contains_kpi:delivery_rate
+  - contains_kpi:shipping_costs
+
+columns:
+  - name: avg_cost_per_shipment
+    type: FLOAT
+    description: Average shipping cost per shipment in USD for the month/carrier/country combination
+  - name: avg_days_in_transit
+    type: FLOAT
+    description: Average number of days from ship_date to delivery_date, measuring carrier transit efficiency
+  - name: avg_days_to_ship
+    type: FLOAT
+    description: Average number of days from order_date to ship_date, measuring internal fulfillment speed
+  - name: avg_total_lead_days
+    type: FLOAT
+    description: Average total lead time in days from order_date to delivery_date (end-to-end customer experience)
+  - name: carrier
+    type: STRING
+    description: Shipping carrier/logistics provider name (e.g., FedEx, UPS, DHL)
+  - name: delivered_count
+    type: INTEGER
+    description: Number of shipments with status 'Delivered' successfully reaching customers
+  - name: delivery_rate
+    type: FLOAT
+    description: Delivery success rate as percentage (delivered_count / shipment_count * 100), key SLA metric
+  - name: lost_count
+    type: INTEGER
+    description: Number of shipments with status 'Lost' during transit or delivery
+  - name: month
+    type: INTEGER
+    description: Month number (1-12) extracted from order_date, used for temporal aggregation
+  - name: p95_lead_days
+    type: INTEGER
+    description: 95th percentile of total lead days, indicating worst-case delivery timeframes for SLA monitoring
+  - name: returned_count
+    type: INTEGER
+    description: Number of shipments with status 'Returned' due to delivery failures or customer refusal
+  - name: shipment_count
+    type: INTEGER
+    description: Total number of shipments for the month/carrier/country combination, denominator for rate calculations
+  - name: store_country
+    type: STRING
+    description: Country name of the originating store/warehouse location for shipments
+  - name: total_ship_cost
+    type: FLOAT
+    description: Total shipping costs in USD for all shipments in the month/carrier/country group
+  - name: year
+    type: INTEGER
+    description: Year extracted from order_date, used for temporal aggregation and trending analysis

@@ -1,0 +1,96 @@
+name: contoso_dbt_staging.stg_shipping_performance
+type: bq.source
+description: |-
+  Staging table for shipping and logistics performance analytics in the Contoso e-commerce data warehouse.
+
+  Imported table: contoso_dbt_staging.stg_shipping_performance
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:49Z
+  Last modified: 2026-04-24T13:47:49Z
+  Row count: 980,666
+  Size: 108.01 MB
+
+  This staging model joins deduped shipments, orders, and stores data to provide comprehensive shipping performance metrics. Each row represents a single shipment with calculated KPIs for logistics analysis including days to ship, transit time, and total lead time from order to delivery. Used primarily for carrier performance evaluation, delivery time optimization, and fulfillment operations reporting.
+
+  Source data is synthetic (Faker-generated) based on the SQLBI Contoso V2 retail dataset. Records are deduplicated using extracted_at timestamps to ensure data quality in the staging layer.
+tags:
+  - logistics
+  - shipping
+  - fulfillment
+  - staging
+  - fact_table
+  - performance_metrics
+  - synthetic_data
+  - daily_refresh
+
+columns:
+  - name: carrier
+    type: STRING
+    description: Shipping carrier name responsible for transporting the order (e.g., FedEx, UPS, DHL)
+  - name: days_in_transit
+    type: INTEGER
+    description: |-
+      Calculated metric: number of days from ship_date to delivery_date.
+      Measures actual transit time for carrier performance analysis.
+      Can be negative if delivery_date is before ship_date (data quality issue).
+  - name: days_to_ship
+    type: INTEGER
+    description: |-
+      Calculated metric: number of days from order_date to ship_date.
+      Measures warehouse fulfillment speed and operational efficiency.
+      Can be negative if ship_date is before order_date (data quality issue).
+  - name: delivery_date
+    type: DATE
+    description: Actual delivery date when the shipment reached the customer
+  - name: month
+    type: INTEGER
+    description: |-
+      Extracted from order_date (1-12).
+      Used for monthly aggregations and seasonal analysis of shipping patterns.
+  - name: order_date
+    type: DATE
+    description: Original order placement date from the orders table
+  - name: order_key
+    type: INTEGER
+    description: |-
+      Foreign key linking to the orders table.
+      Primary business identifier for the customer order being shipped.
+    checks:
+      - name: not_null
+  - name: ship_cost
+    type: FLOAT
+    description: |-
+      Shipping cost in USD charged for this shipment.
+      Used for logistics cost analysis and carrier rate comparison.
+  - name: ship_date
+    type: DATE
+    description: Date when the shipment left the warehouse/fulfillment center
+  - name: shipment_key
+    type: INTEGER
+    description: |-
+      Primary identifier for the shipment record.
+      Unique key for this specific fulfillment/shipping event.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: shipment_status
+    type: STRING
+    description: |-
+      Current status of the shipment (e.g., Delivered, In Transit, Failed).
+      Critical for tracking delivery success rates and identifying issues.
+  - name: store_country
+    type: STRING
+    description: |-
+      Country name of the originating store/warehouse location.
+      Derived from the stores table via store_key join.
+  - name: total_lead_days
+    type: INTEGER
+    description: |-
+      Calculated metric: total days from order_date to delivery_date.
+      End-to-end customer experience metric combining fulfillment and transit time.
+      Can be negative if delivery_date is before order_date (data quality issue).
+  - name: year
+    type: INTEGER
+    description: |-
+      Extracted from order_date (e.g., 2023).
+      Used for yearly trend analysis and historical shipping performance comparisons.

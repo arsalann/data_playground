@@ -1,0 +1,75 @@
+name: contoso_dbt_raw.gl_journal_entries
+type: bq.source
+description: |-
+  Core general ledger journal entries representing all double-entry accounting transactions in Contoso's financial system. Each record captures a single side (debit or credit) of a financial transaction with account classification, monetary values, and departmental allocation. This table forms the foundation for all financial reporting, trial balances, and financial statements.
+
+  The data follows standard double-entry bookkeeping principles where each financial transaction generates paired debit and credit entries that must balance. Entries are categorized by chart of accounts codes and allocated to departments for cost center reporting. The source_key and source_table fields enable traceability back to originating business transactions (sales, purchases, payroll, etc.).
+
+  This synthetic dataset represents realistic accounting transactions generated for the Contoso demo environment, enabling comprehensive financial analytics and reporting pipeline development without exposing real financial data.
+
+  Imported table: contoso_dbt_raw.gl_journal_entries
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:49Z
+  Last modified: 2026-04-24T13:47:07Z
+  Row count: 1,887,160
+  Size: 204.58 MB
+tags:
+  - finance
+  - accounting
+  - general_ledger
+  - double_entry
+  - raw_data
+  - synthetic_data
+  - chart_of_accounts
+  - financial_reporting
+
+columns:
+  - name: account_code
+    type: STRING
+    description: Chart of accounts code identifying the specific GL account affected by this transaction. Follows standard accounting classification (assets, liabilities, equity, revenue, expenses) enabling financial statement preparation and account-level reporting.
+    checks:
+      - name: not_null
+  - name: account_name
+    type: STRING
+    description: Human-readable name of the GL account corresponding to the account_code. Provides business context for the account type (e.g., 'Cash', 'Accounts Receivable', 'Revenue', 'Operating Expenses').
+    checks:
+      - name: not_null
+  - name: credit_amount
+    type: FLOAT
+    description: Credit amount for this journal entry in the specified currency. Non-zero only for credit entries. In double-entry bookkeeping, credits increase liability/equity/revenue accounts and decrease asset/expense accounts.
+  - name: currency
+    type: STRING
+    description: ISO currency code for the transaction amounts (e.g., USD, EUR, GBP). Supports multi-currency accounting operations and enables currency-specific financial reporting.
+    checks:
+      - name: not_null
+  - name: debit_amount
+    type: FLOAT
+    description: Debit amount for this journal entry in the specified currency. Non-zero only for debit entries. In double-entry bookkeeping, debits increase asset/expense accounts and decrease liability/equity/revenue accounts.
+  - name: department_key
+    type: INTEGER
+    description: Foreign key referencing the departments table. Links each journal entry to a specific department or cost center, enabling departmental P&L reporting, budget variance analysis, and cost allocation tracking.
+    checks:
+      - name: not_null
+  - name: description
+    type: STRING
+    description: Business description or memo explaining the purpose of this journal entry. Provides audit trail and context for the transaction, typically describing the underlying business event that generated this accounting entry.
+  - name: entry_date
+    type: DATE
+    description: Accounting date when this journal entry was recorded in the general ledger. Determines which accounting period the transaction affects for financial reporting and period-end closing processes.
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp when this record was extracted from the source ERP system into the data warehouse. Used for data lineage tracking, incremental processing, and determining data freshness for financial reporting.
+  - name: journal_entry_key
+    type: INTEGER
+    description: Primary key identifier for each individual journal entry line. Unique identifier within the GL system, used for transaction traceability and audit purposes.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: source_key
+    type: FLOAT
+    description: Foreign key identifier linking this GL entry back to its originating source transaction (order, invoice, payroll entry, etc.). Enables drill-through from financial reports to underlying business transactions for audit and analysis.
+  - name: source_table
+    type: STRING
+    description: Name of the source table or system that generated this GL entry (e.g., 'sales', 'accounts_payable', 'payroll'). Provides audit trail showing which business process created each accounting entry, supporting transaction traceability and reconciliation.

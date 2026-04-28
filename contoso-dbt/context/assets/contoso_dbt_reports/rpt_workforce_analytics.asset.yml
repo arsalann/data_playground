@@ -1,0 +1,111 @@
+name: contoso_dbt_reports.rpt_workforce_analytics
+type: bq.source
+description: |-
+  Comprehensive quarterly workforce analytics report for Contoso retail operations, providing executive-level insights into human capital management across all 12 departments. This strategic HR dashboard consolidates employee lifecycle data, compensation analytics, and departmental performance metrics to support workforce planning, budget allocation, and organizational effectiveness initiatives.
+
+  The report aggregates granular employee and payroll data from raw HR systems into quarterly summaries by department, enabling trend analysis of headcount changes, compensation patterns, retention metrics, and operational efficiency. Each row represents a unique department-quarter combination, providing multidimensional analysis of workforce dynamics across Contoso's 3,000+ employee base spanning 74 retail stores and corporate locations.
+
+  Key business applications include: department manager performance tracking, compensation benchmarking and budget planning, retention strategy development, workforce cost analysis, and executive dashboard reporting for board meetings. The turnover and tenure metrics support proactive HR interventions and talent retention initiatives.
+
+  Data transformations include: aggregation of semi-monthly payroll records into quarterly summaries, calculation of average compensation and tenure metrics, computation of hiring/termination rates for workforce planning, and derivation of cost efficiency metrics (cost per employee) for department budget optimization.
+
+  This report serves as a foundational dataset for HR business intelligence, feeding into executive dashboards, department scorecards, and annual workforce planning cycles. The quarterly grain provides optimal balance between trend visibility and data volume for strategic decision-making.
+
+  Imported table: contoso_dbt_reports.rpt_workforce_analytics
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:59Z
+  Last modified: 2026-04-24T13:47:59Z
+  Row count: 863
+  Size: 77.52 KB
+tags:
+  - domain:hr
+  - domain:workforce
+  - data_type:fact_table
+  - sensitivity:internal
+  - pipeline_role:mart
+  - business_area:workforce_analytics
+  - executive_reporting
+  - departmental_analysis
+  - update_pattern:quarterly_append
+  - refresh_cadence:quarterly
+
+columns:
+  - name: active_headcount
+    type: INTEGER
+    description: Number of active employees in the department at the end of the quarter. Represents current staffing levels for capacity planning and organizational sizing. Excludes terminated employees but includes all employees with 'Active' status regardless of temporary leave arrangements.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: avg_salary
+    type: FLOAT
+    description: Average annual gross salary in local currency for active employees in the department during the quarter. Calculated as mean of all active employee base salaries, excluding bonuses and variable compensation. Used for compensation benchmarking and budget planning across departments.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: avg_tenure_months
+    type: FLOAT
+    description: Average employee tenure in months for active employees in the department as of quarter end. Calculated from hire_date to quarter end date. Key retention metric indicating departmental stability, experience levels, and knowledge retention risk. Higher values suggest stable, experienced teams.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: cost_per_employee
+    type: FLOAT
+    description: Average quarterly payroll cost per active employee, calculated as quarterly_payroll_cost divided by active_headcount. Operational efficiency metric enabling cost comparison across departments and identification of high-cost areas for budget optimization and resource allocation decisions.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: department_name
+    type: STRING
+    description: Human-readable department name (e.g., Sales, Marketing, Engineering, HR) serving as the primary organizational dimension. Links to the departments master table and enables departmental comparison analysis and organizational hierarchy reporting for management dashboards.
+    checks:
+      - name: not_null
+  - name: new_hires
+    type: INTEGER
+    description: Number of employees hired during the quarter with hire_date falling within the quarter date range. Growth indicator for departmental expansion, talent acquisition effectiveness, and organizational scaling patterns. Used for recruitment planning and onboarding capacity management.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: quarter
+    type: INTEGER
+    description: Calendar quarter number (1-4) for the reporting period. Temporal dimension enabling seasonal analysis, quarter-over-quarter comparisons, and cyclical workforce planning aligned with business cycles and budget periods.
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - 1
+          - 2
+          - 3
+          - 4
+  - name: quarterly_payroll_cost
+    type: FLOAT
+    description: Total payroll expense for the department during the quarter in local currency, including gross pay, benefits, and employer taxes. Core financial metric for departmental budget tracking, cost center analysis, and workforce investment measurement. Aggregated from semi-monthly payroll records.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: terminations
+    type: INTEGER
+    description: Number of employees terminated during the quarter with termination_date falling within the quarter date range. Includes voluntary and involuntary separations. Key retention metric for identifying departmental challenges, management effectiveness, and talent retention risk areas requiring intervention.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+  - name: turnover_rate
+    type: FLOAT
+    description: Quarterly turnover rate calculated as (terminations / average_active_headcount) for the quarter. Expressed as decimal percentage (e.g., 0.15 = 15% turnover). Critical retention metric for benchmarking departmental performance, identifying problem areas, and measuring HR intervention effectiveness.
+    checks:
+      - name: not_null
+      - name: min
+        value: 0
+      - name: max
+        value: 2
+  - name: year
+    type: INTEGER
+    description: Calendar year for the reporting period. Combined with quarter to define the temporal scope for workforce measurement. Enables year-over-year analysis, historical trend identification, and multi-year strategic workforce planning and forecasting.
+    checks:
+      - name: not_null

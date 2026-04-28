@@ -1,0 +1,95 @@
+name: contoso_dbt_raw.sprint_tickets
+type: bq.source
+description: |-
+  Engineering sprint management data capturing work items, user stories, bugs, and tasks across Contoso's software development teams. This table tracks the complete lifecycle of development tickets from creation through resolution, providing the foundation for agile project management, velocity tracking, and engineering productivity analysis.
+
+  The dataset represents tickets from multiple development teams organized by sprints (2-week development cycles), covering various work types including features, bugs, technical debt, and research tasks. Each ticket includes assignment information, effort estimation through story points, priority classification, and lifecycle timestamps to enable comprehensive project tracking and team performance measurement.
+
+  Key relationships: References employees table through assignee_employee_key and reporter_employee_key, links to departments via department_key to identify which business unit the work supports. Feeds downstream engineering reports for velocity analysis, cycle time measurement, and productivity metrics.
+
+  Data characteristics: Some tickets may remain unresolved (resolved_date NULL), story_points can be NULL for non-estimatable work like bugs or spikes. Sprint names follow standardized naming conventions. Status values follow standard agile workflow states from creation to completion.
+
+  Imported table: contoso_dbt_raw.sprint_tickets
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:00Z
+  Last modified: 2026-04-24T13:42:13Z
+  Row count: 8,000
+  Size: 1.08 MB
+tags:
+  - domain:engineering
+  - domain:product
+  - data_type:fact_table
+  - sensitivity:internal
+  - pipeline_role:raw
+  - update_pattern:append_only
+  - agile:sprint_data
+
+columns:
+  - name: assignee_employee_key
+    type: INTEGER
+    description: Foreign key reference to employees table identifying the team member currently assigned to work on this ticket; NULL for unassigned tickets awaiting allocation
+  - name: created_date
+    type: DATE
+    description: Date when the ticket was initially created in the system, marking the start of the work item lifecycle and used for age calculations and backlog analysis
+    checks:
+      - name: not_null
+  - name: department_key
+    type: INTEGER
+    description: Foreign key reference to departments table indicating which business department requested or benefits from this work item, enabling cost allocation and prioritization by business unit
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp indicating when this sprint ticket record was extracted from the source system during ETL processing
+    checks:
+      - name: not_null
+  - name: priority
+    type: STRING
+    description: Business priority classification for the ticket (e.g., Critical, High, Medium, Low) used for work sequencing and resource allocation decisions within sprints
+    checks:
+      - name: not_null
+  - name: reporter_employee_key
+    type: INTEGER
+    description: Foreign key reference to employees table identifying the person who originally created or reported this work item, typically a product owner, stakeholder, or team member
+    checks:
+      - name: not_null
+  - name: resolved_date
+    type: DATE
+    description: Date when the ticket was marked as completed or resolved; NULL for open/in-progress tickets, used for cycle time calculations and throughput metrics
+  - name: sprint_name
+    type: STRING
+    description: Name identifier of the development sprint (typically 2-week iteration) during which this ticket was scheduled for completion, following team naming conventions
+    checks:
+      - name: not_null
+  - name: status
+    type: STRING
+    description: Current workflow state of the ticket in the development process (e.g., To Do, In Progress, In Review, Done) following agile workflow conventions
+    checks:
+      - name: not_null
+  - name: story_points
+    type: INTEGER
+    description: Effort estimation in story points representing relative complexity and time investment required; NULL for non-estimatable work like bugs or research spikes; used for velocity tracking
+    checks:
+      - name: min
+        value: 0
+  - name: ticket_code
+    type: STRING
+    description: Human-readable unique identifier for the ticket, typically following project-specific naming convention (e.g., PROJ-123, FEAT-456) for cross-system references and communication
+    checks:
+      - name: not_null
+  - name: ticket_key
+    type: INTEGER
+    description: Primary key identifier for each sprint ticket record, serving as the unique system-generated ID for internal database operations and relationships
+    checks:
+      - name: unique
+      - name: not_null
+  - name: ticket_type
+    type: STRING
+    description: Classification of work item type (e.g., Feature, Bug, Task, Epic, Spike) determining handling approach, estimation requirements, and reporting categorization
+    checks:
+      - name: not_null
+  - name: title
+    type: STRING
+    description: Brief descriptive summary of the work item providing clear identification of the requirement, issue, or task for team members and stakeholders
+    checks:
+      - name: not_null

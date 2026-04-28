@@ -1,0 +1,74 @@
+name: contoso_dbt_raw.accounts_payable
+type: bq.source
+description: |-
+  Raw accounts payable transactions representing money owed by Contoso to vendors and suppliers. This table captures invoice lifecycle from receipt through payment, enabling cash flow management, vendor payment tracking, and financial reporting. Each record represents a unique invoice with payment terms, departmental allocation, and current payment status.
+
+  The data flows from Contoso's ERP system and likely feeds into GL journal entries for financial consolidation. Payment status tracking enables accounts payable aging reports and cash flow forecasting. Department allocation supports cost center accounting and budget tracking.
+
+  Imported table: contoso_dbt_raw.accounts_payable
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:58Z
+  Last modified: 2026-04-24T13:42:13Z
+  Row count: 12,000
+  Size: 1.19 MB
+tags:
+  - finance
+  - accounts_payable
+  - raw_data
+  - external_source
+  - cash_flow
+  - vendor_management
+
+columns:
+  - name: amount
+    type: FLOAT
+    description: Invoice amount in the specified currency. Represents the total amount owed to the vendor for goods or services received.
+    checks:
+      - name: not_null
+  - name: ap_key
+    type: INTEGER
+    description: Primary key identifier for the accounts payable record. Unique identifier for each invoice in the AP system.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: currency
+    type: STRING
+    description: ISO currency code for the invoice amount (e.g., USD, EUR, GBP). Supports multi-currency AP operations.
+    checks:
+      - name: not_null
+  - name: department_key
+    type: INTEGER
+    description: Foreign key referencing departments table. Identifies which department or cost center is responsible for this expense, enabling departmental budget tracking and cost allocation.
+    checks:
+      - name: not_null
+  - name: due_date
+    type: DATE
+    description: Payment due date as specified by vendor payment terms. Critical for cash flow planning and avoiding late payment penalties.
+    checks:
+      - name: not_null
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp when this record was extracted from the source system into the data warehouse. Used for data lineage and incremental processing.
+  - name: invoice_date
+    type: DATE
+    description: Date when the invoice was issued by the vendor. Used for aging analysis and accounting period allocation.
+    checks:
+      - name: not_null
+  - name: invoice_number
+    type: STRING
+    description: Vendor-provided invoice number. Serves as business key for reconciliation and vendor communication. Should be unique per vendor.
+    checks:
+      - name: not_null
+  - name: paid_date
+    type: DATE
+    description: Date when the invoice was paid to the vendor. Null for unpaid invoices. Used to calculate payment timing and cash flow metrics.
+  - name: status
+    type: STRING
+    description: Current payment status of the invoice (e.g., 'pending', 'paid', 'overdue', 'cancelled'). Drives AP workflow and reporting.
+    checks:
+      - name: not_null
+  - name: vendor_name
+    type: STRING
+    description: Name of the supplier or vendor who issued the invoice. Used for vendor performance analysis and payment grouping.
+    checks:
+      - name: not_null

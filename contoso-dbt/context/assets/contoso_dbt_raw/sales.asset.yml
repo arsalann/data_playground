@@ -1,0 +1,100 @@
+name: contoso_dbt_raw.sales
+type: bq.source
+description: |-
+  Sales line items fact table for the Contoso retail business, containing detailed transaction data for individual product purchases. This table represents the granular level of the sales data model, where each row corresponds to a single product line item within a customer order.
+
+  The sales table serves as the core transactional fact table, linking to dimension tables (customers, products, stores) via foreign keys to enable comprehensive retail analytics. It captures both local currency pricing and associated exchange rates for multi-currency revenue analysis across Contoso's global operations.
+
+  Key business characteristics:
+  - Contains ~2.3M individual line item transactions from 2016 onwards
+  - Linked to ~980K orders via order_key, representing detailed breakdown of order_rows
+  - Includes both unit-level (unit_price, unit_cost) and line-level (net_price, quantity) metrics
+  - Multi-currency support with currency_code and exchange_rate for global revenue analysis
+  - Used downstream in staging models (stg_sales_fact) for reporting and analytics
+
+  Data lineage: Raw sales transactions → stg_sales_fact → reports (revenue_by_segment, profit_and_loss, etc.)
+
+  The line_number field suggests some orders contain multiple line items for the same or different products, enabling analysis of basket composition and cross-selling patterns.
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:40:56Z
+  Last modified: 2026-04-24T13:47:01Z
+  Row count: 2,349,091
+  Size: 315.88 MB
+tags:
+  - domain:retail
+  - data_type:fact_table
+  - pipeline_role:raw
+  - sensitivity:internal
+  - update_pattern:append_only
+  - geography:global
+  - volume:high_volume
+  - lineage:transactional
+  - analytics:revenue
+  - analytics:profitability
+
+materialization:
+  type: table
+
+columns:
+  - name: currency_code
+    type: STRING
+    description: ISO currency code for the transaction (e.g., USD, EUR, GBP). Indicates the local currency in which the sale was conducted, used for multi-currency revenue analysis when combined with exchange_rate.
+    checks:
+      - name: not_null
+  - name: customer_key
+    type: INTEGER
+    description: Foreign key to customers dimension table. Links each sales line item to the purchasing customer for customer analytics, segmentation, and lifetime value calculations.
+    checks:
+      - name: not_null
+  - name: delivery_date
+    type: TIMESTAMP
+    description: Actual or planned delivery timestamp for the order containing this line item. May be null for orders not yet delivered, pickup orders, or digital products. Used for delivery SLA analysis and supply chain metrics.
+  - name: exchange_rate
+    type: NUMERIC
+    description: Exchange rate from local currency (currency_code) to base reporting currency at the time of transaction. Used to convert local currency amounts to standardized reporting currency for consolidated financial analysis.
+  - name: extracted_at
+    type: TIMESTAMP
+    description: ETL extraction timestamp indicating when this sales record was ingested from the source transactional system. Used for incremental loading, data lineage tracking, and freshness monitoring.
+    checks:
+      - name: not_null
+  - name: line_number
+    type: INTEGER
+    description: Sequential line item number within the parent order. Enables identification of multi-line orders and analysis of basket composition, cross-selling patterns, and average items per order.
+    checks:
+      - name: not_null
+  - name: net_price
+    type: NUMERIC
+    description: Total revenue amount for this line item in local currency (unit_price × quantity), after any line-level discounts but before taxes. Primary metric for revenue analysis and financial reporting.
+  - name: order_date
+    type: TIMESTAMP
+    description: Date and time when the order containing this line item was placed by the customer. Primary temporal dimension for sales time-series analysis, seasonality studies, and period-over-period comparisons.
+    checks:
+      - name: not_null
+  - name: order_key
+    type: INTEGER
+    description: Foreign key to orders table. Links each line item to its parent order header for order-level analytics like average order value, order completion rates, and customer purchase patterns.
+    checks:
+      - name: not_null
+  - name: product_key
+    type: INTEGER
+    description: Foreign key to products dimension table. Links each line item to the specific product sold for product performance analysis, inventory turnover, and merchandising insights.
+    checks:
+      - name: not_null
+  - name: quantity
+    type: INTEGER
+    description: Number of units of the product sold in this line item. Used for inventory analysis, demand forecasting, and calculating unit-level metrics like units per transaction.
+    checks:
+      - name: not_null
+  - name: store_key
+    type: INTEGER
+    description: Foreign key to stores dimension table. Identifies the retail location or sales channel where this line item was sold for geographic analysis, store performance, and channel attribution.
+    checks:
+      - name: not_null
+  - name: unit_cost
+    type: NUMERIC
+    description: Cost of goods sold (COGS) per unit in local currency. Used for profit margin analysis, inventory valuation, and gross profit calculations. Combined with quantity for total line item cost.
+  - name: unit_price
+    type: NUMERIC
+    description: Selling price per unit in local currency before line-level discounts. Used for pricing analysis, margin calculations, and revenue per unit metrics. Multiplied by quantity to derive gross line revenue.

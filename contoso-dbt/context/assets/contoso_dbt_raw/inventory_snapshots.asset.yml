@@ -1,0 +1,60 @@
+name: contoso_dbt_raw.inventory_snapshots
+type: bq.source
+description: |-
+  Point-in-time inventory snapshots capturing stock levels and reorder points across all Contoso retail stores and products. This table represents the core inventory management system, tracking current stock on hand, pending orders, and reorder thresholds for demand planning and stockout prevention.
+
+  Data is captured through periodic inventory counts and updated whenever stock movements occur. Each snapshot represents the inventory state at a specific point in time for a store-product combination. The table supports inventory health monitoring, replenishment planning, and stockout risk analysis.
+
+  Downstream usage includes the stg_inventory_health model which deduplicates snapshots, joins with product and store dimensions, and calculates stockout risk classifications (Critical, Low Stock, Adequate, Overstocked).
+
+  Key business insights available: reorder point breaches, zero-stock situations, overstocking patterns, and inventory turnover by product/store combinations.
+
+  Import metadata:
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:41:02Z
+  Last modified: 2026-04-24T13:43:20Z
+  Row count: 488,400
+  Size: 29.81 MB
+tags:
+  - inventory_management
+  - retail_operations
+  - supply_chain
+  - fact_table
+  - raw
+  - snapshot
+  - time_series
+
+columns:
+  - name: extracted_at
+    type: TIMESTAMP
+    description: Timestamp when this record was extracted from the source system during ETL ingestion. Used for data lineage and troubleshooting extraction issues.
+  - name: product_key
+    type: INTEGER
+    description: Foreign key identifier referencing the products dimension table. Links to product details including name, category, brand, and pricing information.
+    checks:
+      - name: not_null
+  - name: quantity_on_hand
+    type: INTEGER
+    description: Current physical inventory count available for sale at the store location. Represents actual stock after accounting for sales, receipts, and adjustments. Can be zero during stockouts.
+  - name: quantity_on_order
+    type: INTEGER
+    description: Quantity of this product currently on purchase orders but not yet received at the store. Used for demand planning and avoiding over-ordering during replenishment cycles.
+  - name: reorder_point
+    type: INTEGER
+    description: Minimum stock threshold that triggers replenishment ordering. Set based on lead times, demand volatility, and service level targets. Critical for automated inventory management.
+  - name: snapshot_date
+    type: DATE
+    description: Business date when the inventory count was captured. Typically represents the end-of-day inventory position. Used for time-series analysis and historical trending.
+    checks:
+      - name: not_null
+  - name: snapshot_key
+    type: INTEGER
+    description: Surrogate key uniquely identifying each inventory snapshot record. Used for deduplication and as primary key in downstream transformations.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: store_key
+    type: INTEGER
+    description: Foreign key identifier referencing the stores dimension table. Links to store details including location, size, status, and operational characteristics.
+    checks:
+      - name: not_null

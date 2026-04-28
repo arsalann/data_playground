@@ -1,0 +1,80 @@
+name: contoso_dbt_staging.stg_employee_directory
+type: bq.source
+description: |-
+  Imported table: contoso_dbt_staging.stg_employee_directory
+  Extracted at: 2026-04-24T13:54:00Z
+  Created at: 2026-04-24T13:47:42Z
+  Last modified: 2026-04-24T13:47:42Z
+  Row count: 3,000
+  Size: 379.99 KB
+
+  Staging table containing comprehensive employee directory information for the Contoso retail organization. This asset combines employee master data with organizational hierarchy, departmental assignments, and store locations through denormalized joins. The data represents a synthetic employee dataset (~3K employees) generated using Faker, providing realistic but artificial employee records for demo and testing purposes.
+
+  Key transformations applied:
+  - Deduplicates employee, department, and store records using latest extracted_at timestamp
+  - Derives full_name by concatenating first_name and last_name from source
+  - Converts text-based status field to boolean is_active flag
+  - Calculates tenure_months as months between hire_date and termination_date (or current date)
+  - Enriches with department names, store countries, and manager names via dimensional lookups
+
+  This staging table serves as the foundation for HR analytics, org chart visualizations, and workforce reporting. All employees have valid employee_key identifiers, but manager_name may be null for senior executives without reported managers.
+tags:
+  - hr
+  - workforce
+  - dimension_table
+  - staging
+  - daily_snapshot
+  - pii
+  - synthetic
+
+columns:
+  - name: department_name
+    type: STRING
+    description: Department name from the departments dimension table. Represents organizational unit assignment for the employee.
+  - name: email
+    type: STRING
+    description: Employee email address. Primary contact method and often used as a business identifier in downstream systems.
+    checks:
+      - name: not_null
+  - name: employee_key
+    type: INTEGER
+    description: Primary identifier for employees. Unique integer key used for joins and references across all employee-related tables.
+    checks:
+      - name: not_null
+      - name: unique
+  - name: full_name
+    type: STRING
+    description: Complete employee name derived by concatenating first_name and last_name from source data. Used for display purposes and reporting.
+    checks:
+      - name: not_null
+  - name: hire_date
+    type: DATE
+    description: Date when employee was hired. Cast from source timestamp to date format for consistency. Core field for tenure calculations.
+    checks:
+      - name: not_null
+  - name: is_active
+    type: BOOLEAN
+    description: Boolean flag indicating if employee is currently active. Derived from source status field where 'Active' converts to true. Used for filtering current workforce.
+    checks:
+      - name: not_null
+  - name: job_title
+    type: STRING
+    description: Employee job title or role. Represents current position within the organization.
+  - name: level
+    type: STRING
+    description: Employee level or seniority indicator. Represents hierarchical position or pay grade within the organization.
+  - name: manager_name
+    type: STRING
+    description: Full name of the employee's direct manager. Derived from manager_key lookup against the same employees table. Null for senior executives without reported managers.
+  - name: salary
+    type: FLOAT
+    description: Employee annual salary in USD. Financial compensation data used for payroll and analytics.
+  - name: store_country
+    type: STRING
+    description: Country where the employee's assigned store is located. Derived from stores dimension via store_key lookup, renamed from country_name.
+  - name: tenure_months
+    type: INTEGER
+    description: Calculated field representing months of service. Computed as months between hire_date and termination_date (or current_date if still active). Used for tenure analysis and benefits calculations.
+  - name: termination_date
+    type: DATE
+    description: Date when employee was terminated. Cast from source timestamp to date format. Null for active employees.

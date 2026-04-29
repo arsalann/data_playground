@@ -241,3 +241,5 @@ __pycache__/
 data/*
 cache/*
 logs/queries
+logs/runs
+logs/*.log

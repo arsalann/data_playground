@@ -163,23 +163,38 @@ def fetch_prices(token_id: str) -> list:
     return data["history"]
 
 
+FOCUS_SERIES_SLUGS = (
+    "paris-daily-weather",
+    "london-daily-weather",
+    "seoul-daily-weather",
+    "toronto-daily-weather",
+)
+
+
 def load_market_universe() -> pd.DataFrame:
     """Read the latest snapshot of polymarket_markets from BigQuery.
 
-    Paris-daily-weather markets are always included regardless of volume
-    (the alleged tampering is the focal point of this pipeline). Other markets
-    are sorted by volume and capped by POLYMARKET_PRICES_LIMIT.
+    All daily-temperature markets for the four investigation cities (Paris,
+    London, Seoul, Toronto) resolving in 2026-01-01..2026-04-30 are always
+    included regardless of volume. Other weather markets are sorted by volume
+    and capped by POLYMARKET_PRICES_LIMIT.
     """
     from google.cloud import bigquery
 
     client = bigquery.Client(project=PROJECT_ID)
+    focus_in = ", ".join(f"'{s}'" for s in FOCUS_SERIES_SLUGS)
     sql = f"""
         WITH latest AS (
           SELECT MAX(extracted_at) AS ts FROM `{PROJECT_ID}.polymarket_weather_raw.polymarket_markets`
         )
-        SELECT market_id, condition_id, clob_token_ids, outcomes, question,
-               event_slug, series_slug, volume,
-               CASE WHEN series_slug = 'paris-daily-weather' THEN 1 ELSE 0 END AS is_paris
+        SELECT
+            market_id, condition_id, clob_token_ids, outcomes, question,
+            event_slug, series_slug, volume,
+            CASE
+                WHEN series_slug IN ({focus_in})
+                  AND DATE(end_date, 'UTC') BETWEEN DATE '2026-01-01' AND DATE '2026-04-30'
+                THEN 1 ELSE 0
+            END AS is_focus
         FROM `{PROJECT_ID}.polymarket_weather_raw.polymarket_markets` m, latest
         WHERE m.extracted_at = latest.ts
           AND clob_token_ids IS NOT NULL AND clob_token_ids != ''
@@ -194,14 +209,19 @@ def materialize():
     logger.info("Markets in latest snapshot: %d", len(universe))
 
     if limit > 0:
-        # Always keep every paris-daily-weather market; cap the rest to top-volume.
-        paris = universe[universe["is_paris"] == 1]
-        rest = universe[universe["is_paris"] == 0].sort_values("volume", ascending=False).head(limit)
-        universe = pd.concat([paris, rest], ignore_index=True)
+        # Always keep every focus-city daily-weather market; cap the rest to top-volume.
+        focus = universe[universe["is_focus"] == 1]
+        rest = universe[universe["is_focus"] == 0].sort_values("volume", ascending=False).head(limit)
+        universe = pd.concat([focus, rest], ignore_index=True)
         logger.info(
-            "Cap: kept all %d Paris markets + top %d others by volume (total %d)",
-            len(paris), len(rest), len(universe),
+            "Cap: kept all %d focus-city markets + top %d others by volume (total %d)",
+            len(focus), len(rest), len(universe),
         )
+    else:
+        # No cap on focus cities, drop the rest (unbounded universe is impractical).
+        focus = universe[universe["is_focus"] == 1]
+        logger.info("Default mode (no env var): focus-city only — %d markets", len(focus))
+        universe = focus.reset_index(drop=True)
 
     snap_ts = datetime.now(timezone.utc)
     rows = []

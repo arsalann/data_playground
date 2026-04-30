@@ -97,5 +97,6 @@ SELECT
     peer_median,
     peer_count
 FROM `bruin-playground-arsalan.polymarket_weather_staging.anomaly_residuals`
-WHERE source_id = '07157'
+WHERE city = 'Paris'
+  AND source_id = '07157'
   AND local_date BETWEEN DATE '2026-04-01' AND DATE '2026-04-30'

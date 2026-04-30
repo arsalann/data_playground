@@ -87,7 +87,7 @@ SELECT
     th.source,
     th.source_id,
     th.ts_utc,
-    th.ts_local_paris,
+    CAST(th.ts_local AS TIMESTAMP) AS ts_local_paris,
     th.source_label,
     th.temp_c,
     ar.peer_residual,
@@ -96,8 +96,9 @@ SELECT
     th.source_id = '07157' AND th.source = 'meteostat' AS is_cdg
 FROM `bruin-playground-arsalan.polymarket_weather_staging.temperature_hourly` th
 LEFT JOIN `bruin-playground-arsalan.polymarket_weather_staging.anomaly_residuals` ar
-    ON ar.source_id = th.source_id AND ar.ts_utc = th.ts_utc
-WHERE th.local_date IN (
+    ON ar.city = th.city AND ar.source_id = th.source_id AND ar.ts_utc = th.ts_utc
+WHERE th.city = 'Paris'
+  AND th.local_date IN (
     DATE '2026-04-05', DATE '2026-04-06', DATE '2026-04-07',
     DATE '2026-04-14', DATE '2026-04-15', DATE '2026-04-16'
 )

@@ -215,7 +215,8 @@ station_max AS (
         MAX(IF(source_id = '07145', temp_max_c, NULL))   AS temp_max_trappes,
         MAX(IF(source = 'openmeteo_grid', temp_max_c, NULL)) AS temp_max_grid
     FROM `bruin-playground-arsalan.polymarket_weather_staging.temperature_daily`
-    WHERE local_date BETWEEN DATE '2026-04-01' AND DATE '2026-04-30'
+    WHERE city = 'Paris'
+      AND local_date BETWEEN DATE '2026-04-01' AND DATE '2026-04-30'
     GROUP BY local_date
 ),
 

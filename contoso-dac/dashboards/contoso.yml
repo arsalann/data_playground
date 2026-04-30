@@ -1,0 +1,614 @@
+name: Contoso Executive Dashboard
+description: |
+  Cross-functional analytics over the contoso-dac DuckDB warehouse — finance,
+  revenue, marketing, operations, workforce, engineering, and customer support.
+  Built with Bruin DAC against the report-layer tables in contoso_reports.*.
+connection: contoso-duckdb-ro
+
+filters:
+  - name: year_from
+    type: select
+    default: "2020"
+    options:
+      values: ["2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025", "2026"]
+  - name: year_to
+    type: select
+    default: "2025"
+    options:
+      values: ["2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025", "2026"]
+
+rows:
+  # -----------------------------------------------------------------
+  # Header (always visible above tabs)
+  # -----------------------------------------------------------------
+  - widgets:
+      - name: About
+        type: text
+        col: 12
+        content: |
+          ## Contoso — Executive Dashboard
+          Filter the year range in the sidebar; every tab below re-runs against
+          your selection. Source: `data/contoso.db` (DuckDB), populated by the
+          `contoso-dac` Bruin pipeline (raw → staging → reports).
+
+  - widgets:
+      - name: Total Revenue
+        type: metric
+        col: 3
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          SELECT COALESCE(SUM(revenue_usd), 0) AS value
+          FROM contoso_reports.revenue_by_segment
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+
+      - name: Gross Profit
+        type: metric
+        col: 3
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          SELECT COALESCE(SUM(profit_usd), 0) AS value
+          FROM contoso_reports.revenue_by_segment
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+
+      - name: Marketing ROAS
+        type: metric
+        col: 2
+        column: value
+        suffix: "x"
+        format: number
+        sql: |
+          SELECT ROUND(
+            COALESCE(SUM(attributed_revenue_usd), 0)
+            / NULLIF(SUM(total_spend), 0), 2) AS value
+          FROM contoso_reports.marketing_channel_roi
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+
+      - name: Delivery Rate
+        type: metric
+        col: 2
+        column: value
+        suffix: "%"
+        format: number
+        sql: |
+          SELECT ROUND(
+            SUM(delivered_count) * 100.0
+            / NULLIF(SUM(shipment_count), 0), 1) AS value
+          FROM contoso_reports.delivery_sla
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+
+      - name: Avg CSAT
+        type: metric
+        col: 2
+        column: value
+        format: number
+        sql: |
+          SELECT ROUND(AVG(avg_satisfaction), 2) AS value
+          FROM contoso_reports.customer_support_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+
+  # -----------------------------------------------------------------
+  # FINANCE
+  # -----------------------------------------------------------------
+  - tab: Finance
+    widgets:
+      - name: Headline P&L Lines by Year (Actual)
+        type: chart
+        chart: bar
+        col: 8
+        x: year
+        y: [Revenue, Gross_Profit, Operating_Expenses, Operating_Income]
+        sql: |
+          SELECT
+            year,
+            ROUND(SUM(CASE WHEN line_item = 'Revenue' THEN amount END), 0) AS "Revenue",
+            ROUND(SUM(CASE WHEN line_item = 'Gross Profit' THEN amount END), 0) AS "Gross_Profit",
+            ROUND(SUM(CASE WHEN line_item = 'Total Operating Expenses' THEN amount END), 0) AS "Operating_Expenses",
+            ROUND(SUM(CASE WHEN line_item = 'Operating Income' THEN amount END), 0) AS "Operating_Income"
+          FROM contoso_reports.profit_and_loss
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY year
+          ORDER BY year
+
+      - name: Operating Income vs Budget
+        type: chart
+        chart: combo
+        col: 4
+        x: year
+        y: [actual, budget]
+        sql: |
+          SELECT
+            year,
+            ROUND(SUM(amount), 0) AS actual,
+            ROUND(SUM(budget_amount), 0) AS budget
+          FROM contoso_reports.profit_and_loss
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            AND line_item = 'Operating Income'
+          GROUP BY year
+          ORDER BY year
+
+  - tab: Finance
+    widgets:
+      - name: Operating Expense Composition (Selected Period)
+        type: chart
+        chart: bar
+        col: 7
+        x: line_item
+        y: [actual]
+        sql: |
+          SELECT
+            TRIM(line_item) AS line_item,
+            ROUND(SUM(amount), 0) AS actual
+          FROM contoso_reports.profit_and_loss
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            AND sort_order BETWEEN 71 AND 79
+          GROUP BY 1
+          ORDER BY actual DESC
+
+      - name: Top Variances (Actual − Budget)
+        type: table
+        col: 5
+        sql: |
+          SELECT
+            line_item AS "Line item",
+            ROUND(SUM(amount), 0) AS "Actual",
+            ROUND(SUM(budget_amount), 0) AS "Budget",
+            ROUND(SUM(variance), 0) AS "Variance"
+          FROM contoso_reports.profit_and_loss
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY line_item
+          ORDER BY ABS(SUM(variance)) DESC
+          LIMIT 10
+        columns:
+          - { name: "Line item", label: "Line item" }
+          - { name: "Actual", label: "Actual", format: currency }
+          - { name: "Budget", label: "Budget", format: currency }
+          - { name: "Variance", label: "Variance", format: currency }
+
+  # -----------------------------------------------------------------
+  # REVENUE
+  # -----------------------------------------------------------------
+  - tab: Revenue
+    widgets:
+      - name: Monthly Revenue by Category
+        type: chart
+        chart: area
+        col: 12
+        stacked: true
+        x: month_label
+        y:
+          - Audio
+          - Cameras_and_camcorders
+          - Cell_phones
+          - Computers
+          - Games_and_Toys
+          - Home_Appliances
+          - Music_Movies_and_Audio_Books
+          - TV_and_Video
+        sql: |
+          SELECT
+            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
+            ROUND(SUM(CASE WHEN category_name = 'Audio' THEN revenue_usd END), 0) AS "Audio",
+            ROUND(SUM(CASE WHEN category_name = 'Cameras and camcorders' THEN revenue_usd END), 0) AS "Cameras_and_camcorders",
+            ROUND(SUM(CASE WHEN category_name = 'Cell phones' THEN revenue_usd END), 0) AS "Cell_phones",
+            ROUND(SUM(CASE WHEN category_name = 'Computers' THEN revenue_usd END), 0) AS "Computers",
+            ROUND(SUM(CASE WHEN category_name = 'Games and Toys' THEN revenue_usd END), 0) AS "Games_and_Toys",
+            ROUND(SUM(CASE WHEN category_name = 'Home Appliances' THEN revenue_usd END), 0) AS "Home_Appliances",
+            ROUND(SUM(CASE WHEN category_name = 'Music, Movies and Audio Books' THEN revenue_usd END), 0) AS "Music_Movies_and_Audio_Books",
+            ROUND(SUM(CASE WHEN category_name = 'TV and Video' THEN revenue_usd END), 0) AS "TV_and_Video"
+          FROM contoso_reports.revenue_by_segment
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY 1
+          ORDER BY 1
+
+  - tab: Revenue
+    widgets:
+      - name: Revenue by Country
+        type: chart
+        chart: bar
+        col: 6
+        x: country
+        y: [revenue]
+        sql: |
+          SELECT
+            store_country AS country,
+            ROUND(SUM(revenue_usd), 0) AS revenue,
+            ROUND(SUM(profit_usd), 0) AS profit
+          FROM contoso_reports.revenue_by_segment
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY country
+          ORDER BY revenue DESC
+          LIMIT 15
+
+      - name: Revenue vs. Margin by Category
+        type: chart
+        chart: scatter
+        col: 6
+        x: revenue
+        y: [margin_pct]
+        sql: |
+          SELECT
+            category_name,
+            ROUND(SUM(revenue_usd), 0) AS revenue,
+            ROUND(SUM(profit_usd) * 100.0 / NULLIF(SUM(revenue_usd), 0), 2) AS margin_pct
+          FROM contoso_reports.revenue_by_segment
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY category_name
+          ORDER BY revenue DESC
+
+  - tab: Revenue
+    widgets:
+      - name: Top Categories (Selected Period)
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            category_name AS "Category",
+            ROUND(SUM(revenue_usd), 0) AS "Revenue",
+            ROUND(SUM(profit_usd), 0) AS "Profit",
+            ROUND(SUM(profit_usd) * 100.0 / NULLIF(SUM(revenue_usd), 0), 2) AS "Margin %",
+            SUM(units_sold)::BIGINT AS "Units sold",
+            SUM(order_count) AS "Orders"
+          FROM contoso_reports.revenue_by_segment
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY category_name
+          ORDER BY "Revenue" DESC
+        columns:
+          - { name: "Category", label: "Category" }
+          - { name: "Revenue", label: "Revenue", format: currency }
+          - { name: "Profit", label: "Profit", format: currency }
+          - { name: "Margin %", label: "Margin %", format: number }
+          - { name: "Units sold", label: "Units sold", format: number }
+          - { name: "Orders", label: "Orders", format: number }
+
+  # -----------------------------------------------------------------
+  # MARKETING
+  # -----------------------------------------------------------------
+  - tab: Marketing
+    widgets:
+      - name: Quarterly ROAS by Channel
+        type: chart
+        chart: line
+        col: 8
+        x: quarter_label
+        y: [Display, Email, Paid_Search, Referral, Social]
+        sql: |
+          SELECT
+            year || '-Q' || quarter AS quarter_label,
+            ROUND(AVG(CASE WHEN channel = 'Display' THEN avg_roas END), 2) AS "Display",
+            ROUND(AVG(CASE WHEN channel = 'Email' THEN avg_roas END), 2) AS "Email",
+            ROUND(AVG(CASE WHEN channel = 'Paid Search' THEN avg_roas END), 2) AS "Paid_Search",
+            ROUND(AVG(CASE WHEN channel = 'Referral' THEN avg_roas END), 2) AS "Referral",
+            ROUND(AVG(CASE WHEN channel = 'Social' THEN avg_roas END), 2) AS "Social"
+          FROM contoso_reports.marketing_channel_roi
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY 1
+          ORDER BY 1
+
+      - name: Channel Spend Mix
+        type: chart
+        chart: pie
+        col: 4
+        label: channel
+        value: spend
+        sql: |
+          SELECT
+            channel,
+            ROUND(SUM(total_spend), 0) AS spend
+          FROM contoso_reports.marketing_channel_roi
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY channel
+          ORDER BY spend DESC
+
+  - tab: Marketing
+    widgets:
+      - name: Channel Performance (Selected Period)
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            channel AS "Channel",
+            ROUND(SUM(total_spend), 0) AS "Spend",
+            ROUND(SUM(attributed_revenue_usd), 0) AS "Attributed Revenue",
+            ROUND(SUM(attributed_revenue_usd) / NULLIF(SUM(total_spend), 0), 2) AS "ROAS",
+            ROUND(AVG(avg_ctr) * 100, 2) AS "CTR %",
+            ROUND(AVG(avg_conversion_rate) * 100, 2) AS "Conv %",
+            ROUND(AVG(avg_cpa), 2) AS "Avg CPA"
+          FROM contoso_reports.marketing_channel_roi
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY channel
+          ORDER BY "Spend" DESC
+        columns:
+          - { name: "Channel", label: "Channel" }
+          - { name: "Spend", label: "Spend", format: currency }
+          - { name: "Attributed Revenue", label: "Attributed Revenue", format: currency }
+          - { name: "ROAS", label: "ROAS", format: number }
+          - { name: "CTR %", label: "CTR %", format: number }
+          - { name: "Conv %", label: "Conv %", format: number }
+          - { name: "Avg CPA", label: "Avg CPA", format: currency }
+
+  # -----------------------------------------------------------------
+  # OPERATIONS
+  # -----------------------------------------------------------------
+  - tab: Operations
+    widgets:
+      - name: Monthly Delivery Rate by Carrier
+        type: chart
+        chart: line
+        col: 8
+        x: month_label
+        y: [DHL, FedEx, UPS, USPS]
+        sql: |
+          SELECT
+            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
+            ROUND(SUM(CASE WHEN carrier = 'DHL' THEN delivered_count END) * 100.0
+              / NULLIF(SUM(CASE WHEN carrier = 'DHL' THEN shipment_count END), 0), 2) AS "DHL",
+            ROUND(SUM(CASE WHEN carrier = 'FedEx' THEN delivered_count END) * 100.0
+              / NULLIF(SUM(CASE WHEN carrier = 'FedEx' THEN shipment_count END), 0), 2) AS "FedEx",
+            ROUND(SUM(CASE WHEN carrier = 'UPS' THEN delivered_count END) * 100.0
+              / NULLIF(SUM(CASE WHEN carrier = 'UPS' THEN shipment_count END), 0), 2) AS "UPS",
+            ROUND(SUM(CASE WHEN carrier = 'USPS' THEN delivered_count END) * 100.0
+              / NULLIF(SUM(CASE WHEN carrier = 'USPS' THEN shipment_count END), 0), 2) AS "USPS"
+          FROM contoso_reports.delivery_sla
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY 1
+          ORDER BY 1
+
+      - name: Shipment Outcomes
+        type: chart
+        chart: bar
+        col: 4
+        x: outcome
+        y: [count]
+        sql: |
+          WITH s AS (
+            SELECT
+              SUM(delivered_count) AS delivered,
+              SUM(returned_count) AS returned,
+              SUM(lost_count) AS lost
+            FROM contoso_reports.delivery_sla
+            WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          )
+          SELECT 'Delivered' AS outcome, delivered AS count FROM s
+          UNION ALL SELECT 'Returned', returned FROM s
+          UNION ALL SELECT 'Lost', lost FROM s
+
+  - tab: Operations
+    widgets:
+      - name: Lead Time by Country (Top 15 by Volume)
+        type: chart
+        chart: bar
+        col: 7
+        x: country
+        y: [avg_lead_days]
+        sql: |
+          SELECT
+            store_country AS country,
+            ROUND(AVG(avg_total_lead_days), 2) AS avg_lead_days,
+            ROUND(AVG(p95_lead_days), 1) AS p95_lead_days,
+            SUM(shipment_count) AS shipments
+          FROM contoso_reports.delivery_sla
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY country
+          ORDER BY shipments DESC
+          LIMIT 15
+
+      - name: Carrier Scorecard
+        type: table
+        col: 5
+        sql: |
+          SELECT
+            carrier AS "Carrier",
+            SUM(shipment_count) AS "Shipments",
+            ROUND(SUM(delivered_count) * 100.0 / NULLIF(SUM(shipment_count), 0), 2) AS "Delivery %",
+            ROUND(AVG(avg_total_lead_days), 2) AS "Avg lead",
+            ROUND(AVG(p95_lead_days), 1) AS "P95 lead",
+            ROUND(AVG(avg_cost_per_shipment), 2) AS "Avg cost"
+          FROM contoso_reports.delivery_sla
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY carrier
+          ORDER BY "Shipments" DESC
+        columns:
+          - { name: "Carrier", label: "Carrier" }
+          - { name: "Shipments", label: "Shipments", format: number }
+          - { name: "Delivery %", label: "Delivery %", format: number }
+          - { name: "Avg lead", label: "Avg lead (days)", format: number }
+          - { name: "P95 lead", label: "P95 lead (days)", format: number }
+          - { name: "Avg cost", label: "Avg cost", format: currency }
+
+  # -----------------------------------------------------------------
+  # WORKFORCE
+  # -----------------------------------------------------------------
+  - tab: Workforce
+    widgets:
+      - name: Headcount by Department (Avg over Period)
+        type: chart
+        chart: bar
+        col: 7
+        x: department
+        y: [headcount]
+        sql: |
+          SELECT
+            department_name AS department,
+            ROUND(AVG(active_headcount), 0) AS headcount,
+            ROUND(AVG(turnover_rate), 2) AS turnover_pct
+          FROM contoso_reports.workforce_analytics
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY department
+          ORDER BY headcount DESC
+
+      - name: Hires vs Terminations by Quarter
+        type: chart
+        chart: bar
+        col: 5
+        x: quarter_label
+        y: [hires, terminations]
+        sql: |
+          SELECT
+            year || '-Q' || quarter AS quarter_label,
+            SUM(new_hires) AS hires,
+            SUM(terminations) AS terminations
+          FROM contoso_reports.workforce_analytics
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY 1
+          ORDER BY 1
+
+  - tab: Workforce
+    widgets:
+      - name: Department Scorecard
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            department_name AS "Department",
+            ROUND(AVG(active_headcount), 0) AS "Avg headcount",
+            ROUND(AVG(turnover_rate), 2) AS "Turnover %",
+            ROUND(AVG(avg_tenure_months), 1) AS "Avg tenure (mo)",
+            ROUND(AVG(avg_salary), 0) AS "Avg salary",
+            ROUND(SUM(quarterly_payroll_cost), 0) AS "Total payroll"
+          FROM contoso_reports.workforce_analytics
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY department_name
+          ORDER BY "Total payroll" DESC
+        columns:
+          - { name: "Department", label: "Department" }
+          - { name: "Avg headcount", label: "Avg headcount", format: number }
+          - { name: "Turnover %", label: "Turnover %", format: number }
+          - { name: "Avg tenure (mo)", label: "Avg tenure (mo)", format: number }
+          - { name: "Avg salary", label: "Avg salary", format: currency }
+          - { name: "Total payroll", label: "Total payroll", format: currency }
+
+  # -----------------------------------------------------------------
+  # ENGINEERING
+  # -----------------------------------------------------------------
+  - tab: Engineering
+    widgets:
+      - name: Quality Signals — Completion, Bug Ratio, Rollback %
+        type: chart
+        chart: line
+        col: 12
+        x: month_label
+        y: [completion_rate, bug_ratio, rollback_rate]
+        sql: |
+          SELECT
+            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
+            ROUND(AVG(completion_rate), 2) AS completion_rate,
+            ROUND(AVG(bug_ratio), 2) AS bug_ratio,
+            ROUND(AVG(avg_rollback_rate), 2) AS rollback_rate
+          FROM contoso_reports.engineering_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY 1
+          ORDER BY 1
+
+  - tab: Engineering
+    widgets:
+      - name: Deployment Volume by Month
+        type: chart
+        chart: bar
+        col: 8
+        x: month_label
+        y: [deployments, rollbacks]
+        sql: |
+          SELECT
+            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
+            SUM(total_deployments)::BIGINT AS deployments,
+            SUM(total_rollbacks)::BIGINT AS rollbacks
+          FROM contoso_reports.engineering_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY 1
+          ORDER BY 1
+
+      - name: Engineering KPIs (Period Avg)
+        type: table
+        col: 4
+        sql: |
+          SELECT
+            ROUND(AVG(completion_rate), 1) AS "Sprint completion %",
+            ROUND(AVG(avg_velocity), 1) AS "Avg velocity",
+            ROUND(AVG(bug_ratio), 2) AS "Bug ratio %",
+            ROUND(AVG(avg_cycle_time_days), 2) AS "Cycle time (days)",
+            ROUND(AVG(deploy_frequency), 2) AS "Deploys / day"
+          FROM contoso_reports.engineering_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+
+  # -----------------------------------------------------------------
+  # SUPPORT
+  # -----------------------------------------------------------------
+  - tab: Support
+    widgets:
+      - name: Monthly Tickets by Channel
+        type: chart
+        chart: area
+        col: 8
+        stacked: true
+        x: month_label
+        y: [Chat, Email, Phone, Social]
+        sql: |
+          SELECT
+            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
+            SUM(CASE WHEN channel = 'Chat' THEN ticket_count END)::BIGINT AS "Chat",
+            SUM(CASE WHEN channel = 'Email' THEN ticket_count END)::BIGINT AS "Email",
+            SUM(CASE WHEN channel = 'Phone' THEN ticket_count END)::BIGINT AS "Phone",
+            SUM(CASE WHEN channel = 'Social' THEN ticket_count END)::BIGINT AS "Social"
+          FROM contoso_reports.customer_support_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY 1
+          ORDER BY 1
+
+      - name: Tickets by Category
+        type: chart
+        chart: pie
+        col: 4
+        label: category
+        value: tickets
+        sql: |
+          SELECT
+            category,
+            SUM(ticket_count)::BIGINT AS tickets
+          FROM contoso_reports.customer_support_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY category
+          ORDER BY tickets DESC
+
+  - tab: Support
+    widgets:
+      - name: Resolution Time vs CSAT (Bubble = Volume)
+        type: chart
+        chart: bubble
+        col: 7
+        x: avg_resolution_days
+        y: [avg_satisfaction]
+        size: tickets
+        sql: |
+          SELECT
+            category,
+            ROUND(AVG(avg_resolution_days), 2) AS avg_resolution_days,
+            ROUND(AVG(avg_satisfaction), 2) AS avg_satisfaction,
+            SUM(ticket_count)::BIGINT AS tickets
+          FROM contoso_reports.customer_support_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY category
+
+      - name: Channel Scorecard
+        type: table
+        col: 5
+        sql: |
+          SELECT
+            channel AS "Channel",
+            SUM(ticket_count)::BIGINT AS "Tickets",
+            ROUND(SUM(resolved_count) * 100.0 / NULLIF(SUM(ticket_count), 0), 2) AS "Resolution %",
+            ROUND(AVG(avg_resolution_days), 2) AS "Avg days",
+            ROUND(AVG(avg_satisfaction), 2) AS "CSAT"
+          FROM contoso_reports.customer_support_report
+          WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          GROUP BY channel
+          ORDER BY "Tickets" DESC
+        columns:
+          - { name: "Channel", label: "Channel" }
+          - { name: "Tickets", label: "Tickets", format: number }
+          - { name: "Resolution %", label: "Resolution %", format: number }
+          - { name: "Avg days", label: "Avg days", format: number }
+          - { name: "CSAT", label: "CSAT", format: number }

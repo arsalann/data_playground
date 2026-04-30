@@ -1,0 +1,6 @@
+pandas
+pyarrow
+py7zr
+faker
+requests
+numpy

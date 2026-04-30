@@ -2,35 +2,28 @@
 
 name: polymarket_weather_raw.station_hourly
 description: |
-  Hourly surface observations for the six Paris-region weather stations relevant to the
-  alleged April 2026 Polymarket sensor-tampering investigation. The station list is fixed
-  and identical for every fetch; the same Meteostat call is used for each, so cross-station
-  comparison is methodologically clean.
+  Hourly surface observations for the Polymarket-relevant weather stations across
+  the four investigation cities — Paris, London, Seoul, and Toronto. The set of
+  cities and stations is sourced from `city_manifest.yml`; each city carries a
+  primary station (the airport whose ICAO Polymarket cites for resolution) plus
+  3-4 nearby peer stations used for cross-station anomaly detection.
 
-  Source: Meteostat Python library (https://meteostat.net), which aggregates NOAA Integrated
-  Surface Database (ISD) METAR/SYNOP and Météo-France SYNOP feeds. Re-distributed under the
-  Meteostat Terms of Service for non-commercial research.
+  Source: Meteostat Python library (https://meteostat.net), aggregating NOAA ISD
+  METAR/SYNOP and Météo-France SYNOP feeds. Re-distributed under the Meteostat
+  Terms of Service for non-commercial research.
 
-  Stations (Meteostat ID, ICAO, role):
-    - 07157  LFPG  Paris-Charles de Gaulle      (suspect sensor)
-    - 07150  LFPB  Paris / Le Bourget           (post-incident replacement)
-    - 07156  --    Paris-Montsouris             (urban historical reference)
-    - 07149  LFPO  Paris-Orly                   (second airport)
-    - 07147  LFPV  Villacoublay                 (military)
-    - 07145  LFPT  Trappes                      (semi-rural radiosonde)
+  Returned timestamps are UTC. Local-time conversion (per city's IANA timezone)
+  happens once in staging. Each station's reported lat/lon is asserted within
+  0.05° of the configured value at ingestion and logged.
 
-  Returned timestamps are UTC. Local Paris timestamps are derived in staging.
-  Verification: each station's reported lat/lon is asserted within 0.05° of the configured
-  value at ingestion time and logged.
-
-  Operational characteristics: Daily refresh, ~20k rows/month, append-only pattern.
-  Reliability: 30-day chunking with 5-retry backoff, coordinate validation at 0.05° tolerance,
-  duplicate removal on (station_id, ts_utc). Quality monitoring includes gap detection and
-  cross-station anomaly detection in downstream staging layers.
+  Operational characteristics: refresh on demand, ~3k rows per station-month,
+  create+replace materialization. Window controlled by BRUIN_START_DATE /
+  BRUIN_END_DATE; default covers the four-month investigation window
+  2026-01-01 - 2026-04-30.
 connection: bruin-playground-arsalan
 tags:
   - sensor-tampering-investigation
-  - paris-weather
+  - multi-city-weather
   - polymarket-resolution
   - meteorological-data
   - meteostat-source
@@ -45,65 +38,84 @@ materialization:
 image: python:3.11
 
 columns:
+  - name: city
+    type: VARCHAR
+    description: City identifier from the manifest (Paris, London, Seoul, Toronto). Composite primary key with station_id and ts_utc.
+    primary_key: true
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - Paris
+          - London
+          - Seoul
+          - Toronto
   - name: station_id
     type: VARCHAR
-    description: Meteostat station identifier (5-digit WMO synoptic code for these stations). Always exactly 5 characters for these Paris stations.
+    description: Meteostat station identifier (5-digit WMO synoptic code or alphanumeric Meteostat private ID).
     primary_key: true
     checks:
       - name: not_null
   - name: ts_utc
     type: TIMESTAMP
-    description: Observation timestamp in UTC (top of the hour). Forms composite primary key with station_id for hourly uniqueness.
+    description: Observation timestamp in UTC (top of the hour).
     primary_key: true
     checks:
       - name: not_null
+  - name: role
+    type: VARCHAR
+    description: Whether this station is the Polymarket-resolution primary or a peer.
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - primary
+          - peer
   - name: station_name
     type: VARCHAR
-    description: Human-readable station name as reported by Meteostat. Maps to fixed set of 6 Paris-region stations.
+    description: Human-readable station name as reported by Meteostat.
     checks:
       - name: not_null
   - name: icao
     type: VARCHAR
-    description: ICAO airport identifier where applicable (4 characters), otherwise null for non-airport stations like Paris-Montsouris.
+    description: ICAO airport identifier where applicable, NULL for non-airport stations.
   - name: latitude
     type: DOUBLE
-    description: Station latitude in decimal degrees (positive=north). Verified within 0.05° of configured value at ingestion. Paris region range ~48.7-49.0°N.
+    description: Station latitude in decimal degrees (positive=north). Verified within 0.05° of configured value at ingestion.
     checks:
       - name: not_null
   - name: longitude
     type: DOUBLE
-    description: Station longitude in decimal degrees (positive=east). Verified within 0.05° of configured value at ingestion. Paris region range ~2.0-2.5°E.
+    description: Station longitude in decimal degrees (positive=east). Verified within 0.05° of configured value at ingestion.
     checks:
       - name: not_null
   - name: elevation_m
     type: DOUBLE
-    description: Station elevation above mean sea level in metres. Paris region stations range roughly 70-170m elevation.
-    checks:
-      - name: not_null
+    description: Station elevation above mean sea level in metres.
   - name: temp_c
     type: DOUBLE
-    description: Air temperature at 2 metres in degrees Celsius. Primary metric for the CDG sensor tampering investigation. Typical Paris range -10 to 40°C.
+    description: Air temperature at 2 metres in degrees Celsius.
   - name: humidity_pct
     type: DOUBLE
-    description: Relative humidity as percentage (0-100). Derived from dew point and air temperature measurements.
+    description: Relative humidity as percentage (0-100).
   - name: precipitation_mm
     type: DOUBLE
-    description: Hourly precipitation total in millimetres. Frequently null during dry periods, representing zero or trace amounts.
+    description: Hourly precipitation total in millimetres.
   - name: wind_speed_kmh
     type: DOUBLE
-    description: Mean wind speed in kilometres per hour over the hourly observation period.
+    description: Mean wind speed in kilometres per hour.
   - name: wind_direction_deg
     type: DOUBLE
-    description: Mean wind direction in degrees (0=North, 90=East, 180=South, 270=West). Occasionally null during calm conditions.
+    description: Mean wind direction in degrees (0=North, 90=East, 180=South, 270=West).
   - name: pressure_hpa
     type: DOUBLE
-    description: Sea-level air pressure in hectopascals (millibars). Standard atmospheric pressure ~1013 hPa. Occasional nulls due to sensor issues.
+    description: Sea-level air pressure in hectopascals.
   - name: cloud_cover_okta
     type: DOUBLE
-    description: Cloud cover in oktas (0=clear sky, 8=overcast). Traditional meteorological scale with occasional nulls during observation gaps.
+    description: Cloud cover in oktas (0=clear sky, 8=overcast).
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp when this row was fetched from the Meteostat API. Used for data lineage and refresh tracking.
+    description: UTC timestamp when this row was fetched from the Meteostat API.
     checks:
       - name: not_null
 
@@ -114,8 +126,10 @@ import os
 import time
 import warnings
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pandas as pd
+import yaml
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -123,19 +137,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Six Paris-region stations. Fixed list — same call for every station so methodology is identical.
-STATIONS = [
-    {"station_id": "07157", "icao": "LFPG", "configured_lat": 49.010, "configured_lon": 2.548, "role": "Paris-Charles de Gaulle"},
-    {"station_id": "07150", "icao": "LFPB", "configured_lat": 48.969, "configured_lon": 2.441, "role": "Paris / Le Bourget"},
-    {"station_id": "07156", "icao": None,   "configured_lat": 48.822, "configured_lon": 2.338, "role": "Paris-Montsouris"},
-    {"station_id": "07149", "icao": "LFPO", "configured_lat": 48.723, "configured_lon": 2.379, "role": "Paris-Orly"},
-    {"station_id": "07147", "icao": "LFPV", "configured_lat": 48.774, "configured_lon": 2.197, "role": "Villacoublay"},
-    {"station_id": "07145", "icao": "LFPT", "configured_lat": 48.774, "configured_lon": 2.009, "role": "Trappes"},
-]
-
+MANIFEST_PATH = Path(__file__).parent / "city_manifest.yml"
 CHUNK_DAYS = 30
 COORD_TOLERANCE_DEG = 0.05
 MAX_RETRIES = 5
+
+
+def load_stations() -> list[dict]:
+    """Flatten city_manifest.yml into one dict per (city, station)."""
+    with open(MANIFEST_PATH, "r") as f:
+        manifest = yaml.safe_load(f)
+    out = []
+    for c in manifest["cities"]:
+        for s in c["stations"]:
+            out.append({
+                "city": c["name"],
+                "station_id": s["id"],
+                "icao": s.get("icao"),
+                "configured_lat": float(s["lat"]),
+                "configured_lon": float(s["lon"]),
+                "role": s["role"],
+                "name": s.get("name"),
+            })
+    return out
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -163,21 +187,22 @@ def fetch_chunk(station_ids, start: datetime, end: datetime) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def fetch_station_metadata():
-    """Look up each configured station and assert its lat/lon matches within tolerance."""
-    from meteostat import stations
+def fetch_station_metadata(stations_cfg: list[dict]):
+    """Look up each configured station and assert lat/lon within tolerance."""
+    from meteostat import stations as ms_stations
 
     out = {}
-    for s in STATIONS:
-        meta = stations.meta(s["station_id"])
+    for s in stations_cfg:
+        sid = s["station_id"]
+        meta = ms_stations.meta(sid)
         if meta is None:
-            logger.error("Meteostat returned no metadata for station %s — leaving placeholder values", s["station_id"])
-            out[s["station_id"]] = {
-                "name": s["role"],
+            logger.error("Meteostat returned no metadata for station %s — using configured values", sid)
+            out[sid] = {
+                "name": s.get("name") or sid,
                 "latitude": s["configured_lat"],
                 "longitude": s["configured_lon"],
                 "elevation": None,
-                "icao": s["icao"],
+                "icao": s.get("icao"),
             }
             continue
 
@@ -187,22 +212,22 @@ def fetch_station_metadata():
         d_lon = abs(actual_lon - s["configured_lon"])
 
         logger.info(
-            "Station %s (%s): name=%r lat=%.4f lon=%.4f elev=%s — Δlat=%.3f Δlon=%.3f",
-            s["station_id"], s["role"], meta.name, actual_lat, actual_lon, meta.elevation, d_lat, d_lon,
+            "Station %s [%s] (%s): name=%r lat=%.4f lon=%.4f elev=%s — Δlat=%.3f Δlon=%.3f",
+            sid, s["city"], s["role"], meta.name, actual_lat, actual_lon, meta.elevation, d_lat, d_lon,
         )
 
         if d_lat > COORD_TOLERANCE_DEG or d_lon > COORD_TOLERANCE_DEG:
             raise RuntimeError(
-                f"Coordinate mismatch for station {s['station_id']}: configured ({s['configured_lat']}, {s['configured_lon']}), "
+                f"Coordinate mismatch for station {sid}: configured ({s['configured_lat']}, {s['configured_lon']}), "
                 f"actual ({actual_lat}, {actual_lon}). Δlat={d_lat:.3f} Δlon={d_lon:.3f} exceeds tolerance {COORD_TOLERANCE_DEG}°."
             )
 
-        out[s["station_id"]] = {
+        out[sid] = {
             "name": meta.name,
             "latitude": actual_lat,
             "longitude": actual_lon,
             "elevation": meta.elevation,
-            "icao": s["icao"],
+            "icao": (meta.identifiers or {}).get("icao") or s.get("icao"),
         }
     return out
 
@@ -210,28 +235,35 @@ def fetch_station_metadata():
 def materialize():
     warnings.filterwarnings("ignore", category=FutureWarning)
 
-    start_str = os.environ.get("BRUIN_START_DATE", "2024-01-01")
-    end_str = os.environ.get("BRUIN_END_DATE", (datetime.utcnow().date() - timedelta(days=1)).strftime("%Y-%m-%d"))
+    start_str = os.environ.get("BRUIN_START_DATE", "2026-01-01")
+    end_str = os.environ.get("BRUIN_END_DATE", "2026-04-30")
     start = datetime.strptime(start_str[:10], "%Y-%m-%d")
     end = datetime.strptime(end_str[:10], "%Y-%m-%d")
 
-    logger.info("Window: %s → %s, stations=%d, chunk=%dd", start.date(), end.date(), len(STATIONS), CHUNK_DAYS)
+    stations_cfg = load_stations()
+    logger.info("Window: %s → %s, stations=%d, chunk=%dd", start.date(), end.date(), len(stations_cfg), CHUNK_DAYS)
 
-    metadata = fetch_station_metadata()
-    station_ids = [s["station_id"] for s in STATIONS]
+    metadata = fetch_station_metadata(stations_cfg)
+
+    # Group stations by city to keep each Meteostat call ≤ 10 stations
+    # (Meteostat 2.x blocks larger multi-station requests by default).
+    stations_by_city: dict[str, list[str]] = {}
+    for s in stations_cfg:
+        stations_by_city.setdefault(s["city"], []).append(s["station_id"])
 
     pieces = []
     cursor = start
     while cursor <= end:
         chunk_end = min(cursor + timedelta(days=CHUNK_DAYS), end)
-        df = fetch_chunk(station_ids, cursor, chunk_end)
-        if not df.empty:
-            pieces.append(df)
-            logger.info("Chunk %s..%s: %d rows", cursor.date(), chunk_end.date(), len(df))
-        else:
-            logger.warning("Chunk %s..%s: no rows", cursor.date(), chunk_end.date())
+        for city, sids in stations_by_city.items():
+            df = fetch_chunk(sids, cursor, chunk_end)
+            if not df.empty:
+                pieces.append(df)
+                logger.info("[%s] Chunk %s..%s: %d rows", city, cursor.date(), chunk_end.date(), len(df))
+            else:
+                logger.warning("[%s] Chunk %s..%s: no rows", city, cursor.date(), chunk_end.date())
+            time.sleep(0.5)
         cursor = chunk_end + timedelta(days=1)
-        time.sleep(0.5)
 
     if not pieces:
         logger.warning("No data fetched")
@@ -239,7 +271,6 @@ def materialize():
 
     raw = pd.concat(pieces, ignore_index=True)
 
-    # Map raw fields to typed output schema. Some columns may be missing for some stations.
     out = pd.DataFrame()
     out["station_id"] = raw["station"].astype(str)
     out["ts_utc"] = pd.to_datetime(raw["time"], utc=True)
@@ -251,11 +282,17 @@ def materialize():
     out["pressure_hpa"] = pd.to_numeric(raw.get("pres"), errors="coerce")
     out["cloud_cover_okta"] = pd.to_numeric(raw.get("cldc"), errors="coerce")
 
-    # Attach metadata (name/lat/lon/elev/icao) per station
-    for col in ("station_name", "icao", "latitude", "longitude", "elevation_m"):
+    # Attach per-station metadata. A station can only belong to one (city, role) pair.
+    station_to_cfg = {s["station_id"]: s for s in stations_cfg}
+    for col in ("city", "role", "station_name", "icao", "latitude", "longitude", "elevation_m"):
         out[col] = None
     for sid, meta in metadata.items():
+        cfg = station_to_cfg.get(sid)
+        if cfg is None:
+            continue
         mask = out["station_id"] == sid
+        out.loc[mask, "city"] = cfg["city"]
+        out.loc[mask, "role"] = cfg["role"]
         out.loc[mask, "station_name"] = meta["name"]
         out.loc[mask, "icao"] = meta["icao"]
         out.loc[mask, "latitude"] = meta["latitude"]
@@ -265,19 +302,19 @@ def materialize():
     out["extracted_at"] = datetime.now(timezone.utc)
 
     out = out[[
-        "station_id", "ts_utc", "station_name", "icao",
+        "city", "station_id", "ts_utc", "role", "station_name", "icao",
         "latitude", "longitude", "elevation_m",
         "temp_c", "humidity_pct", "precipitation_mm",
         "wind_speed_kmh", "wind_direction_deg", "pressure_hpa", "cloud_cover_okta",
         "extracted_at",
     ]]
 
-    out = out.dropna(subset=["station_id", "ts_utc"])
-    out = out.drop_duplicates(subset=["station_id", "ts_utc"], keep="last").reset_index(drop=True)
+    out = out.dropna(subset=["city", "station_id", "ts_utc"])
+    out = out.drop_duplicates(subset=["city", "station_id", "ts_utc"], keep="last").reset_index(drop=True)
 
     logger.info(
-        "Total rows: %d. Per-station counts: %s",
-        len(out), out.groupby("station_id").size().to_dict(),
+        "Total rows: %d. Per-(city,station) counts: %s",
+        len(out), out.groupby(["city", "station_id"]).size().to_dict(),
     )
     logger.info("Date range: %s..%s", out["ts_utc"].min(), out["ts_utc"].max())
     return out

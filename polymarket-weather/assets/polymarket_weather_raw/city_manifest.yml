@@ -1,0 +1,51 @@
+cities:
+  - name: Paris
+    timezone: Europe/Paris
+    series_slug: paris-daily-weather
+    primary_icao: LFPG
+    primary_station_id: "07157"
+    openmeteo_grid: {lat: 48.857, lon: 2.353}
+    stations:
+      - {id: "07157", icao: "LFPG", role: primary, lat: 49.01, lon: 2.548, name: "Paris-Charles de Gaulle"}
+      - {id: "07150", icao: "LFPB", role: peer, lat: 48.969, lon: 2.441, name: "Paris / Le Bourget"}
+      - {id: "07156", icao: null, role: peer, lat: 48.822, lon: 2.338, name: "Paris-Montsouris"}
+      - {id: "07149", icao: "LFPO", role: peer, lat: 48.723, lon: 2.379, name: "Paris-Orly"}
+      - {id: "07147", icao: "LFPV", role: peer, lat: 48.774, lon: 2.197, name: "Villacoublay"}
+      - {id: "07145", icao: "LFPT", role: peer, lat: 48.774, lon: 2.009, name: "Trappes"}
+  - name: London
+    timezone: Europe/London
+    series_slug: london-daily-weather
+    primary_icao: EGLC
+    primary_station_id: "EGLC0"
+    openmeteo_grid: {lat: 51.507, lon: -0.128}
+    stations:
+      - {id: "EGLC0", icao: "EGLC", role: primary, lat: 51.5, lon: 0.1167, name: "London / Abbey Wood", completeness: 1.0}
+      - {id: "03779", icao: "EGRB", role: peer, lat: 51.5167, lon: -0.1167, name: "London Weather Centre", completeness: 1.0}
+      - {id: "03672", icao: "EGWU", role: peer, lat: 51.55, lon: -0.4167, name: "Northolt", completeness: 1.0}
+      - {id: "03772", icao: "EGLL", role: peer, lat: 51.4833, lon: -0.45, name: "London Heathrow Airport", completeness: 1.0}
+      - {id: "03781", icao: null, role: peer, lat: 51.3, lon: -0.0833, name: "Kenley", completeness: 1.0}
+  - name: Seoul
+    timezone: Asia/Seoul
+    series_slug: seoul-daily-weather
+    primary_icao: RKSI
+    primary_station_id: "47113"
+    openmeteo_grid: {lat: 37.566, lon: 126.978}
+    stations:
+      - {id: "47113", icao: "RKSI", role: primary, lat: 37.4667, lon: 126.45, name: "Incheon International Airport", completeness: 1.0}
+      - {id: "47108", icao: "RKSL", role: peer, lat: 37.5667, lon: 126.9667, name: "Seoul", completeness: 1.0}
+      - {id: "47110", icao: "RKSS", role: peer, lat: 37.55, lon: 126.8, name: "Seoul / Kimp'O International Airport", completeness: 1.0}
+      - {id: "47111", icao: "RKSM", role: peer, lat: 37.4333, lon: 127.1167, name: "Seoul E Ab", completeness: 0.991}
+      - {id: "RKSY0", icao: "RKSY", role: peer, lat: 37.5167, lon: 127.0, name: "Yongsan / Yong San / Yong-san / Chamsil", completeness: 0.985}
+  - name: Toronto
+    timezone: America/Toronto
+    series_slug: toronto-daily-weather
+    primary_icao: CYYZ
+    primary_station_id: "71624"
+    openmeteo_grid: {lat: 43.653, lon: -79.383}
+    stations:
+      - {id: "71624", icao: "CYYZ", role: primary, lat: 43.68, lon: -79.63, name: "Toronto Pearson International Airport", completeness: 1.0}
+      - {id: "71508", icao: "CXTO", role: peer, lat: 43.67, lon: -79.4, name: "Toronto City", completeness: 1.0}
+      - {id: "2XUGG", icao: null, role: peer, lat: 43.63, lon: -79.4, name: "Toronto City Centre", completeness: 1.0}
+      - {id: "71265", icao: "CYTZ", role: peer, lat: 43.6333, lon: -79.4, name: "Toronto Island Airport", completeness: 0.993}
+      - {id: "71639", icao: "CYKZ", role: peer, lat: 43.86, lon: -79.37, name: "Toronto Buttonville Airport", completeness: 0.987}
+

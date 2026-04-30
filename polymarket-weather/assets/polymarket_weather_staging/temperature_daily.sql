@@ -3,29 +3,20 @@
 name: polymarket_weather_staging.temperature_daily
 type: bq.sql
 description: |
-  Daily temperature panel for the six Paris-region stations plus the Open-Meteo grid,
-  used for both Polymarket-style daily-max resolution counterfactuals and for
-  multi-year climatological context in the April 2026 temperature sensor tampering investigation.
-
-  This dataset is critical for forensic weather analysis, providing the ground truth for
-  counterfactual market resolution calculations. Each row represents a single station-day
-  with temperature extremes that would have determined Polymarket betting outcomes.
+  Daily temperature panel for every Meteostat station and Open-Meteo grid point
+  in city_manifest.yml (Paris, London, Seoul, Toronto). Used both for
+  Polymarket-style daily-max resolution counterfactuals and for multi-year
+  climatology context.
 
   Two source paths are unioned with preference logic:
-    1. Pre-aggregated daily series from raw.station_daily (2010+ climatology baseline)
+    1. Pre-aggregated daily series from raw.station_daily (long history baseline)
     2. Daily max/min/mean derived from hourly observations (raw.station_hourly +
-       raw.openmeteo_grid) — this is the *Polymarket-equivalent* daily max, computed
-       from local-day hourly readings using Europe/Paris timezone
+       raw.openmeteo_grid) — the *Polymarket-equivalent* daily max, computed from
+       local-day hourly readings using each city's IANA timezone.
 
-  When both sources exist for the same (station, date), the hourly-derived row is
-  preferred because it precisely matches what Polymarket's resolution logic would have
-  observed from real-time feeds. The dataset spans 2010-2026 with ~36k station-days
-  covering normal climatology plus the controversial April 2026 period.
-
-  Station coverage includes all major Paris-area microclimates: airports (CDG-07157 suspect
-  sensor, Orly-07149, Le Bourget-07150), urban core (Montsouris-07156), military
-  (Villacoublay-07145), and semi-rural (Trappes-07145). Open-Meteo gridded reanalysis
-  at Paris centre provides an independent baseline unaffected by any single sensor anomaly.
+  When both sources exist for the same (city, station, date), the hourly-derived
+  row is preferred because it precisely matches what Polymarket's resolution
+  logic would observe from real-time feeds.
 connection: bruin-playground-arsalan
 tags:
   - domain:forensic_investigation
@@ -34,7 +25,7 @@ tags:
   - data_type:time_series
   - source:meteostat
   - source:openmeteo
-  - geography:paris_region
+  - geography:multi_city
   - temporal_scope:climatology
   - pipeline_role:staging
   - update_pattern:snapshot
@@ -54,9 +45,22 @@ secrets:
     inject_as: bruin-playground-arsalan
 
 columns:
+  - name: city
+    type: VARCHAR
+    description: City identifier from the manifest
+    primary_key: true
+    nullable: false
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - Paris
+          - London
+          - Seoul
+          - Toronto
   - name: source
     type: VARCHAR
-    description: Data source type - either 'meteostat' for physical weather station observations or 'openmeteo_grid' for ERA5-based gridded reanalysis. Cardinality is exactly 2 values.
+    description: meteostat (station observation) or openmeteo_grid (ERA5 reanalysis)
     primary_key: true
     nullable: false
     checks:
@@ -67,39 +71,49 @@ columns:
           - openmeteo_grid
   - name: source_id
     type: VARCHAR
-    description: Station identifier - 5-digit Meteostat/WMO station codes (07157=CDG suspect sensor, 07149=Orly, 07150=Le Bourget, 07156=Montsouris, 07145=Villacoublay/Trappes) or 'paris_centre' for the Open-Meteo grid point. Cardinality is exactly 7 values.
+    description: Meteostat station identifier or '<city>_centre' for the grid
     primary_key: true
     nullable: false
     checks:
       - name: not_null
   - name: local_date
     type: DATE
-    description: Calendar date in Europe/Paris local time (CET/CEST). Spans 2010-01-01 through 2026-04-29 covering both climatology baseline and the controversial April 2026 period. Primary temporal dimension for counterfactual analysis.
+    description: Calendar date in the city's local timezone
     primary_key: true
     nullable: false
     checks:
       - name: not_null
+  - name: role
+    type: VARCHAR
+    description: primary, peer, or grid
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - primary
+          - peer
+          - grid
   - name: source_label
     type: VARCHAR
-    description: Human-readable station name including location context (e.g. "Paris–Charles de Gaulle", "Open-Meteo grid (Paris centre)"). Used for dashboard displays and includes airport codes where applicable.
+    description: Human-readable station name
     nullable: false
     checks:
       - name: not_null
   - name: temp_max_c
     type: DOUBLE
-    description: Daily maximum temperature in degrees Celsius, rounded to 2 decimal places. This is the critical value for Polymarket daily-max market resolution. Range approximately -4.2°C to 41.9°C. Null values (~2.8%) indicate missing sensor data or quality control exclusions.
+    description: Daily maximum temperature in degrees Celsius
   - name: temp_min_c
     type: DOUBLE
-    description: Daily minimum temperature in degrees Celsius, rounded to 2 decimal places. Range approximately -13.3°C to 26°C. Used for diurnal range analysis and temperature anomaly detection. Null values (~2.8%) correlate with temp_max_c missingness.
+    description: Daily minimum temperature in degrees Celsius
   - name: temp_mean_c
     type: DOUBLE
-    description: Daily mean temperature in degrees Celsius, rounded to 2 decimal places. Computed as average of hourly readings (hourly_derived) or from pre-aggregated daily mean (station_daily). Range approximately -7.6°C to 33.9°C. More complete than max/min (~1.2% null rate) due to different calculation methods.
+    description: Daily mean temperature in degrees Celsius
   - name: temp_max_bucket_c
     type: INTEGER
-    description: Daily maximum temperature rounded to whole degrees Celsius - the exact integer bucket Polymarket would use to resolve daily-max temperature markets. This field directly maps to betting outcomes and determines winning/losing positions. Null when temp_max_c is null.
+    description: Daily maximum rounded to whole degrees Celsius - the bucket Polymarket uses to resolve daily-max temperature markets
   - name: derivation
     type: VARCHAR
-    description: Data lineage flag indicating computation method - 'hourly_derived' (aggregated from raw hourly readings, preferred for Polymarket accuracy) or 'station_daily' (pre-aggregated daily values, used for climatology gaps). Cardinality is exactly 2 values.
+    description: hourly_derived or station_daily
     nullable: false
     checks:
       - name: not_null
@@ -110,12 +124,21 @@ columns:
 
 @bruin */
 
-WITH station_daily_dedup AS (
+WITH city_meta AS (
+    SELECT * FROM UNNEST([
+        STRUCT('Paris'   AS city, 'Europe/Paris'   AS timezone),
+        STRUCT('London'  AS city, 'Europe/London'  AS timezone),
+        STRUCT('Seoul'   AS city, 'Asia/Seoul'     AS timezone),
+        STRUCT('Toronto' AS city, 'America/Toronto' AS timezone)
+    ])
+),
+
+station_daily_dedup AS (
     SELECT * EXCEPT(rn) FROM (
         SELECT
-            station_id, date, station_name,
+            city, station_id, date, role, station_name,
             temp_max_c, temp_min_c, temp_mean_c,
-            ROW_NUMBER() OVER (PARTITION BY station_id, date ORDER BY extracted_at DESC) AS rn
+            ROW_NUMBER() OVER (PARTITION BY city, station_id, date ORDER BY extracted_at DESC) AS rn
         FROM `bruin-playground-arsalan.polymarket_weather_raw.station_daily`
     )
     WHERE rn = 1
@@ -123,30 +146,36 @@ WITH station_daily_dedup AS (
 
 hourly_station AS (
     SELECT
+        h.city,
         'meteostat' AS source,
-        station_id  AS source_id,
-        DATE(ts_utc, 'Europe/Paris') AS local_date,
-        ANY_VALUE(station_name) AS source_label,
-        MAX(temp_c) AS temp_max_c,
-        MIN(temp_c) AS temp_min_c,
-        AVG(temp_c) AS temp_mean_c
-    FROM `bruin-playground-arsalan.polymarket_weather_raw.station_hourly`
-    WHERE temp_c IS NOT NULL
-    GROUP BY 1, 2, 3
+        h.station_id  AS source_id,
+        DATE(h.ts_utc, cm.timezone) AS local_date,
+        ANY_VALUE(h.role) AS role,
+        ANY_VALUE(h.station_name) AS source_label,
+        MAX(h.temp_c) AS temp_max_c,
+        MIN(h.temp_c) AS temp_min_c,
+        AVG(h.temp_c) AS temp_mean_c
+    FROM `bruin-playground-arsalan.polymarket_weather_raw.station_hourly` h
+    JOIN city_meta cm USING (city)
+    WHERE h.temp_c IS NOT NULL
+    GROUP BY 1, 2, 3, 4
 ),
 
 hourly_grid AS (
     SELECT
+        g.city,
         'openmeteo_grid' AS source,
-        'paris_centre'   AS source_id,
-        DATE(ts_utc, 'Europe/Paris') AS local_date,
-        'Open-Meteo grid (Paris centre)' AS source_label,
-        MAX(temp_c) AS temp_max_c,
-        MIN(temp_c) AS temp_min_c,
-        AVG(temp_c) AS temp_mean_c
-    FROM `bruin-playground-arsalan.polymarket_weather_raw.openmeteo_grid`
-    WHERE temp_c IS NOT NULL
-    GROUP BY 1, 2, 3
+        CONCAT(LOWER(g.city), '_centre') AS source_id,
+        DATE(g.ts_utc, cm.timezone) AS local_date,
+        'grid' AS role,
+        CONCAT('Open-Meteo grid (', g.city, ' centre)') AS source_label,
+        MAX(g.temp_c) AS temp_max_c,
+        MIN(g.temp_c) AS temp_min_c,
+        AVG(g.temp_c) AS temp_mean_c
+    FROM `bruin-playground-arsalan.polymarket_weather_raw.openmeteo_grid` g
+    JOIN city_meta cm USING (city)
+    WHERE g.temp_c IS NOT NULL
+    GROUP BY 1, 2, 3, 4
 ),
 
 prefer_hourly AS (
@@ -156,18 +185,19 @@ prefer_hourly AS (
 ),
 
 station_daily_only AS (
-    -- Rows from station_daily where we don't already have an hourly-derived row
     SELECT
+        sd.city,
         'meteostat' AS source,
         sd.station_id AS source_id,
         sd.date AS local_date,
+        sd.role,
         sd.station_name AS source_label,
         sd.temp_max_c,
         sd.temp_min_c,
         sd.temp_mean_c
     FROM station_daily_dedup sd
     LEFT JOIN hourly_station h
-        ON sd.station_id = h.source_id AND sd.date = h.local_date
+        ON sd.city = h.city AND sd.station_id = h.source_id AND sd.date = h.local_date
     WHERE h.local_date IS NULL
 ),
 
@@ -178,9 +208,11 @@ unioned AS (
 )
 
 SELECT
+    city,
     source,
     source_id,
     local_date,
+    role,
     source_label,
     ROUND(temp_max_c, 2) AS temp_max_c,
     ROUND(temp_min_c, 2) AS temp_min_c,

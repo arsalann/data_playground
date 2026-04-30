@@ -1,0 +1,248 @@
+name: Multi-city Polymarket Weather - sensor anomaly survey
+description: |
+  Cross-station temperature anomaly survey for the top three cities by Polymarket
+  daily-temperature betting volume (Jan-Apr 2026): Seoul, London, and Toronto.
+  Each section flags hours when a city's Polymarket-resolution station diverged
+  sharply from same-city peer stations. Paris is covered by its own dashboard.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+rows:
+  # Cross-city overview
+  - widgets:
+      - name: overview
+        type: text
+        col: 12
+        content: |
+          # Top-3 cities by Polymarket daily-temperature volume (Jan-Apr 2026)
+
+          Cross-station anomaly survey for the three cities with the highest event volume on Polymarket's daily-temperature markets in the Jan 1 - Apr 30, 2026 window. For each city, the table shows the rank by traded event volume, the Meteostat station Polymarket cites for resolution (parsed from each event's Wunderground URL), the count of hours where that primary station's reading diverged from same-city peers, and the maximum absolute robust z-score observed.
+
+          **Methodology:** Hourly METAR-derived readings ingested from Meteostat for 4-5 stations per city + Open-Meteo gridded reanalysis at the city centre. The peer-residual is the primary station's temperature minus the median of the same-city peers at the same UTC hour. An "anomaly hour" flags rows where ABS(peer-residual) >= 3 °C AND ABS(robust peer-z) >= 2 - a single-station outlier not supported by peers.
+  - widgets:
+      - name: Per-city summary
+        hideName: true
+        type: table
+        col: 12
+        file: queries/cross_city_summary.sql
+        columns:
+          - {name: rank, label: Rank}
+          - {name: city, label: City}
+          - {name: primary_station_name, label: Primary station}
+          - {name: primary_icao, label: ICAO}
+          - {name: volume_musd, label: Volume ($M)}
+          - {name: event_count, label: Events}
+          - {name: market_count, label: Markets}
+          - {name: primary_anomaly_hours, label: Primary anomaly hours}
+          - {name: max_abs_peer_z, label: Max |peer-z|}
+          - {name: max_warm_residual_c, label: Max warm residual (°C)}
+          - {name: max_cold_residual_c, label: Max cold residual (°C)}
+  - widgets:
+      - name: Daily mean peer-residual at each city's primary station
+        hideName: true
+        type: chart
+        chart: line
+        col: 12
+        file: queries/cross_city_daily_residual.sql
+        x: day_label
+        y: [seoul, london, toronto]
+        yLabel: Daily mean peer-residual (°C)
+        seriesNames:
+          seoul: Seoul - Incheon (RKSI)
+          london: London - City (EGLC)
+          toronto: Toronto - Pearson (CYYZ)
+
+  # Seoul
+  - widgets:
+      - name: Seoul section
+        type: text
+        col: 12
+        content: |
+          # Seoul - Incheon International Airport (RKSI)
+
+          **Polymarket primary:** RKSI / Meteostat station 47113. **Series slug:** seoul-daily-weather. **Trading volume Jan-Apr 2026:** $28.1M across 118 events (rank #1). **Peers:** Seoul (47108), Kimpo (RKSS / 47110), Seoul E Ab (RKSM / 47111), Yongsan (RKSY0).
+
+          **Drill-in below:** the city's #1 primary anomaly hour was 2026-02-22 00:00 KST, where Incheon read 12 °C while same-city peers averaged 8 °C (peer-residual +4 °C, robust peer-z 27). The 24-hour trace shows whether the divergence was a single-hour spike or a sustained offset.
+  - widgets:
+      - name: Seoul - 2026-02-22 hourly station traces
+        hideName: true
+        type: chart
+        chart: line
+        col: 12
+        file: queries/seoul_drill_in.sql
+        x: time_label
+        y: [incheon, seoul, kimpo, seoul_e_ab, yongsan, open_meteo_grid]
+        yLabel: Temperature (°C)
+        yRight: [yes_price]
+        yRightLabel: Yes-probability
+        seriesNames:
+          incheon: Incheon RKSI (primary)
+          seoul: Seoul (47108)
+          kimpo: Kimpo RKSS
+          seoul_e_ab: Seoul E Ab RKSM
+          yongsan: Yongsan RKSY
+          open_meteo_grid: Open-Meteo grid
+          yes_price: Polymarket Yes-price (winning bucket)
+  - widgets:
+      - name: Seoul - top 10 anomaly hours
+        hideName: true
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            rank,
+            FORMAT_DATETIME('%Y-%m-%d %H:%M', ts_local) AS time_local,
+            source_label AS station,
+            CASE WHEN is_primary THEN 'YES' ELSE '' END AS primary_flag,
+            temp_c,
+            peer_median,
+            peer_residual,
+            peer_z,
+            anomaly_direction
+          FROM `bruin-playground-arsalan.polymarket_weather_report.anomalies_top_n`
+          WHERE city = 'Seoul' AND rank <= 10
+          ORDER BY rank
+        columns:
+          - {name: rank, label: Rank}
+          - {name: time_local, label: Time (KST)}
+          - {name: station, label: Station}
+          - {name: primary_flag, label: "Primary?"}
+          - {name: temp_c, label: Temp (°C)}
+          - {name: peer_median, label: Peer median (°C)}
+          - {name: peer_residual, label: Residual (°C)}
+          - {name: peer_z, label: Peer-z}
+          - {name: anomaly_direction, label: Direction}
+
+  # London
+  - widgets:
+      - name: London section
+        type: text
+        col: 12
+        content: |
+          # London - City Airport (EGLC)
+
+          **Polymarket primary:** EGLC / Meteostat station EGLC0. **Series slug:** london-daily-weather. **Trading volume Jan-Apr 2026:** $27.1M across 125 events (rank #2). **Peers:** Weather Centre (EGRB / 03779), Northolt (EGWU / 03672), Heathrow (EGLL / 03772), Kenley (03781).
+
+          **Drill-in below:** the city's #1 primary anomaly hour was 2026-04-19 05:00 BST, where London City read 8 °C while same-city peers averaged 5 °C (peer-residual +3 °C, robust peer-z 20).
+  - widgets:
+      - name: London - 2026-04-19 hourly station traces
+        hideName: true
+        type: chart
+        chart: line
+        col: 12
+        file: queries/london_drill_in.sql
+        x: time_label
+        y: [london_city, weather_centre, northolt, heathrow, kenley, open_meteo_grid]
+        yLabel: Temperature (°C)
+        yRight: [yes_price]
+        yRightLabel: Yes-probability
+        seriesNames:
+          london_city: London City EGLC (primary)
+          weather_centre: Weather Centre EGRB
+          northolt: Northolt EGWU
+          heathrow: Heathrow EGLL
+          kenley: Kenley
+          open_meteo_grid: Open-Meteo grid
+          yes_price: Polymarket Yes-price (winning bucket)
+  - widgets:
+      - name: London - top 10 anomaly hours
+        hideName: true
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            rank,
+            FORMAT_DATETIME('%Y-%m-%d %H:%M', ts_local) AS time_local,
+            source_label AS station,
+            CASE WHEN is_primary THEN 'YES' ELSE '' END AS primary_flag,
+            temp_c,
+            peer_median,
+            peer_residual,
+            peer_z,
+            anomaly_direction
+          FROM `bruin-playground-arsalan.polymarket_weather_report.anomalies_top_n`
+          WHERE city = 'London' AND rank <= 10
+          ORDER BY rank
+        columns:
+          - {name: rank, label: Rank}
+          - {name: time_local, label: Time (BST)}
+          - {name: station, label: Station}
+          - {name: primary_flag, label: "Primary?"}
+          - {name: temp_c, label: Temp (°C)}
+          - {name: peer_median, label: Peer median (°C)}
+          - {name: peer_residual, label: Residual (°C)}
+          - {name: peer_z, label: Peer-z}
+          - {name: anomaly_direction, label: Direction}
+
+  # Toronto
+  - widgets:
+      - name: Toronto section
+        type: text
+        col: 12
+        content: |
+          # Toronto - Pearson International Airport (CYYZ)
+
+          **Polymarket primary:** CYYZ / Meteostat station 71624. **Series slug:** toronto-daily-weather. **Trading volume Jan-Apr 2026:** $9.9M across 119 events (rank #6 globally; substituted in for Shanghai whose ZSPD station is not in Meteostat). **Peers:** Toronto City (71508), Toronto City Centre (2XUGG), Toronto Island CYTZ (71265), Buttonville CYKZ (71639).
+
+          **Drill-in below:** the city's #1 primary anomaly hour was 2026-04-08 17:00 EDT, where Pearson read 6.2 °C while same-city peers averaged 3.1 °C (peer-residual +3.1 °C, robust peer-z 21).
+  - widgets:
+      - name: Toronto - 2026-04-08 hourly station traces
+        hideName: true
+        type: chart
+        chart: line
+        col: 12
+        file: queries/toronto_drill_in.sql
+        x: time_label
+        y: [pearson, toronto_city, toronto_city_centre, toronto_island, buttonville, open_meteo_grid]
+        yLabel: Temperature (°C)
+        yRight: [yes_price]
+        yRightLabel: Yes-probability
+        seriesNames:
+          pearson: Pearson CYYZ (primary)
+          toronto_city: Toronto City
+          toronto_city_centre: Toronto City Centre
+          toronto_island: Toronto Island CYTZ
+          buttonville: Buttonville CYKZ
+          open_meteo_grid: Open-Meteo grid
+          yes_price: Polymarket Yes-price (winning bucket)
+  - widgets:
+      - name: Toronto - top 10 anomaly hours
+        hideName: true
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            rank,
+            FORMAT_DATETIME('%Y-%m-%d %H:%M', ts_local) AS time_local,
+            source_label AS station,
+            CASE WHEN is_primary THEN 'YES' ELSE '' END AS primary_flag,
+            temp_c,
+            peer_median,
+            peer_residual,
+            peer_z,
+            anomaly_direction
+          FROM `bruin-playground-arsalan.polymarket_weather_report.anomalies_top_n`
+          WHERE city = 'Toronto' AND rank <= 10
+          ORDER BY rank
+        columns:
+          - {name: rank, label: Rank}
+          - {name: time_local, label: Time (EDT)}
+          - {name: station, label: Station}
+          - {name: primary_flag, label: "Primary?"}
+          - {name: temp_c, label: Temp (°C)}
+          - {name: peer_median, label: Peer median (°C)}
+          - {name: peer_residual, label: Residual (°C)}
+          - {name: peer_z, label: Peer-z}
+          - {name: anomaly_direction, label: Direction}
+
+  # Footnote
+  - widgets:
+      - name: Sources, tools, and limitations
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Meteostat](https://meteostat.net)** (NOAA ISD METAR/SYNOP feeds), **[Open-Meteo](https://archive-api.open-meteo.com/v1/archive)** (ECMWF ERA5 gridded reanalysis at city centre), **[Polymarket Gamma + CLOB](https://gamma-api.polymarket.com)** (event metadata + tick-level price history).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Stations are sampled at the top of every UTC hour, so sub-hour spikes can fall between samples - only the recovery leg shows in the archive. Polymarket Yes-price ticks are only ingested for the four focus cities; coverage is densest for late-March through April 2026 markets and may be sparse or absent on earlier dates. The peer self-join uses 4-5 same-city stations - cities with fewer co-located stations have a noisier peer median. Toronto substitutes for Shanghai (rank #3 by volume) because Shanghai-Pudong (ZSPD) is not in Meteostat's station database.

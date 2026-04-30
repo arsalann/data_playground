@@ -3,3 +3,4 @@ requests
 meteostat
 google-cloud-bigquery
 db-dtypes
+pyyaml

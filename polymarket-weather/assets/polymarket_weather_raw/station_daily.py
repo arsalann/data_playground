@@ -2,21 +2,17 @@
 
 name: polymarket_weather_raw.station_daily
 description: |
-  Daily aggregates for the same six Paris-region stations covered by station_hourly.
-  Used as the climatology baseline (multi-year history) — the hourly table only goes
-  back to 2024 by default, while this table covers 2010 onwards so April 2026 readings
-  can be compared to historical April distributions.
+  Daily aggregates for the Polymarket-relevant weather stations across the four
+  investigation cities (Paris, London, Seoul, Toronto). The set of cities and
+  stations is sourced from `city_manifest.yml` — the same manifest used by
+  station_hourly. Use this table as a climatology baseline (multi-year history)
+  to compare the Jan-Apr 2026 hourly readings against historical distributions
+  per station.
 
-  This dataset is critical for the Paris temperature sensor tampering investigation,
-  providing 16+ years of historical context to assess whether the April 2026 temperature
-  spikes at Charles de Gaulle airport fall outside normal climatological patterns.
-  Each station represents a different microclimate: airports (CDG, Orly, Le Bourget),
-  urban core (Montsouris), military (Villacoublay), and semi-rural (Trappes).
-
-  Source: Meteostat Python library (https://meteostat.net), aggregating NOAA ISD and
-  Météo-France SYNOP feeds. Station list and verification rules identical to station_hourly.
-  Data quality varies by station and metric: temperature data is nearly complete (~98.8%),
-  while precipitation is sparse (~35% coverage) and sunshine duration extremely sparse (~7.6% coverage).
+  Source: Meteostat Python library (https://meteostat.net), aggregating NOAA ISD
+  and Météo-France SYNOP feeds. Data quality varies by station and metric:
+  temperature is nearly complete (~98.8%), precipitation sparse (~35%), and
+  sunshine duration extremely sparse (~7.6%).
 connection: bruin-playground-arsalan
 tags:
   - domain:forensic_investigation
@@ -24,7 +20,7 @@ tags:
   - source:meteostat
   - source:noaa_isd
   - source:meteo_france_synop
-  - geography:paris_region
+  - geography:multi_city
   - temporal_scope:historical
   - update_pattern:snapshot
   - sensitivity:public
@@ -39,47 +35,68 @@ secrets:
     inject_as: bruin-playground-arsalan
 
 columns:
+  - name: city
+    type: VARCHAR
+    description: City identifier from the manifest (Paris, London, Seoul, Toronto). Composite primary key with station_id and date.
+    primary_key: true
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - Paris
+          - London
+          - Seoul
+          - Toronto
   - name: station_id
     type: VARCHAR
-    description: Meteostat station identifier (5-digit WMO synoptic code). Maps to specific Paris-region locations - 07157 is the suspect Charles de Gaulle sensor.
+    description: Meteostat station identifier.
     primary_key: true
     checks:
       - name: not_null
   - name: date
     type: DATE
-    description: Local calendar date of the observation. Spans 2010-01-01 to near-present for climatological analysis.
+    description: Local calendar date of the observation. Climatology spans 2010-01-01 to near-present by default.
     primary_key: true
     checks:
       - name: not_null
+  - name: role
+    type: VARCHAR
+    description: Whether this station is the Polymarket-resolution primary or a peer.
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - primary
+          - peer
   - name: station_name
     type: VARCHAR
-    description: Human-readable station name as reported by Meteostat. Used for dashboard display but may differ from official airport/site names.
+    description: Human-readable station name as reported by Meteostat.
     checks:
       - name: not_null
   - name: temp_mean_c
     type: DOUBLE
-    description: Daily mean 2m air temperature in degrees Celsius. Derived from hourly observations, nearly complete (~98.8% coverage).
+    description: Daily mean 2m air temperature in degrees Celsius.
   - name: temp_min_c
     type: DOUBLE
-    description: Daily minimum 2m air temperature in degrees Celsius. Critical for detecting overnight cooling patterns and sensor consistency.
+    description: Daily minimum 2m air temperature in degrees Celsius.
   - name: temp_max_c
     type: DOUBLE
-    description: Daily maximum 2m air temperature in degrees Celsius. THE METRIC Polymarket uses to resolve daily-temperature markets. Subject of the April 2026 tampering allegations.
+    description: Daily maximum 2m air temperature in degrees Celsius. THE METRIC Polymarket uses to resolve daily-temperature markets.
   - name: precipitation_mm
     type: DOUBLE
-    description: Total daily precipitation in millimetres. Sparse coverage (~35% of records) due to station equipment differences and reporting practices.
+    description: Total daily precipitation in millimetres.
   - name: wind_speed_kmh
     type: DOUBLE
-    description: Daily mean wind speed in kilometres per hour. Nearly complete coverage (~98.7%). Airport stations typically higher due to exposure.
+    description: Daily mean wind speed in kilometres per hour.
   - name: pressure_hpa
     type: DOUBLE
-    description: Daily mean sea-level air pressure in hectopascals. Nearly complete coverage (~98.2%). Standardized to sea level across all stations.
+    description: Daily mean sea-level air pressure in hectopascals.
   - name: sunshine_minutes
     type: DOUBLE
-    description: Total daily sunshine duration in minutes. Extremely sparse coverage (~7.6% of records) - not all stations equipped with sunshine sensors.
+    description: Total daily sunshine duration in minutes.
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp when this row was fetched from the Meteostat API. Provides data provenance and refresh tracking for the investigation.
+    description: UTC timestamp when this row was fetched from the Meteostat API.
     checks:
       - name: not_null
 
@@ -90,8 +107,10 @@ import os
 import time
 import warnings
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pandas as pd
+import yaml
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -99,17 +118,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-STATIONS = [
-    {"station_id": "07157", "configured_lat": 49.010, "configured_lon": 2.548, "role": "Paris-Charles de Gaulle"},
-    {"station_id": "07150", "configured_lat": 48.969, "configured_lon": 2.441, "role": "Paris / Le Bourget"},
-    {"station_id": "07156", "configured_lat": 48.822, "configured_lon": 2.338, "role": "Paris-Montsouris"},
-    {"station_id": "07149", "configured_lat": 48.723, "configured_lon": 2.379, "role": "Paris-Orly"},
-    {"station_id": "07147", "configured_lat": 48.774, "configured_lon": 2.197, "role": "Villacoublay"},
-    {"station_id": "07145", "configured_lat": 48.774, "configured_lon": 2.009, "role": "Trappes"},
-]
-
-CHUNK_DAYS = 730  # daily series can use longer chunks
+MANIFEST_PATH = Path(__file__).parent / "city_manifest.yml"
+CHUNK_DAYS = 730
 MAX_RETRIES = 5
+
+
+def load_stations() -> list[dict]:
+    with open(MANIFEST_PATH, "r") as f:
+        manifest = yaml.safe_load(f)
+    out = []
+    for c in manifest["cities"]:
+        for s in c["stations"]:
+            out.append({
+                "city": c["name"],
+                "station_id": s["id"],
+                "configured_lat": float(s["lat"]),
+                "configured_lon": float(s["lon"]),
+                "role": s["role"],
+                "name": s.get("name"),
+            })
+    return out
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -136,16 +164,17 @@ def fetch_chunk(station_ids, start: datetime, end: datetime) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def fetch_station_metadata():
-    from meteostat import stations
+def fetch_station_metadata(stations_cfg: list[dict]):
+    from meteostat import stations as ms_stations
 
     out = {}
-    for s in STATIONS:
-        meta = stations.meta(s["station_id"])
+    for s in stations_cfg:
+        sid = s["station_id"]
+        meta = ms_stations.meta(sid)
         if meta is None:
-            out[s["station_id"]] = {"name": s["role"]}
+            out[sid] = {"name": s.get("name") or sid}
             continue
-        out[s["station_id"]] = {"name": meta.name}
+        out[sid] = {"name": meta.name}
     return out
 
 
@@ -157,21 +186,26 @@ def materialize():
     start = datetime.strptime(start_str[:10], "%Y-%m-%d")
     end = datetime.strptime(end_str[:10], "%Y-%m-%d")
 
-    logger.info("Window: %s → %s, stations=%d", start.date(), end.date(), len(STATIONS))
+    stations_cfg = load_stations()
+    logger.info("Window: %s → %s, stations=%d", start.date(), end.date(), len(stations_cfg))
 
-    metadata = fetch_station_metadata()
-    station_ids = [s["station_id"] for s in STATIONS]
+    metadata = fetch_station_metadata(stations_cfg)
+
+    stations_by_city: dict[str, list[str]] = {}
+    for s in stations_cfg:
+        stations_by_city.setdefault(s["city"], []).append(s["station_id"])
 
     pieces = []
     cursor = start
     while cursor <= end:
         chunk_end = min(cursor + timedelta(days=CHUNK_DAYS), end)
-        df = fetch_chunk(station_ids, cursor, chunk_end)
-        if not df.empty:
-            pieces.append(df)
-            logger.info("Chunk %s..%s: %d rows", cursor.date(), chunk_end.date(), len(df))
+        for city, sids in stations_by_city.items():
+            df = fetch_chunk(sids, cursor, chunk_end)
+            if not df.empty:
+                pieces.append(df)
+                logger.info("[%s] Chunk %s..%s: %d rows", city, cursor.date(), chunk_end.date(), len(df))
+            time.sleep(0.5)
         cursor = chunk_end + timedelta(days=1)
-        time.sleep(0.5)
 
     if not pieces:
         logger.warning("No data fetched")
@@ -190,18 +224,27 @@ def materialize():
     out["pressure_hpa"] = pd.to_numeric(raw.get("pres"), errors="coerce")
     out["sunshine_minutes"] = pd.to_numeric(raw.get("tsun"), errors="coerce")
 
+    station_to_cfg = {s["station_id"]: s for s in stations_cfg}
+    out["city"] = None
+    out["role"] = None
     out["station_name"] = None
     for sid, meta in metadata.items():
-        out.loc[out["station_id"] == sid, "station_name"] = meta["name"]
+        cfg = station_to_cfg.get(sid)
+        if cfg is None:
+            continue
+        mask = out["station_id"] == sid
+        out.loc[mask, "city"] = cfg["city"]
+        out.loc[mask, "role"] = cfg["role"]
+        out.loc[mask, "station_name"] = meta["name"]
 
     out["extracted_at"] = datetime.now(timezone.utc)
 
     out = out[[
-        "station_id", "date", "station_name",
+        "city", "station_id", "date", "role", "station_name",
         "temp_mean_c", "temp_min_c", "temp_max_c",
         "precipitation_mm", "wind_speed_kmh", "pressure_hpa", "sunshine_minutes",
         "extracted_at",
     ]]
-    out = out.dropna(subset=["station_id", "date"]).drop_duplicates(["station_id", "date"], keep="last").reset_index(drop=True)
+    out = out.dropna(subset=["city", "station_id", "date"]).drop_duplicates(["city", "station_id", "date"], keep="last").reset_index(drop=True)
     logger.info("Total rows: %d", len(out))
     return out

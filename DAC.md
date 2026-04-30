@@ -216,6 +216,7 @@ fields **for `chart: line` only** and rebuilds the binary:
 | `yRight`       | string[] | Field names rendered on a SECOND y-axis on the RIGHT. Each gets its own dashed line styled `colors[(y.length+i) % colors.length]`. |
 | `yRightLabel`  | string   | Renders an axis title on the RIGHT y-axis. |
 | `seriesNames`  | object   | Map from data-column name → display label. Used as the `name=` prop on each `<Line>`, which is what the legend (and tooltip) shows. Keys with no entry fall through to the snake_case column name. |
+| `hideName`     | bool     | Suppresses the small uppercase title strip rendered by `WidgetFrame` above the chart/table/metric. Useful when an adjacent text widget already serves as the section title and you want the chart frame to render just the data. Applies to any widget type. |
 
 The `line` case also unconditionally renders a `<Legend iconType="line" verticalAlign="bottom" />` (upstream rendered no legend at all). Chart height is bumped from 240 px to 280 px to give the legend ~30 px without squishing the data area.
 

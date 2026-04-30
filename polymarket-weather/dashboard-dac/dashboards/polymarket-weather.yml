@@ -1,0 +1,127 @@
+name: Paris Polymarket Weather — sensor anomaly investigation
+description: |
+  Hourly temperature traces for the six Paris-area stations plus the Open-Meteo
+  gridded reanalysis on the two press-reported event days, with the
+  Polymarket winning-bucket Yes-price overlaid on the same axis.
+connection: bruin-playground-arsalan
+theme: bruin-dark
+
+rows:
+  # ── 2026-04-06 — every Paris sensor + 21 °C bucket Yes-price overlay ──
+  - widgets:
+      - name: 2026-04-06 — every Paris sensor (with the 21 °C-bucket Yes-price overlaid)
+        type: text
+        col: 12
+        content: |
+          # 2026-04-06 — every Paris sensor (with the 21 °C-bucket Yes-price overlaid)
+
+          **Left y-axis:** temperature in °C (the seven station / grid lines).
+          **Right y-axis:** Polymarket Yes-price for the 21 °C bucket, 0–1 implied probability (dashed line).
+          **X-axis:** local hour-of-day, Europe/Paris (00:00–23:00, 24 hourly samples).
+
+          **Hourly air temperature at all six METAR-fed Paris stations plus the Open-Meteo gridded reanalysis
+          across the 24 hours of 2026-04-06 local. At 19:00 the CDG (suspect) sensor reads 21 °C while every
+          peer station sits at 15.4–17.0 °C — peer-residual +4.0 °C, robust peer-z 3.0. The Polymarket Yes-price
+          for the 21 °C bucket is the last tick within each hour: it stays near 0 from 00:00 through 18:00,
+          then jumps to ~1.0 at 19:00, mirroring the CDG anomaly hour.**
+  - widgets:
+      - name: 2026-04-06 — every Paris sensor except CDG
+        type: chart
+        chart: line
+        col: 12
+        file: queries/spike_temps_apr06.sql
+        x: time_label
+        y:
+          - cdg
+          - le_bourget
+          - montsouris
+          - orly
+          - villacoublay
+          - trappes
+          - open_meteo_grid
+        yLabel: Temperature (°C)
+        yRight: [yes_price]
+        yRightLabel: Polymarket Yes-price (0–1 implied probability)
+        seriesNames:
+          cdg: Paris-CDG (suspect)
+          le_bourget: Paris–Le Bourget
+          montsouris: Paris–Montsouris
+          orly: Paris–Orly
+          villacoublay: Villacoublay
+          trappes: Trappes
+          open_meteo_grid: Open-Meteo grid
+          yes_price: Polymarket Yes-price
+  - widgets:
+      - name: Sources, tools, and limitations — 2026-04-06 overlay
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Meteostat](https://meteostat.net)**, **[Open-Meteo](https://archive-api.open-meteo.com/v1/archive)**, **[Polymarket CLOB](https://clob.polymarket.com/prices-history)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Stations are sampled at the top of every UTC hour, so sub-hour spikes (the alleged
+          12-minute hairdryer events) can fall between samples — only the recovery leg shows in the archive.
+          The dashed price line is the last CLOB tick within each hour; intra-hour movement is not visible.
+          Trader identity and on-chain wallet attribution are out of scope. (Dual-axis line chart provided
+          by a fork-local DAC patch — see `DAC.md`.)
+
+  # ── 2026-04-15 — every Paris sensor + 22 °C bucket Yes-price overlay ──
+  - widgets:
+      - name: 2026-04-15 — every Paris sensor (with the 22 °C-bucket Yes-price overlaid)
+        type: text
+        col: 12
+        content: |
+          # 2026-04-15 — every Paris sensor (with the 22 °C-bucket Yes-price overlaid)
+
+          **Left y-axis:** temperature in °C (the seven station / grid lines).
+          **Right y-axis:** Polymarket Yes-price for the 22 °C bucket, 0–1 implied probability (dashed line).
+          **X-axis:** local hour-of-day, Europe/Paris (00:00–23:00, 24 hourly samples).
+
+          **Hourly air temperature for the same six stations + Open-Meteo grid across 2026-04-15 local.
+          CDG drops from 17.6 °C at 19:00 to 12.7 °C at 20:00 — a 4.9 °C single-hour drop, peer-residual
+          −3.2 °C, peer-z −3.08 — while every peer station continues cooling normally near 14–17 °C. The
+          Polymarket Yes-price for the 22 °C bucket is the last tick within each hour: it stays near 0
+          from 00:00 through 20:00 then jumps to ~0.89 at 21:00 and reaches ~1.0 by 22:00, one hour after
+          the anomalous CDG drop.**
+  - widgets:
+      - name: 2026-04-15 — every Paris sensor except CDG
+        type: chart
+        chart: line
+        col: 12
+        file: queries/spike_temps_apr15.sql
+        x: time_label
+        y:
+          - cdg
+          - le_bourget
+          - montsouris
+          - orly
+          - villacoublay
+          - trappes
+          - open_meteo_grid
+        yLabel: Temperature (°C)
+        yRight: [yes_price]
+        yRightLabel: Polymarket Yes-price (0–1 implied probability)
+        seriesNames:
+          cdg: Paris-CDG (suspect)
+          le_bourget: Paris–Le Bourget
+          montsouris: Paris–Montsouris
+          orly: Paris–Orly
+          villacoublay: Villacoublay
+          trappes: Trappes
+          open_meteo_grid: Open-Meteo grid
+          yes_price: Polymarket Yes-price
+  - widgets:
+      - name: Sources, tools, and limitations — 2026-04-15 overlay
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Meteostat](https://meteostat.net)**, **[Open-Meteo](https://archive-api.open-meteo.com/v1/archive)**, **[Polymarket CLOB](https://clob.polymarket.com/prices-history)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Meteostat returns the METAR nearest the top of each UTC hour, so the alleged
+          sub-hour spike at CDG on 2026-04-15 between 19:00 and 20:00 shows up as a recovery leg rather
+          than a spike. The dashed price line is the last CLOB tick within each hour; intra-hour movement
+          is not visible. Trader identity and on-chain wallet attribution are out of scope. (Dual-axis
+          line chart provided by a fork-local DAC patch — see `DAC.md`.)

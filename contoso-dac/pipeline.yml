@@ -1,0 +1,6 @@
+name: contoso-dac
+schedule: daily
+start_date: "2016-01-01"
+
+default_connections:
+  duckdb: "contoso-duckdb"

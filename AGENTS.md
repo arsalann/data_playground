@@ -305,6 +305,23 @@ def run_query(filename: str) -> pd.DataFrame:
 
 These rules are **mandatory** for every chart in every dashboard. They encode best practices from Tufte, Cleveland, Few, Munzner, and the ethical data visualization principles from the Data Visualization Society. Violations should be treated like bugs.
 
+#### Per-Chart Structure (mandatory)
+
+Every chart in every dashboard MUST be wrapped in the same five-part structure, in this exact order. A chart that skips any part is incomplete.
+
+1. **Insight title** (`st.subheader`). The title states the *finding*, not the data. Bad: "Wage by Task". Good: "AI autonomy weakly correlates with US wage (r = +0.21, n = 580 tasks)". If you cannot fit the finding, drop the chart number into the title (`1 · …`) and keep the title actionable. Numbers in the title are encouraged.
+2. **Description** (`st.caption` immediately under the subheader). Plain English in 1–3 sentences: what the reader is looking at, what each visual encoding means, and what the sample size is. Define every encoding the reader needs to interpret (axes, color, size, shape).
+3. **Chart** (`st.altair_chart(..., use_container_width=True)` or `st.pydeck_chart`). Tall enough to be readable (`height` ≥ 480 for scatter/dense; ≥ 640 for stacked-bar / dumbbell with > 15 categories). Every encoding has a visible legend or direct on-chart label. Tooltips show every encoded field plus context fields with format strings. Axis titles include units. Reference lines are labeled.
+4. **Quantified insight blockquote** (`st.markdown("> ...")`). State the magnitude in numbers — correlation coefficient, slope, ratio, top-N. Tie it back to the hypothesis the chart was meant to test ("supports", "rejects", "no signal"). Never just describe the picture in words; the picture already does that.
+5. **Footnote** (`st.caption(..., unsafe_allow_html=True)`). Three components, comma-separated or on three lines:
+   - **Source(s)** — every dataset used by *this* chart, with the publisher and license (e.g. "Anthropic Economic Index, CC BY 4.0").
+   - **Tools** — pipeline stack (e.g. "Bruin · BigQuery · Altair").
+   - **Limitations / caveats** — sample-size warnings, geographic scope (e.g. "BLS wages are US-only"), time-window caveats, model-version notes.
+
+Define the source/tools/limits strings once at the top of the file as constants and reuse them. The footnote is per-chart, not just per-dashboard, because each chart's caveats differ.
+
+End the dashboard with a top-level **Methodology** section (`st.subheader("Methodology")`) that consolidates joins, normalizations, definitions, and threshold choices.
+
 #### Before You Build Any Chart
 
 - **Validate the data first.** Before writing any visualization code, query the data like a data analyst: check row counts, null rates, distributions, outliers, duplicates, and correlations. Understand what you actually have. Compute percentiles, check for join fanouts, verify dedup logic. Never visualize data you haven't inspected.
@@ -340,9 +357,17 @@ These rules are **mandatory** for every chart in every dashboard. They encode be
 
 - **Every visual encoding must be explained.** If a chart uses size, color, shape, opacity, or stroke as a data channel, each must have either a visible legend or a direct label on the chart. `legend=None` is only acceptable when the channel is redundant with another fully-explained encoding (e.g. color matching x-axis categories that are already labeled).
 - **Limit encodings to 3 channels max per chart.** Position (x, y) + one of {color, size, shape}. Adding a fourth channel (e.g. color + size + shape simultaneously) overloads working memory. If you need more dimensions, use faceting or a table.
+- **Dual-encode color with shape or text.** Whenever a categorical color encoding carries semantic meaning (e.g. `exposure_pattern`, `channel`), also encode it via `alt.Shape` or via direct text labels — colorblind users must still be able to read the chart. The shape legend can be hidden if the color legend already labels the categories.
 - **Tooltips are mandatory.** Every chart must include `alt.Tooltip` entries for all encoded fields plus any context fields the viewer would want on hover. Numeric tooltips must have format strings (e.g. `format=",.0f"` for integers, `format="$.3f"` for prices).
-- **Consistent chart heights.** Standard: `height=380`. Taller (scatter, dense): `height=480`. Never vary heights arbitrarily within a dashboard.
+- **Consistent chart heights.** Standard: `height=380`. Taller (scatter, dense): `height=480`. Bar/dumbbell charts with > 15 categories: `height=620+`. Never vary heights arbitrarily within a dashboard.
 - **Sort bars by value.** Categorical bar charts must be sorted by the quantitative axis (largest to smallest or vice versa) unless there is a natural order (e.g. time, tiers). Alphabetical sort is almost never useful.
+
+#### Label Readability
+
+- **Long category labels — render with `mark_text`, not the native axis.** Altair's `axis.labelLimit` truncates without wrapping. For dumbbell, stacked-bar, or any chart whose y-axis carries multi-word task / occupation / city names, hide the axis labels (`axis=alt.Axis(labels=False)`) and add a separate `mark_text` layer that renders the full string left-justified. This avoids both the truncation ellipsis and the unreadable rotated-text fallback.
+- **Set `labelLimit` generously when you do use native axis labels.** `labelLimit=420` is the floor for any task / occupation label; `labelLimit=600` is preferred. Default `labelLimit=180` is unreadable for analytical content.
+- **Font sizes follow a scale, not whim.** Title/subheader 16–18pt, axis title 13pt, axis label 12pt, legend label 14–15pt, tooltip 12pt. Never go below 11pt for any visible text.
+- **Don't pre-truncate string fields.** Pass the full string into the chart and let the rendering layer handle width — pre-slicing the data ("…") strips information from the tooltip and prevents readers from seeing the full text on hover.
 
 #### Annotation and Context
 

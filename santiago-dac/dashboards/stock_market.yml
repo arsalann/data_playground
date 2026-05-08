@@ -1,0 +1,845 @@
+name: Big Tech Stock Market Dashboard
+description: |
+  Stock price action and quarterly financial statements for eight large-cap
+  US technology companies — AAPL, MSFT, GOOGL, AMZN, META, NVDA, TSLA, NFLX.
+  Built with Bruin DAC against `bruin-playground-arsalan.stock_market.*`.
+connection: bruin-playground-arsalan
+
+filters:
+  - name: ticker
+    type: select
+    default: "All"
+    options:
+      values: ["All", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "NFLX"]
+
+rows:
+  # -----------------------------------------------------------------
+  # Header
+  # -----------------------------------------------------------------
+  - widgets:
+      - name: About
+        type: text
+        col: 12
+        content: |
+          ## Big Tech — Price & Financial Statement Review
+          Past 24 months of daily prices and the latest available quarterly
+          financial statements for eight large-cap US technology stocks. Use
+          the **Ticker** filter to focus on a single company; "All" shows the
+          full peer set across every chart.
+
+  - widgets:
+      - name: Tickers Tracked
+        type: metric
+        col: 2
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT ticker) AS value
+          FROM stock_market.prices_daily
+          WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+            AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
+            {% if filters.ticker != 'All' %}
+            AND ticker = '{{ filters.ticker }}'
+            {% endif %}
+
+      - name: Avg 24-Month Return
+        type: metric
+        col: 3
+        column: value
+        suffix: "%"
+        format: number
+        sql: |
+          WITH bookends AS (
+            SELECT
+              ticker,
+              FIRST_VALUE(adj_close) OVER (PARTITION BY ticker ORDER BY date) AS first_close,
+              LAST_VALUE(adj_close) OVER (PARTITION BY ticker ORDER BY date
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_close
+            FROM stock_market.prices_daily
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          ),
+          per_ticker AS (
+            SELECT ticker, ANY_VALUE(first_close) AS first_close, ANY_VALUE(last_close) AS last_close
+            FROM bookends GROUP BY ticker
+          )
+          SELECT ROUND(AVG((last_close - first_close) / NULLIF(first_close, 0) * 100), 1) AS value
+          FROM per_ticker
+
+      - name: Avg Net Margin (Latest 4Q)
+        type: metric
+        col: 3
+        column: value
+        suffix: "%"
+        format: number
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, period_ending, total_revenue, net_income,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT ROUND(SAFE_DIVIDE(SUM(net_income) * 100.0, NULLIF(SUM(total_revenue), 0)), 2) AS value
+          FROM ranked WHERE rn <= 4
+
+      - name: Total Revenue (Latest 4Q)
+        type: metric
+        col: 2
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, period_ending, total_revenue,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT ROUND(SUM(total_revenue), 0) AS value
+          FROM ranked WHERE rn <= 4
+
+      - name: Total Net Income (Latest 4Q)
+        type: metric
+        col: 2
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, period_ending, net_income,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT ROUND(SUM(net_income), 0) AS value
+          FROM ranked WHERE rn <= 4
+
+  # -----------------------------------------------------------------
+  # PRICE PERFORMANCE
+  # -----------------------------------------------------------------
+  - tab: Price Performance
+    widgets:
+      - name: Indexed Adjusted Close (24-month, rebased to 100)
+        type: chart
+        chart: combo
+        col: 12
+        x: month_label
+        y: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        lines: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        description: |
+          Each ticker is rebased to 100 at the first trading day in the window,
+          so all eight series are directly comparable in % terms. A value of 200
+          means the stock has doubled over the period.
+        sql: |
+          WITH base AS (
+            SELECT
+              ticker,
+              date,
+              adj_close,
+              FIRST_VALUE(adj_close) OVER (PARTITION BY ticker ORDER BY date) AS base_close
+            FROM stock_market.prices_daily
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          ),
+          monthly AS (
+            SELECT
+              ticker,
+              FORMAT_DATE('%Y-%m', date) AS month_label,
+              AVG(adj_close / NULLIF(base_close, 0) * 100) AS indexed
+            FROM base
+            GROUP BY ticker, month_label
+          )
+          SELECT
+            month_label,
+            ROUND(AVG(CASE WHEN ticker = 'AAPL' THEN indexed END), 2) AS aapl,
+            ROUND(AVG(CASE WHEN ticker = 'MSFT' THEN indexed END), 2) AS msft,
+            ROUND(AVG(CASE WHEN ticker = 'GOOGL' THEN indexed END), 2) AS googl,
+            ROUND(AVG(CASE WHEN ticker = 'AMZN' THEN indexed END), 2) AS amzn,
+            ROUND(AVG(CASE WHEN ticker = 'META' THEN indexed END), 2) AS meta,
+            ROUND(AVG(CASE WHEN ticker = 'NVDA' THEN indexed END), 2) AS nvda,
+            ROUND(AVG(CASE WHEN ticker = 'TSLA' THEN indexed END), 2) AS tsla,
+            ROUND(AVG(CASE WHEN ticker = 'NFLX' THEN indexed END), 2) AS nflx
+          FROM monthly
+          GROUP BY month_label
+          ORDER BY month_label
+
+  - tab: Price Performance
+    widgets:
+      - name: 24-Month Total Return by Ticker
+        type: chart
+        chart: bar
+        col: 6
+        x: ticker
+        y: [return_pct]
+        description: |
+          First-to-last adjusted-close return over the trailing 24 months,
+          per ticker. Sorted descending; top of the chart = best performer.
+        sql: |
+          WITH bookends AS (
+            SELECT
+              ticker,
+              FIRST_VALUE(adj_close) OVER (PARTITION BY ticker ORDER BY date) AS first_close,
+              LAST_VALUE(adj_close) OVER (PARTITION BY ticker ORDER BY date
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_close
+            FROM stock_market.prices_daily
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT
+            ticker,
+            ROUND((ANY_VALUE(last_close) - ANY_VALUE(first_close)) / NULLIF(ANY_VALUE(first_close), 0) * 100, 2) AS return_pct
+          FROM bookends
+          GROUP BY ticker
+          ORDER BY return_pct DESC
+
+      - name: Distance From 52-Week High
+        type: chart
+        chart: bar
+        col: 6
+        x: ticker
+        y: [pct_from_high]
+        description: |
+          Latest close as a percentage distance from each ticker's 52-week high
+          (252 trading days). 0% = at the high; -20% = 20% below the high.
+          A widely watched drawdown indicator.
+        sql: |
+          WITH latest AS (
+            SELECT
+              ticker, pct_from_52w_high,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date DESC) AS rn
+            FROM stock_market.prices_daily
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT ticker, ROUND(pct_from_52w_high, 2) AS pct_from_high
+          FROM latest
+          WHERE rn = 1
+          ORDER BY pct_from_high DESC
+
+  - tab: Price Performance
+    widgets:
+      - name: Daily Return Distribution (Big Tech, 24-Month)
+        type: chart
+        chart: histogram
+        col: 6
+        x: daily_return_pct
+        bins: 40
+        description: |
+          Frequency distribution of daily adjusted-close returns across the
+          peer set over the trailing 24 months. Tails indicate frequency of
+          large up- or down-days. Visual proxy for volatility.
+        sql: |
+          SELECT daily_return_pct
+          FROM stock_market.prices_daily
+          WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+            AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
+            AND daily_return_pct IS NOT NULL
+            AND ABS(daily_return_pct) < 30
+            {% if filters.ticker != 'All' %}
+            AND ticker = '{{ filters.ticker }}'
+            {% endif %}
+
+      - name: Realized Volatility (24-Month, %)
+        type: chart
+        chart: bar
+        col: 6
+        x: ticker
+        y: [vol_pct]
+        description: |
+          Standard deviation of daily returns over the trailing 24 months,
+          per ticker. Higher = more volatile. A common risk indicator.
+        sql: |
+          SELECT
+            ticker,
+            ROUND(STDDEV(daily_return_pct), 2) AS vol_pct
+          FROM stock_market.prices_daily
+          WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+            AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
+            AND daily_return_pct IS NOT NULL
+            {% if filters.ticker != 'All' %}
+            AND ticker = '{{ filters.ticker }}'
+            {% endif %}
+          GROUP BY ticker
+          ORDER BY vol_pct DESC
+
+  - tab: Price Performance
+    widgets:
+      - name: Footnote — Price Performance
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[stock_market.prices_daily](https://console.cloud.google.com/bigquery?project=bruin-playground-arsalan)**
+          (yfinance + Financial Modeling Prep, deduplicated on ticker × date).
+          **Tools:** **Bruin cli**, **BigQuery**, **Bruin dac**.
+          **Limitations:** Returns are based on adjusted close (incorporates
+          splits and dividends). Indexing rebases to the first available
+          trading day in the 24-month window; tickers added later would start
+          mid-window. Histogram is clipped to ±30% to suppress data-error tails.
+
+  # -----------------------------------------------------------------
+  # INCOME STATEMENT
+  # -----------------------------------------------------------------
+  - tab: Income Statement
+    widgets:
+      - name: Quarterly Revenue by Ticker
+        type: chart
+        chart: combo
+        col: 12
+        x: quarter_label
+        y: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        lines: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        description: |
+          Quarterly total revenue (USD) reported by each company. Note that
+          fiscal calendars differ — values are aligned by reporting period_ending,
+          not by calendar quarter.
+        sql: |
+          SELECT
+            FORMAT_DATE('%Y-Q%Q', period_ending) AS quarter_label,
+            ROUND(SUM(CASE WHEN ticker = 'AAPL' THEN total_revenue END), 0) AS aapl,
+            ROUND(SUM(CASE WHEN ticker = 'MSFT' THEN total_revenue END), 0) AS msft,
+            ROUND(SUM(CASE WHEN ticker = 'GOOGL' THEN total_revenue END), 0) AS googl,
+            ROUND(SUM(CASE WHEN ticker = 'AMZN' THEN total_revenue END), 0) AS amzn,
+            ROUND(SUM(CASE WHEN ticker = 'META' THEN total_revenue END), 0) AS meta,
+            ROUND(SUM(CASE WHEN ticker = 'NVDA' THEN total_revenue END), 0) AS nvda,
+            ROUND(SUM(CASE WHEN ticker = 'TSLA' THEN total_revenue END), 0) AS tsla,
+            ROUND(SUM(CASE WHEN ticker = 'NFLX' THEN total_revenue END), 0) AS nflx
+          FROM stock_market.financials_quarterly
+          WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+            {% if filters.ticker != 'All' %}
+            AND ticker = '{{ filters.ticker }}'
+            {% endif %}
+          GROUP BY quarter_label
+          ORDER BY quarter_label
+
+  - tab: Income Statement
+    widgets:
+      - name: Margin Profile (Latest 4Q)
+        type: chart
+        chart: bar
+        col: 6
+        x: ticker
+        y: [gross_margin, operating_margin, net_margin]
+        description: |
+          Gross, operating, and net margins (%) over the most recent four
+          fiscal quarters per ticker. Compares profitability structure across
+          peers.
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, period_ending, total_revenue, gross_profit, operating_income, net_income,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT
+            ticker,
+            ROUND(SAFE_DIVIDE(SUM(gross_profit) * 100.0, NULLIF(SUM(total_revenue), 0)), 2) AS gross_margin,
+            ROUND(SAFE_DIVIDE(SUM(operating_income) * 100.0, NULLIF(SUM(total_revenue), 0)), 2) AS operating_margin,
+            ROUND(SAFE_DIVIDE(SUM(net_income) * 100.0, NULLIF(SUM(total_revenue), 0)), 2) AS net_margin
+          FROM ranked WHERE rn <= 4
+          GROUP BY ticker
+          ORDER BY net_margin DESC
+
+      - name: Diluted EPS Trend
+        type: chart
+        chart: combo
+        col: 6
+        x: quarter_label
+        y: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        lines: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        description: |
+          Diluted earnings per share (USD) by reporting quarter. Each company
+          reports on its own fiscal calendar. Stock-split-adjusted at source.
+        sql: |
+          SELECT
+            FORMAT_DATE('%Y-Q%Q', period_ending) AS quarter_label,
+            ROUND(AVG(CASE WHEN ticker = 'AAPL' THEN diluted_eps END), 2) AS aapl,
+            ROUND(AVG(CASE WHEN ticker = 'MSFT' THEN diluted_eps END), 2) AS msft,
+            ROUND(AVG(CASE WHEN ticker = 'GOOGL' THEN diluted_eps END), 2) AS googl,
+            ROUND(AVG(CASE WHEN ticker = 'AMZN' THEN diluted_eps END), 2) AS amzn,
+            ROUND(AVG(CASE WHEN ticker = 'META' THEN diluted_eps END), 2) AS meta,
+            ROUND(AVG(CASE WHEN ticker = 'NVDA' THEN diluted_eps END), 2) AS nvda,
+            ROUND(AVG(CASE WHEN ticker = 'TSLA' THEN diluted_eps END), 2) AS tsla,
+            ROUND(AVG(CASE WHEN ticker = 'NFLX' THEN diluted_eps END), 2) AS nflx
+          FROM stock_market.financials_quarterly
+          WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+            {% if filters.ticker != 'All' %}
+            AND ticker = '{{ filters.ticker }}'
+            {% endif %}
+          GROUP BY quarter_label
+          ORDER BY quarter_label
+
+  - tab: Income Statement
+    widgets:
+      - name: Income Statement Snapshot (Latest 4Q, USD)
+        type: table
+        col: 12
+        description: |
+          Trailing-four-quarter income statement summary. Revenue, gross profit,
+          operating income, net income, EBITDA, and the three margin ratios.
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, company_name, period_ending,
+              total_revenue, gross_profit, operating_income, net_income, ebitda,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          ),
+          ttm AS (
+            SELECT
+              ticker, ANY_VALUE(company_name) AS company_name,
+              SUM(total_revenue) AS revenue,
+              SUM(gross_profit) AS gross_profit,
+              SUM(operating_income) AS operating_income,
+              SUM(net_income) AS net_income,
+              SUM(ebitda) AS ebitda
+            FROM ranked WHERE rn <= 4
+            GROUP BY ticker
+          )
+          SELECT
+            ticker,
+            company_name,
+            ROUND(revenue, 0) AS revenue_ttm,
+            ROUND(gross_profit, 0) AS gross_profit,
+            ROUND(operating_income, 0) AS operating_income,
+            ROUND(net_income, 0) AS net_income,
+            ROUND(ebitda, 0) AS ebitda,
+            ROUND(SAFE_DIVIDE(gross_profit * 100.0, NULLIF(revenue, 0)), 2) AS gross_pct,
+            ROUND(SAFE_DIVIDE(operating_income * 100.0, NULLIF(revenue, 0)), 2) AS operating_pct,
+            ROUND(SAFE_DIVIDE(net_income * 100.0, NULLIF(revenue, 0)), 2) AS net_pct
+          FROM ttm
+          ORDER BY revenue DESC
+        columns:
+          - { name: ticker, label: "Ticker" }
+          - { name: company_name, label: "Company" }
+          - { name: revenue_ttm, label: "Revenue (TTM)", format: currency }
+          - { name: gross_profit, label: "Gross profit", format: currency }
+          - { name: operating_income, label: "Operating income", format: currency }
+          - { name: net_income, label: "Net income", format: currency }
+          - { name: ebitda, label: "EBITDA", format: currency }
+          - { name: gross_pct, label: "Gross %", format: number }
+          - { name: operating_pct, label: "Op %", format: number }
+          - { name: net_pct, label: "Net %", format: number }
+
+  - tab: Income Statement
+    widgets:
+      - name: Footnote — Income Statement
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[stock_market.financials_quarterly](https://console.cloud.google.com/bigquery?project=bruin-playground-arsalan)**
+          (yfinance + Financial Modeling Prep). **Tools:** **Bruin cli**,
+          **BigQuery**, **Bruin dac**.
+          **Limitations:** Margins are computed on the latest four reported
+          quarters and are TTM-style only when four quarters are available;
+          if a ticker has fewer than four quarters in the warehouse it will
+          be partial. Fiscal calendars differ across companies — Apple ends
+          Q4 in late September, Microsoft in late June.
+
+  # -----------------------------------------------------------------
+  # BALANCE SHEET
+  # -----------------------------------------------------------------
+  - tab: Balance Sheet
+    widgets:
+      - name: Cash & Total Debt (Latest Quarter)
+        type: chart
+        chart: bar
+        col: 7
+        stacked: false
+        x: ticker
+        y: [cash, total_debt]
+        description: |
+          Cash and equivalents versus total debt for the most recent reported
+          quarter. Net cash position = cash − debt. Side-by-side bars to make
+          the comparison directly visual.
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, cash_and_equivalents, total_debt,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT
+            ticker,
+            ROUND(cash_and_equivalents, 0) AS cash,
+            ROUND(total_debt, 0) AS total_debt
+          FROM ranked WHERE rn = 1
+          ORDER BY cash DESC
+
+      - name: Debt-to-Equity (Latest)
+        type: chart
+        chart: bar
+        col: 5
+        x: ticker
+        y: [debt_to_equity]
+        description: |
+          Total debt divided by stockholders' equity, latest quarter. Higher
+          values mean greater financial leverage. Sorted descending.
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, debt_to_equity,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT ticker, ROUND(debt_to_equity, 2) AS debt_to_equity
+          FROM ranked
+          WHERE rn = 1 AND debt_to_equity IS NOT NULL
+          ORDER BY debt_to_equity DESC
+
+  - tab: Balance Sheet
+    widgets:
+      - name: Total Assets vs Liabilities (Latest)
+        type: chart
+        chart: bar
+        col: 8
+        x: ticker
+        y: [total_assets, total_liabilities, equity]
+        description: |
+          Latest reported balance sheet structure: assets, liabilities, and
+          stockholders' equity (assets minus liabilities). All in USD.
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, total_assets, total_liabilities, stockholders_equity,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT
+            ticker,
+            ROUND(total_assets, 0) AS total_assets,
+            ROUND(total_liabilities, 0) AS total_liabilities,
+            ROUND(stockholders_equity, 0) AS equity
+          FROM ranked WHERE rn = 1
+          ORDER BY total_assets DESC
+
+      - name: Return on Equity (Latest)
+        type: chart
+        chart: bar
+        col: 4
+        x: ticker
+        y: [roe]
+        description: |
+          Annualized return on equity (%) from the latest reported quarter:
+          quarterly net income × 4 ÷ stockholders' equity.
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, roe_pct,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT ticker, ROUND(roe_pct, 1) AS roe
+          FROM ranked
+          WHERE rn = 1 AND roe_pct IS NOT NULL
+          ORDER BY roe DESC
+
+  - tab: Balance Sheet
+    widgets:
+      - name: Footnote — Balance Sheet
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[stock_market.financials_quarterly](https://console.cloud.google.com/bigquery?project=bruin-playground-arsalan)**.
+          **Tools:** **Bruin cli**, **BigQuery**, **Bruin dac**.
+          **Limitations:** ROE is annualized from a single quarter (× 4), so
+          it is sensitive to seasonality. Debt-to-equity excludes operating
+          leases. Balance-sheet snapshot uses the most recent period_ending
+          per ticker, which may not align across companies.
+
+  # -----------------------------------------------------------------
+  # CASH FLOW
+  # -----------------------------------------------------------------
+  - tab: Cash Flow
+    widgets:
+      - name: Quarterly Free Cash Flow by Ticker
+        type: chart
+        chart: combo
+        col: 12
+        x: quarter_label
+        y: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        lines: [aapl, msft, googl, amzn, meta, nvda, tsla, nflx]
+        description: |
+          Free cash flow (operating cash flow − capital expenditure) per
+          quarter and ticker. Positive = company is generating cash after
+          reinvestment.
+        sql: |
+          SELECT
+            FORMAT_DATE('%Y-Q%Q', period_ending) AS quarter_label,
+            ROUND(AVG(CASE WHEN ticker = 'AAPL' THEN free_cash_flow END), 0) AS aapl,
+            ROUND(AVG(CASE WHEN ticker = 'MSFT' THEN free_cash_flow END), 0) AS msft,
+            ROUND(AVG(CASE WHEN ticker = 'GOOGL' THEN free_cash_flow END), 0) AS googl,
+            ROUND(AVG(CASE WHEN ticker = 'AMZN' THEN free_cash_flow END), 0) AS amzn,
+            ROUND(AVG(CASE WHEN ticker = 'META' THEN free_cash_flow END), 0) AS meta,
+            ROUND(AVG(CASE WHEN ticker = 'NVDA' THEN free_cash_flow END), 0) AS nvda,
+            ROUND(AVG(CASE WHEN ticker = 'TSLA' THEN free_cash_flow END), 0) AS tsla,
+            ROUND(AVG(CASE WHEN ticker = 'NFLX' THEN free_cash_flow END), 0) AS nflx
+          FROM stock_market.financials_quarterly
+          WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+            {% if filters.ticker != 'All' %}
+            AND ticker = '{{ filters.ticker }}'
+            {% endif %}
+          GROUP BY quarter_label
+          ORDER BY quarter_label
+
+  - tab: Cash Flow
+    widgets:
+      - name: Operating Cash Flow vs Capex (Latest 4Q)
+        type: chart
+        chart: bar
+        col: 7
+        x: ticker
+        y: [operating_cf, capex_abs]
+        description: |
+          Trailing-four-quarter operating cash flow versus absolute capital
+          expenditure. The gap = approximate free cash flow generation.
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, operating_cash_flow, capital_expenditure,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT
+            ticker,
+            ROUND(SUM(operating_cash_flow), 0) AS operating_cf,
+            ROUND(SUM(ABS(capital_expenditure)), 0) AS capex_abs
+          FROM ranked WHERE rn <= 4
+          GROUP BY ticker
+          ORDER BY operating_cf DESC
+
+      - name: Capital Returns (Buybacks + Dividends, TTM)
+        type: chart
+        chart: bar
+        col: 5
+        x: ticker
+        y: [capital_returned]
+        description: |
+          Capital returned to shareholders over the latest four reported
+          quarters: share repurchases plus dividends paid (sign-corrected to
+          positive USD outflow).
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, share_repurchases, dividends_paid,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          )
+          SELECT
+            ticker,
+            ROUND(SUM(ABS(COALESCE(share_repurchases, 0)) + ABS(COALESCE(dividends_paid, 0))), 0) AS capital_returned
+          FROM ranked WHERE rn <= 4
+          GROUP BY ticker
+          ORDER BY capital_returned DESC
+
+  - tab: Cash Flow
+    widgets:
+      - name: Footnote — Cash Flow
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[stock_market.financials_quarterly](https://console.cloud.google.com/bigquery?project=bruin-playground-arsalan)**.
+          **Tools:** **Bruin cli**, **BigQuery**, **Bruin dac**.
+          **Limitations:** Capex and capital returns are reported as negative
+          cash flows; we take absolute values for visualization. TTM windows
+          are last-4-quarter sums and depend on data completeness per ticker.
+
+  # -----------------------------------------------------------------
+  # COMPARISON
+  # -----------------------------------------------------------------
+  - tab: Compare
+    widgets:
+      - name: Revenue vs Net Margin (Bubble = Cash & Equivalents)
+        type: chart
+        chart: bubble
+        col: 12
+        x: revenue_ttm
+        y: [net_margin]
+        size: cash
+        description: |
+          Each bubble is a company at the latest reporting period.
+          X = trailing-four-quarter revenue (USD), Y = TTM net margin (%),
+          bubble size = cash and equivalents on the balance sheet. Top-right
+          = high revenue + high margin (best on these axes).
+        sql: |
+          WITH ranked AS (
+            SELECT
+              ticker, period_ending, total_revenue, net_income, cash_and_equivalents,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          ),
+          ttm AS (
+            SELECT
+              ticker,
+              SUM(CASE WHEN rn <= 4 THEN total_revenue END) AS revenue_ttm,
+              SUM(CASE WHEN rn <= 4 THEN net_income END) AS net_ttm,
+              MAX(CASE WHEN rn = 1 THEN cash_and_equivalents END) AS cash
+            FROM ranked GROUP BY ticker
+          )
+          SELECT
+            ticker,
+            ROUND(revenue_ttm, 0) AS revenue_ttm,
+            ROUND(SAFE_DIVIDE(net_ttm * 100.0, NULLIF(revenue_ttm, 0)), 2) AS net_margin,
+            ROUND(cash, 0) AS cash
+          FROM ttm
+
+  - tab: Compare
+    widgets:
+      - name: Big Tech Comparison (Latest)
+        type: table
+        col: 12
+        description: |
+          One-row-per-ticker peer comparison. Latest close, 24-month total
+          return, distance from 52-week high, TTM revenue and net margin,
+          ROE, debt-to-equity, and cash on the balance sheet.
+        sql: |
+          WITH price_ranked AS (
+            SELECT
+              ticker, adj_close, pct_from_52w_high,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date DESC) AS rn
+            FROM stock_market.prices_daily
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          ),
+          two_year AS (
+            SELECT
+              ticker,
+              FIRST_VALUE(adj_close) OVER (PARTITION BY ticker ORDER BY date) AS first_close,
+              LAST_VALUE(adj_close) OVER (PARTITION BY ticker ORDER BY date
+                ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_close
+            FROM stock_market.prices_daily
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              AND date >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          ),
+          two_year_agg AS (
+            SELECT ticker,
+              ROUND((ANY_VALUE(last_close) - ANY_VALUE(first_close)) / NULLIF(ANY_VALUE(first_close), 0) * 100, 2) AS return_24m
+            FROM two_year GROUP BY ticker
+          ),
+          fin_ranked AS (
+            SELECT
+              ticker, company_name, total_revenue, net_income,
+              roe_pct, debt_to_equity, cash_and_equivalents,
+              ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY period_ending DESC) AS rn
+            FROM stock_market.financials_quarterly
+            WHERE ticker IN ('AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','NFLX')
+              {% if filters.ticker != 'All' %}
+              AND ticker = '{{ filters.ticker }}'
+              {% endif %}
+          ),
+          fin_ttm AS (
+            SELECT
+              ticker,
+              ANY_VALUE(company_name) AS company_name,
+              SUM(CASE WHEN rn <= 4 THEN total_revenue END) AS revenue_ttm,
+              SUM(CASE WHEN rn <= 4 THEN net_income END) AS net_ttm,
+              MAX(CASE WHEN rn = 1 THEN roe_pct END) AS roe,
+              MAX(CASE WHEN rn = 1 THEN debt_to_equity END) AS de,
+              MAX(CASE WHEN rn = 1 THEN cash_and_equivalents END) AS cash
+            FROM fin_ranked
+            GROUP BY ticker
+          )
+          SELECT
+            f.ticker AS ticker,
+            f.company_name AS company,
+            ROUND(p.adj_close, 2) AS last_close,
+            t.return_24m AS return_24m_pct,
+            ROUND(p.pct_from_52w_high, 2) AS from_52w_high_pct,
+            ROUND(f.revenue_ttm, 0) AS revenue_ttm,
+            ROUND(SAFE_DIVIDE(f.net_ttm * 100.0, NULLIF(f.revenue_ttm, 0)), 2) AS net_margin_pct,
+            ROUND(f.roe, 1) AS roe_pct,
+            ROUND(f.de, 2) AS debt_to_equity,
+            ROUND(f.cash, 0) AS cash
+          FROM fin_ttm f
+          LEFT JOIN price_ranked p ON p.ticker = f.ticker AND p.rn = 1
+          LEFT JOIN two_year_agg t ON t.ticker = f.ticker
+          ORDER BY t.return_24m DESC
+        columns:
+          - { name: ticker, label: "Ticker" }
+          - { name: company, label: "Company" }
+          - { name: last_close, label: "Last close", format: currency }
+          - { name: return_24m_pct, label: "24M return %", format: number }
+          - { name: from_52w_high_pct, label: "From 52w high %", format: number }
+          - { name: revenue_ttm, label: "Revenue (TTM)", format: currency }
+          - { name: net_margin_pct, label: "Net margin %", format: number }
+          - { name: roe_pct, label: "ROE %", format: number }
+          - { name: debt_to_equity, label: "Debt / equity", format: number }
+          - { name: cash, label: "Cash", format: currency }
+
+  - tab: Compare
+    widgets:
+      - name: Footnote — Compare
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[stock_market.prices_daily](https://console.cloud.google.com/bigquery?project=bruin-playground-arsalan)**,
+          **[stock_market.financials_quarterly](https://console.cloud.google.com/bigquery?project=bruin-playground-arsalan)**
+          (yfinance + Financial Modeling Prep, deduplicated). **Tools:** **Bruin cli**,
+          **BigQuery**, **Bruin dac**.
+          **Limitations:** TTM rolls the latest four reported quarters per
+          ticker without aligning to a common calendar end date. Companies
+          with fewer than four quarters in the warehouse will show partial
+          TTM values.

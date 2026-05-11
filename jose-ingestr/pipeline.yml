@@ -1,0 +1,7 @@
+name: jose-ingestr
+schedule: monthly
+start_date: "2025-06-01"
+
+default_connections:
+  postgres: "jose-pg"
+  duckdb: "jose-duckdb"

@@ -1,0 +1,20 @@
+services:
+  jose-postgres:
+    image: postgres:16-alpine
+    container_name: jose-ingestr-postgres
+    environment:
+      POSTGRES_USER: jose
+      POSTGRES_PASSWORD: jose
+      POSTGRES_DB: jose
+    ports:
+      - "55432:5432"
+    volumes:
+      - jose-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jose -d jose"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  jose-pgdata:

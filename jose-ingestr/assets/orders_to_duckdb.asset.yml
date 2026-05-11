@@ -1,0 +1,41 @@
+name: main.orders
+type: ingestr
+connection: jose-duckdb
+
+description: |
+  Ingestr asset that ingests the `public.orders` table from local postgres into
+  the local DuckDB database using merge strategy. The incremental key is
+  `updated_at` and the primary key is `order_id`, so subsequent runs only pick
+  up rows whose `updated_at` falls in the run's interval and upsert by
+  `order_id`.
+
+depends:
+  - public.orders
+
+parameters:
+  source_connection: jose-pg
+  source_table: public.orders
+  destination: duckdb
+  incremental_strategy: merge
+  incremental_key: updated_at
+
+columns:
+  - name: order_id
+    type: VARCHAR
+    primary_key: true
+    description: Order identifier.
+  - name: customer_id
+    type: INTEGER
+    description: Customer identifier.
+  - name: amount
+    type: DOUBLE
+    description: Order total in USD.
+  - name: status
+    type: VARCHAR
+    description: Order status.
+  - name: created_at
+    type: TIMESTAMP
+    description: Order creation time.
+  - name: updated_at
+    type: TIMESTAMP
+    description: Last-update timestamp; ingestr incremental key.

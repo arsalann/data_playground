@@ -80,6 +80,10 @@ streamlit run berlin-weather/assets/reports/streamlit_app.py
 - **SQL** — Staging transformations and aggregations
 - **Streamlit / Altair** — Interactive dashboards
 
+## Dataset Discovery
+
+- **[Mobus](https://www.mobus.ai/)** — Open-source MCP server that searches 21 dataset repositories (Kaggle, Hugging Face, Zenodo, arXiv, NASA Earthdata, WHO, data.gov, World Bank, AWS Open Data, Eurostat, Census.gov, SEC EDGAR, Harvard Dataverse, and more) from a single conversational interface. Use it to scout datasets for new pipelines.
+
 ## Data Sources
 
 - BigQuery public datasets (Stack Overflow, Google Trends, Google Analytics)

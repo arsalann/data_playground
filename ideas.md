@@ -2,6 +2,10 @@
 
 - Google's Jobs API
 
+## Dataset Discovery Tools
+
+- **Mobus** (https://www.mobus.ai/) — Open-source MCP server that aggregates 21 dataset repositories (Kaggle, Hugging Face, Zenodo, arXiv, NASA Earthdata, WHO, Google Scholar, Crossref, data.gov, World Bank, AWS Open Data, UCI ML Repository, Eurostat, Census.gov, SEC EDGAR, Harvard Dataverse, Papers with Code, …) into a single conversational search interface. MIT-licensed, hosted or self-hostable. Useful for scouting new pipeline ideas without hopping between portals.
+
 # Pipeline Ideas
 
 ## Completed

@@ -42,11 +42,11 @@ rows:
         type: text
         col: 12
         content: |
-          **Sources:** **[Anthropic Economic Index v3 - collaboration patterns](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0).
+          **Sources:** **[Anthropic Economic Index v3 - collaboration patterns](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0; per-task `directive` / `task_iteration` / `feedback_loop` / `validation` / `learning` percentages and per-task `usage_count_global` weights), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0; 8-digit O*NET-SOC codes used to roll AEI tasks up to BLS SOC major groups via `LEFT(onet_soc_code, 2)`).
 
           **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
 
-          **Limitations:** AEI publishes per-task percentages for each of the five collaboration types alongside `none` and `not_classified` - the latter two are dropped before renormalising. Each group's percentages are weighted by AEI conversation count so heavy tasks dominate within the group; an unweighted view would be flatter. Groups with fewer than 1,000 weighted conversations are dropped.
+          **Limitations:** AEI also publishes `none` and `not_classified` collaboration buckets - both are dropped before renormalising so the five shown patterns sum to 100 % within a group, which inflates each pattern's share by however much fell into those two buckets. Within-group percentages are weighted by AEI conversation count, so heavy tasks dominate the group composition; an unweighted view would be flatter. Groups with fewer than 1,000 weighted conversations are dropped. Construction & Extraction and Building & Grounds Cleaning have all-NULL collaboration fields in `release_2026_01_15` and are also dropped, leaving 20 of the 22 BLS SOC major groups.
 
   # ---------------------------------------------------------------------
   # Occupation share - Pareto
@@ -77,11 +77,11 @@ rows:
         type: text
         col: 12
         content: |
-          **Sources:** **[Anthropic Economic Index v3](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0), **[BLS OEWS May 2024](https://www.bls.gov/oes/)** (public domain).
+          **Sources:** **[Anthropic Economic Index v3](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0; per-task `usage_count_global` summed to BLS SOC major groups), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0; 8-digit O*NET-SOC code rolled up to the 2-digit SOC major group).
 
           **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
 
-          **Limitations:** Conversations are classified to O*NET tasks via Anthropic's Clio classifier; mis-classifications and the "not_classified" bucket are excluded from the denominator, so shares are conditional on a successful task assignment. SOC majors are computed by `LEFT(onet_soc_code, 2)` which is stable for the 22 active codes but does not handle the inactive 55 (Military) code. Groups with fewer than 200 task-rows are dropped to avoid noise.
+          **Limitations:** AEI conversations are classified to O*NET tasks via Anthropic's Clio classifier - mis-classifications and the `not_classified` bucket are excluded from the denominator, so the shares shown are conditional on a successful task→SOC assignment. SOC majors are derived by `LEFT(onet_soc_code, 2)`, which is stable for the 22 active codes but does not handle the inactive SOC 55 (Military). Groups with fewer than 200 task-rows are dropped, so the 22 rendered bars match the 22 active BLS SOC major groups. The cumulative-share line is computed over the rendered bars only.
 
   # ---------------------------------------------------------------------
   # Country adoption - log-log scatter + top-15 table
@@ -124,11 +124,11 @@ rows:
         type: text
         col: 12
         content: |
-          **Sources:** **[Anthropic Economic Index v3](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[World Bank WDI](https://databank.worldbank.org/source/world-development-indicators)** (CC BY 4.0).
+          **Sources:** **[Anthropic Economic Index v3 - geographic adoption](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0; `usage_per_million_people`, `usage_pct_of_global` by country), **[World Bank WDI](https://databank.worldbank.org/source/world-development-indicators)** (CC BY 4.0; `gdp_per_capita` in current USD and `population` joined on ISO-alpha-3).
 
           **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
 
-          **Limitations:** Only the `release_2026_01_15` AEI snapshot is plotted. Countries with population below 1M are excluded so micro-states (Nauru, San Marino) do not dominate the per-capita view. Claude is unavailable in some jurisdictions (notably mainland China, parts of EMEA), and traffic from VPN-routed users is attributed to the egress country, not the user's true location - both effects bias the country-level reading. DAC has no native world-map widget, so the geographic view is presented as a scatter + top-N table, not a choropleth. The scatter tooltip shows numeric coordinates only - country names live in the companion table.
+          **Limitations:** Only the `release_2026_01_15` AEI snapshot is plotted. Countries with population below 1M are excluded so micro-states (Nauru, San Marino) do not dominate the per-capita view; countries missing either `gdp_per_capita` or `usage_per_million_people` are also excluded - 113 countries remain. Claude is unavailable in some jurisdictions (notably mainland China, parts of EMEA), and traffic from VPN-routed users is attributed to the egress country rather than the user's true location - both effects bias the country-level reading downward in restricted regions and upward in common VPN egress points. DAC has no native world-map widget, so the geographic view is presented as a log-log scatter + top-15 table rather than a choropleth; the scatter tooltip shows numeric coordinates only, so country names live in the companion table.
 
   # ---------------------------------------------------------------------
   # Consumer vs API - diverging gap
@@ -158,8 +158,8 @@ rows:
         type: text
         col: 12
         content: |
-          **Sources:** **[Anthropic Economic Index v3 - consumer vs API report](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0).
+          **Sources:** **[Anthropic Economic Index v3 - consumer vs API report](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0; per-task `consumer_pct` and `api_pct` shares), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0; AEI task→`onet_soc_code` rolled up to BLS SOC major group).
 
           **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
 
-          **Limitations:** AEI's "consumer" surface is Claude.ai web/desktop only; "API" is the 1P direct API and excludes traffic that reaches Claude through Bedrock or Vertex (those are in the third-party AEI release, not loaded here). Tasks shared by both surfaces are counted on each side, so the percentage shares per surface sum to >100 % within a group; the chart shows the raw gap for that reason. Groups with fewer than five shared tasks are dropped.
+          **Limitations:** AEI's "consumer" surface is Claude.ai web/desktop only; "API" is the Anthropic 1P direct API and excludes traffic that reaches Claude through Amazon Bedrock or Google Vertex (those volumes appear in the separate AEI third-party release, which is not loaded here). One AEI task can map to multiple O*NET-SOC codes, so a task's per-surface share is counted in every SOC major group it touches - the per-surface column sums within a group can exceed 100 %, which is why the chart plots the raw API-minus-consumer gap rather than two stacked bars. Groups with fewer than five shared tasks (task present on both surfaces) are dropped, leaving 21 of the 22 BLS SOC major groups.

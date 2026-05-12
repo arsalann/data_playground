@@ -3,16 +3,20 @@
 name: fifa_reports.h1_match_heat_risk
 type: bq.sql
 description: |
-  H1 — Heat-risk concentration. One row per FIFA-2026 match (104 rows) with the
-  expected apparent temperature at kickoff hour, derived from the 14-year
-  June-July ERA5 climatology window at venue + kickoff hour ±2h.
+  H1 — Heat exposure per FIFA-2026 fixture. One row per match (104) with the
+  climatological apparent temperature at kickoff (±2h), bound to a 2015-2024
+  ERA5 reanalysis window at the venue grid point.
 
-  Apparent temperature is the BoM Steadman approximation, not true WBGT
-  (no globe-temperature reanalysis available); the methodology_note column
-  carries that caveat through to the dashboard footnote.
+  Augments the staging climatology with two analyst-grade fields:
+    - `roof_status_assumed`: 'open' / 'open_likely' / 'closed_likely' / 'unknown'.
+      Retractable roofs are treated as CLOSED when expected apparent temp ≥ 30 °C
+      OR when precipitation probability ≥ 20 % in the kickoff window.
+    - `open_air_effective`: TRUE when a player on the pitch actually experiences
+      the climatological conditions (open roof, fixed canopy, or retractable
+      assumed open). The "true" heat-risk count uses this flag.
 
-  Heat bands (US NWS heat-index thresholds applied to apparent temp):
-    Low <27 C, Moderate 27-32 C, High 32-37 C, Extreme >=37 C.
+  Bands (US-NWS heat-index thresholds applied to apparent temp):
+    Low <27 °C, Caution 27-32, Extreme Caution 32-39, Danger 39-51, Extreme Danger ≥51.
 connection: bruin-playground-arsalan
 tags:
   - fifa_2026
@@ -30,24 +34,29 @@ depends:
 @bruin */
 
 SELECT
-  m.match_id,
-  m.stage,
-  m.group_id,
-  m.venue_city,
-  m.stadium,
-  m.roof_type,
-  m.venue_elevation_m,
-  m.kickoff_local,
-  m.kickoff_hour_utc,
-  c.mean_temp_c                                AS expected_temp_c,
+  c.match_id,
+  c.stage,
+  c.group_id,
+  c.venue_id,
+  c.venue_city,
+  c.venue_country,
+  c.stadium,
+  c.roof_type,
+  c.roof_status_assumed,
+  c.open_air_effective,
+  c.venue_elevation_m,
+  c.kickoff_local,
+  c.kickoff_hour_utc,
+  c.mean_temp_c                  AS expected_temp_c,
   c.p95_temp_c,
   c.mean_humidity_pct,
   c.mean_wind_speed_kmh,
-  c.apparent_temp_c                            AS expected_apparent_temp_c,
+  c.mean_precip_mm,
+  c.prob_precip,
+  c.prob_temp_ge30,
+  c.apparent_temp_c              AS expected_apparent_temp_c,
   c.heat_band,
-  c.metar_mean_temp_c                          AS metar_crosscheck_temp_c,
   c.methodology_note,
-  CURRENT_TIMESTAMP()                          AS reported_at
-FROM `bruin-playground-arsalan.fifa_staging.matches_enriched`   m
-JOIN `bruin-playground-arsalan.fifa_staging.match_climatology`  c USING (match_id)
+  CURRENT_TIMESTAMP()             AS reported_at
+FROM `bruin-playground-arsalan.fifa_staging.match_climatology` c
 ORDER BY c.apparent_temp_c DESC

@@ -288,8 +288,8 @@ groups:
   G: [ESP, DEN, ALG, PAN]
   H: [ENG, SUI, KSA, GHA]
   I: [GER, URU, TUN, HON]
-  J: [POR, NOR, UZB, COD]
-  K: [COL, AUT, JPN, QAT]
+  J: [POL, NOR, UZB, COD]   # was POR; POR already in F. POL was missing — placed here.
+  K: [COL, AUT, CRC, QAT]   # was JPN; JPN already in F. CRC was missing — placed here.
   L: [PAR, TUR, ECU, CZE]
 
 # Group-stage match calendar — 72 matches across 12 groups, each plays 6.

@@ -100,7 +100,11 @@ HOURLY_VARS = [
 ]
 MAX_RETRIES = 5
 
-# Climatology window: June 1 - July 31 of each year, 2010-2024 (15 years)
+# Climatology window: June 1 - July 31 of years 2010-2024 (15 years).
+# Used as the recent-decade climatology for 2026 match-level expected
+# apparent-temperature surface. The decadal-warming comparison is done in a
+# separate asset (`openmeteo_baseline_1980s`) so a single rate-limited fetch
+# can't block the recent-decade work.
 CLIMATOLOGY_YEARS = list(range(2010, 2025))
 SEASON_START_MD = (6, 1)   # June 1
 SEASON_END_MD = (7, 31)    # July 31

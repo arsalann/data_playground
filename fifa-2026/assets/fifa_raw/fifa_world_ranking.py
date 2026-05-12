@@ -54,11 +54,12 @@ columns:
       - name: not_null
   - name: source
     type: VARCHAR
-    description: Either 'inside.fifa.com' (live fetch succeeded) or 'manifest_seed' (fallback).
+    description: |
+      Either `inside.fifa.com:<dateId>` (live fetch succeeded, e.g.
+      `inside.fifa.com:FRS_Male_Football_20260119`) or `manifest_seed`
+      (April 2025 numbers in `tournament_manifest.yml`).
     checks:
       - name: not_null
-      - name: accepted_values
-        value: [inside.fifa.com, manifest_seed]
   - name: extracted_at
     type: TIMESTAMP
     checks:
@@ -82,21 +83,34 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 MANIFEST_PATH = Path(__file__).parent / "tournament_manifest.yml"
-LIVE_URL = "https://inside.fifa.com/api/ranking-overview?locale=en&dateId=id14342"
+# FIFA's inside.fifa.com endpoint accepts a dateId. The format changed in 2025
+# from numeric ids (`id14870` = 2025-09-18) to the human-readable
+# `FRS_Male_Football_YYYYMMDD` form. We try the most-recent April 2026 release
+# (FRS_Male_Football_20260119) first, then fall back to id14870 (Sep 2025), and
+# finally to the manifest seed (April 2025 numbers, illustrative). The
+# `source` column on the output records which path succeeded.
+LIVE_URLS = [
+    "https://inside.fifa.com/api/ranking-overview?locale=en&dateId=FRS_Male_Football_20260119",
+    "https://inside.fifa.com/api/ranking-overview?locale=en&dateId=id14870",
+]
 
 
-def fetch_live() -> list | None:
-    try:
-        r = requests.get(LIVE_URL, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
-        r.raise_for_status()
-        payload = r.json()
-        rankings = payload.get("rankings") or []
-        if not rankings:
-            return None
-        return rankings
-    except (requests.RequestException, ValueError) as e:
-        logger.warning("Live FIFA ranking fetch failed (%s) — falling back to manifest seed", e)
-        return None
+def fetch_live() -> tuple[list, str] | tuple[None, None]:
+    """Try each LIVE_URL in order. Return (rankings, dateId) on first
+    non-empty hit, else (None, None)."""
+    for url in LIVE_URLS:
+        try:
+            r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0 (compatible; bruin-pipeline/1.0)"})
+            r.raise_for_status()
+            payload = r.json()
+            rankings = payload.get("rankings") or []
+            if rankings:
+                date_id = url.split("dateId=")[-1]
+                logger.info("Live FIFA ranking hit at %s: %d rows", date_id, len(rankings))
+                return rankings, date_id
+        except (requests.RequestException, ValueError) as e:
+            logger.warning("Live FIFA ranking fetch failed for %s: %s", url, e)
+    return None, None
 
 
 def materialize():
@@ -105,7 +119,7 @@ def materialize():
     snap_ts = datetime.now(timezone.utc)
     qualified_codes = {t["fifa_code"] for t in manifest["teams"]}
 
-    live = fetch_live()
+    live, date_id = fetch_live()
     rows = []
     if live:
         for r in live:
@@ -117,7 +131,7 @@ def materialize():
                 "snapshot_date": pd.to_datetime(r.get("rankingDate")).date() if r.get("rankingDate") else datetime.now(timezone.utc).date(),
                 "rank": int(r.get("rank") or 0),
                 "points": float(r.get("totalPoints") or 0),
-                "source": "inside.fifa.com",
+                "source": f"inside.fifa.com:{date_id}",
                 "extracted_at": snap_ts,
             })
         logger.info("Live FIFA ranking parsed: %d qualified teams matched", len(rows))

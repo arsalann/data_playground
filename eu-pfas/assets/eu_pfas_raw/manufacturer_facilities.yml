@@ -1,0 +1,130 @@
+facilities:
+  - name: 3M Antwerp
+    company: 3M
+    country: BE
+    city: Antwerp
+    lat: 51.27306
+    lon: 4.40083
+    sector: Manufacturer of PFAS-containing products (fluoropolymers, fluoroelastomers)
+    operating_status: production_paused_2024
+    notes: Halted PFAS production after Belgian VMM order, 2022. PFAS contamination plume verified.
+
+  - name: Solvay Spinetta Marengo
+    company: Solvay
+    country: IT
+    city: Spinetta Marengo (Alessandria)
+    lat: 44.89720
+    lon: 8.65772
+    sector: Specialty polymers, PFAS production
+    operating_status: active
+    notes: Italian Ministry of Environment confirmed PFAS contamination in groundwater 2023.
+
+  - name: Chemours Dordrecht
+    company: Chemours (formerly DuPont)
+    country: NL
+    city: Dordrecht
+    lat: 51.79530
+    lon: 4.66856
+    sector: Fluoropolymer manufacture (Teflon, GenX)
+    operating_status: active
+    notes: GenX emissions documented; Dordrecht groundwater PFAS exceedances.
+
+  - name: Daikin Chemical France
+    company: Daikin
+    country: FR
+    city: Saint-Quentin-Fallavier (Isère)
+    lat: 45.62830
+    lon: 5.13880
+    sector: Fluorochemicals
+    operating_status: active
+    notes: Within Lyon-Sud PFAS hotspot; Auvergne-Rhone-Alpes ARS monitoring.
+
+  - name: Arkema Pierre-Benite
+    company: Arkema
+    country: FR
+    city: Pierre-Benite (Rhône)
+    lat: 45.69900
+    lon: 4.81970
+    sector: Specialty chemicals, PFAS
+    operating_status: active
+    notes: Centre of Lyon-Sud PFAS hotspot revealed by ARS Auvergne-Rhone-Alpes 2022.
+
+  - name: Miteni Trissino
+    company: Miteni (defunct, bankrupted 2018)
+    country: IT
+    city: Trissino (Vicenza)
+    lat: 45.57220
+    lon: 11.36760
+    sector: Fluorochemicals (defunct)
+    operating_status: closed_2018
+    notes: Source of the 2013 Veneto PFAS catastrophe (300k people exposed).
+
+  - name: Solvay Tavaux
+    company: Solvay
+    country: FR
+    city: Tavaux (Jura)
+    lat: 47.04300
+    lon: 5.41850
+    sector: Halogenated polymers
+    operating_status: active
+    notes: Solvay's largest French chemical plant; PFAS in Doubs / Saone basin.
+
+  - name: 3M Zwijndrecht
+    company: 3M
+    country: BE
+    city: Zwijndrecht (Antwerp)
+    lat: 51.21194
+    lon: 4.31861
+    sector: Fluoropolymer manufacture (legacy)
+    operating_status: production_paused_2024
+    notes: Original Antwerp site; closure announced 2024 amid Belgian PFAS scandal.
+
+  - name: AGC Chemicals Europe Thornton-Cleveleys
+    company: AGC
+    country: NL
+    city: Amsterdam
+    lat: 52.42100
+    lon: 4.94600
+    sector: Fluoropolymer trading hub
+    operating_status: active
+    notes: AGC EU HQ; supply chain into multiple EU sites.
+
+  - name: Bayer Leverkusen
+    company: Bayer / Currenta
+    country: DE
+    city: Leverkusen
+    lat: 51.04450
+    lon: 6.98330
+    sector: Chemical park hosting fluorochemical operations
+    operating_status: active
+    notes: Major German chemical park with PFAS-using tenants.
+
+  - name: Asahi Glass Chemicals Frankfurt
+    company: AGC
+    country: DE
+    city: Frankfurt-Griesheim
+    lat: 50.10000
+    lon: 8.57220
+    sector: Fluoropolymer production
+    operating_status: active
+    notes: One of three AGC European fluoropolymer sites.
+
+  - name: Saint-Gobain Performance Plastics Wertheim
+    company: Saint-Gobain
+    country: DE
+    city: Wertheim
+    lat: 49.75940
+    lon: 9.50940
+    sector: PTFE / fluoropolymer processing
+    operating_status: active
+    notes: Wertheim plant produces fluoropolymer films and seals.
+
+  - name: Dyneon Gendorf
+    company: 3M Dyneon
+    country: DE
+    city: Burgkirchen an der Alz (Gendorf)
+    lat: 48.16000
+    lon: 12.65000
+    sector: Fluoropolymer / fluorochemical manufacture
+    operating_status: active
+    notes: Major German PFAS production site; contamination documented in Alz / Inn river basin.

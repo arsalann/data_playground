@@ -1,0 +1,6 @@
+name: eu-env-dashboard
+schedule: weekly
+start_date: "2025-01-01"
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"

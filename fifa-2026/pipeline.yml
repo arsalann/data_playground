@@ -1,0 +1,6 @@
+name: fifa-2026
+schedule: daily
+start_date: "2026-04-01"
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"

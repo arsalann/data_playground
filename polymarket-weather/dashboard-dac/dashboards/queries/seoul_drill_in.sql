@@ -1,8 +1,7 @@
 -- Hourly temperature traces for every Seoul Meteostat station + Open-Meteo grid
--- on the city's #1 primary-station anomaly day (Incheon RKSI, 2026-02-22).
--- One column per station; the chart's left axis is temperature (°C). Optional
--- Polymarket Yes-price overlay (the day's winning bucket) is joined on the
--- right axis where price ticks exist; null otherwise.
+-- on the city's #1 primary-station anomaly day (Incheon RKSI, 2026-04-25 - peak
+-- residual -6.9 °C at 14:00 KST). The Yes-price overlay tracks the bucket that
+-- ultimately resolved YES (20 °C point).
 WITH temps AS (
   SELECT
     ts_local,
@@ -14,7 +13,7 @@ WITH temps AS (
     ROUND(MAX(IF(source_id = 'seoul_centre', temp_c, NULL)), 1) AS open_meteo_grid
   FROM `bruin-playground-arsalan.polymarket_weather_staging.temperature_hourly`
   WHERE city = 'Seoul'
-    AND DATE(ts_local) = DATE '2026-02-22'
+    AND DATE(ts_local) = DATE '2026-04-25'
   GROUP BY ts_local
 ),
 winning AS (
@@ -22,7 +21,7 @@ winning AS (
   FROM `bruin-playground-arsalan.polymarket_weather_staging.markets_enriched` m
   WHERE m.series_slug = 'seoul-daily-weather'
     AND m.bucket_kind = 'point'
-    AND m.end_local_date = DATE '2026-02-22'
+    AND m.end_local_date = DATE '2026-04-25'
     AND m.resolved_yes = TRUE
   LIMIT 1
 ),
@@ -33,7 +32,7 @@ prices_hourly AS (
   FROM `bruin-playground-arsalan.polymarket_weather_staging.prices_enriched` p
   JOIN winning USING (market_id)
   WHERE p.outcome_label = 'Yes'
-    AND DATE(p.ts_utc, 'Asia/Seoul') = DATE '2026-02-22'
+    AND DATE(p.ts_utc, 'Asia/Seoul') = DATE '2026-04-25'
   GROUP BY ts_local_hour
 )
 SELECT

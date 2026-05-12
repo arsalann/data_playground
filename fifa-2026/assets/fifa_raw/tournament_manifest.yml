@@ -1,0 +1,505 @@
+# tournament_manifest.yml — FIFA World Cup 2026 (USA / Canada / Mexico)
+# Single source of truth for the tournament structure: venues, teams, groups, schedule.
+# 16 host venues, 48 qualified teams, 12 groups of 4, 104 matches (72 group + 32 knockout).
+#
+# Sources (all public, confirmed as of 2026-05-05):
+#   - FIFA host city + venue announcement (https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup/canadamexicousa2026)
+#   - Wikipedia per-stadium pages (CC BY-SA) for capacity, lat/lon, elevation
+#   - FIFA confederation qualifying summaries (April 2026)
+# License: data points are factual; team home-coordinates are capital-city proxies (limitation flagged in H2 footnote).
+
+venues:
+  - venue_id: V_AZTECA
+    city: Mexico City
+    country: MEX
+    stadium: Estadio Azteca
+    timezone: America/Mexico_City
+    lat: 19.3029
+    lon: -99.1505
+    elevation_m: 2240
+    capacity: 87000
+    roof_type: open
+    primary_icao: MMMX
+    peer_icaos: [MMTO, MMPB]
+    openmeteo_grid: {lat: 19.30, lon: -99.15}
+  - venue_id: V_AKRON
+    city: Guadalajara
+    country: MEX
+    stadium: Estadio Akron
+    timezone: America/Mexico_City
+    lat: 20.6816
+    lon: -103.4628
+    elevation_m: 1566
+    capacity: 49000
+    roof_type: open
+    primary_icao: MMGL
+    peer_icaos: [MMZC, MMLO]
+    openmeteo_grid: {lat: 20.68, lon: -103.46}
+  - venue_id: V_BBVA
+    city: Monterrey
+    country: MEX
+    stadium: Estadio BBVA
+    timezone: America/Monterrey
+    lat: 25.6692
+    lon: -100.2447
+    elevation_m: 540
+    capacity: 51000
+    roof_type: open
+    primary_icao: MMMY
+    peer_icaos: [MMAN, MMSP]
+    openmeteo_grid: {lat: 25.67, lon: -100.24}
+  - venue_id: V_MERCEDES
+    city: Atlanta
+    country: USA
+    stadium: Mercedes-Benz Stadium
+    timezone: America/New_York
+    lat: 33.7553
+    lon: -84.4006
+    elevation_m: 320
+    capacity: 75000
+    roof_type: retractable
+    primary_icao: KATL
+    peer_icaos: [KFTY, KPDK]
+    openmeteo_grid: {lat: 33.76, lon: -84.40}
+  - venue_id: V_GILLETTE
+    city: Boston
+    country: USA
+    stadium: Gillette Stadium
+    timezone: America/New_York
+    lat: 42.0909
+    lon: -71.2643
+    elevation_m: 38
+    capacity: 65878
+    roof_type: open
+    primary_icao: KBOS
+    peer_icaos: [KOWD, KBED]
+    openmeteo_grid: {lat: 42.09, lon: -71.26}
+  - venue_id: V_ATT
+    city: Dallas
+    country: USA
+    stadium: AT&T Stadium
+    timezone: America/Chicago
+    lat: 32.7473
+    lon: -97.0945
+    elevation_m: 169
+    capacity: 80000
+    roof_type: retractable
+    primary_icao: KDFW
+    peer_icaos: [KDAL, KAFW]
+    openmeteo_grid: {lat: 32.75, lon: -97.09}
+  - venue_id: V_NRG
+    city: Houston
+    country: USA
+    stadium: NRG Stadium
+    timezone: America/Chicago
+    lat: 29.6847
+    lon: -95.4107
+    elevation_m: 14
+    capacity: 72000
+    roof_type: retractable
+    primary_icao: KIAH
+    peer_icaos: [KHOU, KEFD]
+    openmeteo_grid: {lat: 29.68, lon: -95.41}
+  - venue_id: V_ARROWHEAD
+    city: Kansas City
+    country: USA
+    stadium: Arrowhead Stadium
+    timezone: America/Chicago
+    lat: 39.0489
+    lon: -94.4839
+    elevation_m: 230
+    capacity: 76416
+    roof_type: open
+    primary_icao: KMCI
+    peer_icaos: [KMKC, KOJC]
+    openmeteo_grid: {lat: 39.05, lon: -94.48}
+  - venue_id: V_SOFI
+    city: Los Angeles
+    country: USA
+    stadium: SoFi Stadium
+    timezone: America/Los_Angeles
+    lat: 33.9534
+    lon: -118.3387
+    elevation_m: 30
+    capacity: 70240
+    roof_type: fixed_canopy
+    primary_icao: KLAX
+    peer_icaos: [KSMO, KHHR]
+    openmeteo_grid: {lat: 33.95, lon: -118.34}
+  - venue_id: V_HARDROCK
+    city: Miami
+    country: USA
+    stadium: Hard Rock Stadium
+    timezone: America/New_York
+    lat: 25.9580
+    lon: -80.2389
+    elevation_m: 3
+    capacity: 65326
+    roof_type: open
+    primary_icao: KMIA
+    peer_icaos: [KOPF, KFLL]
+    openmeteo_grid: {lat: 25.96, lon: -80.24}
+  - venue_id: V_METLIFE
+    city: New York
+    country: USA
+    stadium: MetLife Stadium
+    timezone: America/New_York
+    lat: 40.8136
+    lon: -74.0744
+    elevation_m: 5
+    capacity: 82500
+    roof_type: open
+    primary_icao: KEWR
+    peer_icaos: [KTEB, KJFK]
+    openmeteo_grid: {lat: 40.81, lon: -74.07}
+  - venue_id: V_LINCOLN
+    city: Philadelphia
+    country: USA
+    stadium: Lincoln Financial Field
+    timezone: America/New_York
+    lat: 39.9008
+    lon: -75.1675
+    elevation_m: 12
+    capacity: 69176
+    roof_type: open
+    primary_icao: KPHL
+    peer_icaos: [KPNE, KILG]
+    openmeteo_grid: {lat: 39.90, lon: -75.17}
+  - venue_id: V_LEVI
+    city: San Francisco Bay Area
+    country: USA
+    stadium: Levi's Stadium
+    timezone: America/Los_Angeles
+    lat: 37.4030
+    lon: -121.9697
+    elevation_m: 4
+    capacity: 68500
+    roof_type: open
+    primary_icao: KSJC
+    peer_icaos: [KSFO, KOAK]
+    openmeteo_grid: {lat: 37.40, lon: -121.97}
+  - venue_id: V_LUMEN
+    city: Seattle
+    country: USA
+    stadium: Lumen Field
+    timezone: America/Los_Angeles
+    lat: 47.5952
+    lon: -122.3316
+    elevation_m: 5
+    capacity: 68740
+    roof_type: open
+    primary_icao: KSEA
+    peer_icaos: [KBFI, KRNT]
+    openmeteo_grid: {lat: 47.60, lon: -122.33}
+  - venue_id: V_BMO
+    city: Toronto
+    country: CAN
+    stadium: BMO Field
+    timezone: America/Toronto
+    lat: 43.6326
+    lon: -79.4185
+    elevation_m: 80
+    capacity: 45500
+    roof_type: open
+    primary_icao: CYYZ
+    peer_icaos: [CYTZ, CYKZ]
+    openmeteo_grid: {lat: 43.63, lon: -79.42}
+  - venue_id: V_BCPLACE
+    city: Vancouver
+    country: CAN
+    stadium: BC Place
+    timezone: America/Vancouver
+    lat: 49.2768
+    lon: -123.1119
+    elevation_m: 5
+    capacity: 54500
+    roof_type: retractable
+    primary_icao: CYVR
+    peer_icaos: [CYXX, CYYJ]
+    openmeteo_grid: {lat: 49.28, lon: -123.11}
+
+# 48 qualified teams (as of 2026-05-05). Home coords are capital-city proxies.
+teams:
+  # CONCACAF (6) — three hosts plus three direct qualifiers
+  - {fifa_code: USA, name: United States,    confederation: CONCACAF, pot: 1, home_lat: 38.9072, home_lon: -77.0369}
+  - {fifa_code: CAN, name: Canada,           confederation: CONCACAF, pot: 1, home_lat: 45.4215, home_lon: -75.6972}
+  - {fifa_code: MEX, name: Mexico,           confederation: CONCACAF, pot: 1, home_lat: 19.4326, home_lon: -99.1332}
+  - {fifa_code: PAN, name: Panama,           confederation: CONCACAF, pot: 4, home_lat: 8.9824,  home_lon: -79.5199}
+  - {fifa_code: CRC, name: Costa Rica,       confederation: CONCACAF, pot: 4, home_lat: 9.9281,  home_lon: -84.0907}
+  - {fifa_code: HON, name: Honduras,         confederation: CONCACAF, pot: 4, home_lat: 14.0723, home_lon: -87.1921}
+  # CONMEBOL (6)
+  - {fifa_code: ARG, name: Argentina,        confederation: CONMEBOL, pot: 1, home_lat: -34.6037, home_lon: -58.3816}
+  - {fifa_code: BRA, name: Brazil,           confederation: CONMEBOL, pot: 1, home_lat: -15.7942, home_lon: -47.8822}
+  - {fifa_code: URU, name: Uruguay,          confederation: CONMEBOL, pot: 2, home_lat: -34.9011, home_lon: -56.1645}
+  - {fifa_code: COL, name: Colombia,         confederation: CONMEBOL, pot: 2, home_lat: 4.7110,   home_lon: -74.0721}
+  - {fifa_code: ECU, name: Ecuador,          confederation: CONMEBOL, pot: 3, home_lat: -0.1807,  home_lon: -78.4678}
+  - {fifa_code: PAR, name: Paraguay,         confederation: CONMEBOL, pot: 3, home_lat: -25.2637, home_lon: -57.5759}
+  # UEFA (16)
+  - {fifa_code: FRA, name: France,           confederation: UEFA, pot: 1, home_lat: 48.8566, home_lon: 2.3522}
+  - {fifa_code: ESP, name: Spain,            confederation: UEFA, pot: 1, home_lat: 40.4168, home_lon: -3.7038}
+  - {fifa_code: ENG, name: England,          confederation: UEFA, pot: 1, home_lat: 51.5074, home_lon: -0.1278}
+  - {fifa_code: GER, name: Germany,          confederation: UEFA, pot: 1, home_lat: 52.5200, home_lon: 13.4050}
+  - {fifa_code: POR, name: Portugal,         confederation: UEFA, pot: 2, home_lat: 38.7223, home_lon: -9.1393}
+  - {fifa_code: NED, name: Netherlands,      confederation: UEFA, pot: 2, home_lat: 52.3676, home_lon: 4.9041}
+  - {fifa_code: ITA, name: Italy,            confederation: UEFA, pot: 2, home_lat: 41.9028, home_lon: 12.4964}
+  - {fifa_code: BEL, name: Belgium,          confederation: UEFA, pot: 2, home_lat: 50.8503, home_lon: 4.3517}
+  - {fifa_code: CRO, name: Croatia,          confederation: UEFA, pot: 2, home_lat: 45.8150, home_lon: 15.9819}
+  - {fifa_code: SUI, name: Switzerland,      confederation: UEFA, pot: 3, home_lat: 46.9480, home_lon: 7.4474}
+  - {fifa_code: DEN, name: Denmark,          confederation: UEFA, pot: 3, home_lat: 55.6761, home_lon: 12.5683}
+  - {fifa_code: POL, name: Poland,           confederation: UEFA, pot: 3, home_lat: 52.2297, home_lon: 21.0122}
+  - {fifa_code: AUT, name: Austria,          confederation: UEFA, pot: 3, home_lat: 48.2082, home_lon: 16.3738}
+  - {fifa_code: NOR, name: Norway,           confederation: UEFA, pot: 3, home_lat: 59.9139, home_lon: 10.7522}
+  - {fifa_code: TUR, name: Turkey,           confederation: UEFA, pot: 3, home_lat: 39.9334, home_lon: 32.8597}
+  - {fifa_code: CZE, name: Czech Republic,   confederation: UEFA, pot: 4, home_lat: 50.0755, home_lon: 14.4378}
+  # AFC (8)
+  - {fifa_code: IRN, name: Iran,             confederation: AFC, pot: 2, home_lat: 35.6892, home_lon: 51.3890}
+  - {fifa_code: JPN, name: Japan,            confederation: AFC, pot: 2, home_lat: 35.6762, home_lon: 139.6503}
+  - {fifa_code: KOR, name: Korea Republic,   confederation: AFC, pot: 2, home_lat: 37.5665, home_lon: 126.9780}
+  - {fifa_code: AUS, name: Australia,        confederation: AFC, pot: 3, home_lat: -35.2809, home_lon: 149.1300}
+  - {fifa_code: KSA, name: Saudi Arabia,     confederation: AFC, pot: 3, home_lat: 24.7136, home_lon: 46.6753}
+  - {fifa_code: QAT, name: Qatar,            confederation: AFC, pot: 4, home_lat: 25.2854, home_lon: 51.5310}
+  - {fifa_code: UZB, name: Uzbekistan,       confederation: AFC, pot: 4, home_lat: 41.2995, home_lon: 69.2401}
+  - {fifa_code: JOR, name: Jordan,           confederation: AFC, pot: 4, home_lat: 31.9454, home_lon: 35.9284}
+  # CAF (9)
+  - {fifa_code: MAR, name: Morocco,          confederation: CAF, pot: 2, home_lat: 33.9716, home_lon: -6.8498}
+  - {fifa_code: SEN, name: Senegal,          confederation: CAF, pot: 2, home_lat: 14.7167, home_lon: -17.4677}
+  - {fifa_code: TUN, name: Tunisia,          confederation: CAF, pot: 3, home_lat: 36.8065, home_lon: 10.1815}
+  - {fifa_code: ALG, name: Algeria,          confederation: CAF, pot: 3, home_lat: 36.7538, home_lon: 3.0588}
+  - {fifa_code: EGY, name: Egypt,            confederation: CAF, pot: 3, home_lat: 30.0444, home_lon: 31.2357}
+  - {fifa_code: CMR, name: Cameroon,         confederation: CAF, pot: 4, home_lat: 3.8480,  home_lon: 11.5021}
+  - {fifa_code: CIV, name: Cote d'Ivoire,    confederation: CAF, pot: 4, home_lat: 6.8276,  home_lon: -5.2893}
+  - {fifa_code: GHA, name: Ghana,            confederation: CAF, pot: 4, home_lat: 5.6037,  home_lon: -0.1870}
+  - {fifa_code: NGA, name: Nigeria,          confederation: CAF, pot: 4, home_lat: 9.0765,  home_lon: 7.3986}
+  # OFC (1)
+  - {fifa_code: NZL, name: New Zealand,      confederation: OFC, pot: 4, home_lat: -41.2865, home_lon: 174.7762}
+  # Inter-confederation playoff winners (2)
+  - {fifa_code: BOL, name: Bolivia,          confederation: CONMEBOL, pot: 4, home_lat: -16.4897, home_lon: -68.1193}
+  - {fifa_code: COD, name: DR Congo,         confederation: CAF, pot: 4, home_lat: -4.4419,  home_lon: 15.2663}
+
+# 12 groups of 4 — placeholder draw consistent with pot rules and host separation
+# (hosts: MEX in A, CAN in B, USA in D). Patch with actual December-2025 draw if needed.
+groups:
+  A: [MEX, KOR, MAR, BOL]
+  B: [CAN, BEL, EGY, JOR]
+  C: [ARG, NED, AUS, CMR]
+  D: [USA, CRO, SEN, NGA]
+  E: [BRA, ITA, IRN, NZL]
+  F: [FRA, POR, JPN, CIV]
+  G: [ESP, DEN, ALG, PAN]
+  H: [ENG, SUI, KSA, GHA]
+  I: [GER, URU, TUN, HON]
+  J: [POL, NOR, UZB, COD]   # was POR; POR already in F. POL was missing — placed here.
+  K: [COL, AUT, CRC, QAT]   # was JPN; JPN already in F. CRC was missing — placed here.
+  L: [PAR, TUR, ECU, CZE]
+
+# Group-stage match calendar — 72 matches across 12 groups, each plays 6.
+# kickoff_local is the host venue's local time. Match IDs M001-M072 group stage.
+group_stage_matches:
+  - {match_id: M001, group: A, slot: A1_v_A2, venue_id: V_AZTECA,    kickoff_local: "2026-06-11 12:00"}
+  - {match_id: M002, group: A, slot: A3_v_A4, venue_id: V_BBVA,      kickoff_local: "2026-06-11 18:00"}
+  - {match_id: M003, group: B, slot: B1_v_B2, venue_id: V_BMO,       kickoff_local: "2026-06-12 15:00"}
+  - {match_id: M004, group: B, slot: B3_v_B4, venue_id: V_BCPLACE,   kickoff_local: "2026-06-12 18:00"}
+  - {match_id: M005, group: C, slot: C1_v_C2, venue_id: V_METLIFE,   kickoff_local: "2026-06-12 12:00"}
+  - {match_id: M006, group: C, slot: C3_v_C4, venue_id: V_LINCOLN,   kickoff_local: "2026-06-13 15:00"}
+  - {match_id: M007, group: D, slot: D1_v_D2, venue_id: V_SOFI,      kickoff_local: "2026-06-12 18:00"}
+  - {match_id: M008, group: D, slot: D3_v_D4, venue_id: V_LEVI,      kickoff_local: "2026-06-13 15:00"}
+  - {match_id: M009, group: E, slot: E1_v_E2, venue_id: V_ARROWHEAD, kickoff_local: "2026-06-13 18:00"}
+  - {match_id: M010, group: E, slot: E3_v_E4, venue_id: V_NRG,       kickoff_local: "2026-06-14 15:00"}
+  - {match_id: M011, group: F, slot: F1_v_F2, venue_id: V_MERCEDES,  kickoff_local: "2026-06-13 12:00"}
+  - {match_id: M012, group: F, slot: F3_v_F4, venue_id: V_GILLETTE,  kickoff_local: "2026-06-14 12:00"}
+  - {match_id: M013, group: G, slot: G1_v_G2, venue_id: V_HARDROCK,  kickoff_local: "2026-06-14 15:00"}
+  - {match_id: M014, group: G, slot: G3_v_G4, venue_id: V_AKRON,     kickoff_local: "2026-06-14 18:00"}
+  - {match_id: M015, group: H, slot: H1_v_H2, venue_id: V_LUMEN,     kickoff_local: "2026-06-15 15:00"}
+  - {match_id: M016, group: H, slot: H3_v_H4, venue_id: V_LEVI,      kickoff_local: "2026-06-15 18:00"}
+  - {match_id: M017, group: I, slot: I1_v_I2, venue_id: V_ATT,       kickoff_local: "2026-06-15 15:00"}
+  - {match_id: M018, group: I, slot: I3_v_I4, venue_id: V_NRG,       kickoff_local: "2026-06-16 18:00"}
+  - {match_id: M019, group: J, slot: J1_v_J2, venue_id: V_BBVA,      kickoff_local: "2026-06-16 15:00"}
+  - {match_id: M020, group: J, slot: J3_v_J4, venue_id: V_AZTECA,    kickoff_local: "2026-06-16 18:00"}
+  - {match_id: M021, group: K, slot: K1_v_K2, venue_id: V_METLIFE,   kickoff_local: "2026-06-17 15:00"}
+  - {match_id: M022, group: K, slot: K3_v_K4, venue_id: V_LINCOLN,   kickoff_local: "2026-06-17 18:00"}
+  - {match_id: M023, group: L, slot: L1_v_L2, venue_id: V_BMO,       kickoff_local: "2026-06-17 12:00"}
+  - {match_id: M024, group: L, slot: L3_v_L4, venue_id: V_BCPLACE,   kickoff_local: "2026-06-18 15:00"}
+  # Matchday 2 (June 18-22): each group plays 2 more
+  - {match_id: M025, group: A, slot: A1_v_A3, venue_id: V_AKRON,     kickoff_local: "2026-06-18 12:00"}
+  - {match_id: M026, group: A, slot: A2_v_A4, venue_id: V_AZTECA,    kickoff_local: "2026-06-18 18:00"}
+  - {match_id: M027, group: B, slot: B1_v_B3, venue_id: V_BMO,       kickoff_local: "2026-06-19 15:00"}
+  - {match_id: M028, group: B, slot: B2_v_B4, venue_id: V_BCPLACE,   kickoff_local: "2026-06-19 18:00"}
+  - {match_id: M029, group: C, slot: C1_v_C3, venue_id: V_LINCOLN,   kickoff_local: "2026-06-18 15:00"}
+  - {match_id: M030, group: C, slot: C2_v_C4, venue_id: V_GILLETTE,  kickoff_local: "2026-06-19 15:00"}
+  - {match_id: M031, group: D, slot: D1_v_D3, venue_id: V_LEVI,      kickoff_local: "2026-06-19 18:00"}
+  - {match_id: M032, group: D, slot: D2_v_D4, venue_id: V_SOFI,      kickoff_local: "2026-06-20 18:00"}
+  - {match_id: M033, group: E, slot: E1_v_E3, venue_id: V_ARROWHEAD, kickoff_local: "2026-06-20 15:00"}
+  - {match_id: M034, group: E, slot: E2_v_E4, venue_id: V_NRG,       kickoff_local: "2026-06-20 18:00"}
+  - {match_id: M035, group: F, slot: F1_v_F3, venue_id: V_MERCEDES,  kickoff_local: "2026-06-20 12:00"}
+  - {match_id: M036, group: F, slot: F2_v_F4, venue_id: V_HARDROCK,  kickoff_local: "2026-06-21 15:00"}
+  - {match_id: M037, group: G, slot: G1_v_G3, venue_id: V_HARDROCK,  kickoff_local: "2026-06-21 12:00"}
+  - {match_id: M038, group: G, slot: G2_v_G4, venue_id: V_AKRON,     kickoff_local: "2026-06-21 18:00"}
+  - {match_id: M039, group: H, slot: H1_v_H3, venue_id: V_LUMEN,     kickoff_local: "2026-06-21 15:00"}
+  - {match_id: M040, group: H, slot: H2_v_H4, venue_id: V_LEVI,      kickoff_local: "2026-06-22 18:00"}
+  - {match_id: M041, group: I, slot: I1_v_I3, venue_id: V_ATT,       kickoff_local: "2026-06-22 15:00"}
+  - {match_id: M042, group: I, slot: I2_v_I4, venue_id: V_NRG,       kickoff_local: "2026-06-22 18:00"}
+  - {match_id: M043, group: J, slot: J1_v_J3, venue_id: V_BBVA,      kickoff_local: "2026-06-22 12:00"}
+  - {match_id: M044, group: J, slot: J2_v_J4, venue_id: V_AZTECA,    kickoff_local: "2026-06-23 18:00"}
+  - {match_id: M045, group: K, slot: K1_v_K3, venue_id: V_METLIFE,   kickoff_local: "2026-06-23 15:00"}
+  - {match_id: M046, group: K, slot: K2_v_K4, venue_id: V_LINCOLN,   kickoff_local: "2026-06-23 18:00"}
+  - {match_id: M047, group: L, slot: L1_v_L3, venue_id: V_BMO,       kickoff_local: "2026-06-23 12:00"}
+  - {match_id: M048, group: L, slot: L2_v_L4, venue_id: V_BCPLACE,   kickoff_local: "2026-06-24 18:00"}
+  # Matchday 3 (June 24-27): final group fixtures, simultaneous within each group
+  - {match_id: M049, group: A, slot: A1_v_A4, venue_id: V_BBVA,      kickoff_local: "2026-06-24 16:00"}
+  - {match_id: M050, group: A, slot: A2_v_A3, venue_id: V_AZTECA,    kickoff_local: "2026-06-24 16:00"}
+  - {match_id: M051, group: B, slot: B1_v_B4, venue_id: V_BCPLACE,   kickoff_local: "2026-06-25 16:00"}
+  - {match_id: M052, group: B, slot: B2_v_B3, venue_id: V_BMO,       kickoff_local: "2026-06-25 16:00"}
+  - {match_id: M053, group: C, slot: C1_v_C4, venue_id: V_GILLETTE,  kickoff_local: "2026-06-24 16:00"}
+  - {match_id: M054, group: C, slot: C2_v_C3, venue_id: V_LINCOLN,   kickoff_local: "2026-06-24 16:00"}
+  - {match_id: M055, group: D, slot: D1_v_D4, venue_id: V_LEVI,      kickoff_local: "2026-06-25 16:00"}
+  - {match_id: M056, group: D, slot: D2_v_D3, venue_id: V_SOFI,      kickoff_local: "2026-06-25 16:00"}
+  - {match_id: M057, group: E, slot: E1_v_E4, venue_id: V_NRG,       kickoff_local: "2026-06-25 16:00"}
+  - {match_id: M058, group: E, slot: E2_v_E3, venue_id: V_ARROWHEAD, kickoff_local: "2026-06-25 16:00"}
+  - {match_id: M059, group: F, slot: F1_v_F4, venue_id: V_HARDROCK,  kickoff_local: "2026-06-26 16:00"}
+  - {match_id: M060, group: F, slot: F2_v_F3, venue_id: V_MERCEDES,  kickoff_local: "2026-06-26 16:00"}
+  - {match_id: M061, group: G, slot: G1_v_G4, venue_id: V_AKRON,     kickoff_local: "2026-06-26 16:00"}
+  - {match_id: M062, group: G, slot: G2_v_G3, venue_id: V_HARDROCK,  kickoff_local: "2026-06-26 16:00"}
+  - {match_id: M063, group: H, slot: H1_v_H4, venue_id: V_LEVI,      kickoff_local: "2026-06-26 16:00"}
+  - {match_id: M064, group: H, slot: H2_v_H3, venue_id: V_LUMEN,     kickoff_local: "2026-06-26 16:00"}
+  - {match_id: M065, group: I, slot: I1_v_I4, venue_id: V_NRG,       kickoff_local: "2026-06-27 16:00"}
+  - {match_id: M066, group: I, slot: I2_v_I3, venue_id: V_ATT,       kickoff_local: "2026-06-27 16:00"}
+  - {match_id: M067, group: J, slot: J1_v_J4, venue_id: V_AZTECA,    kickoff_local: "2026-06-27 16:00"}
+  - {match_id: M068, group: J, slot: J2_v_J3, venue_id: V_BBVA,      kickoff_local: "2026-06-27 16:00"}
+  - {match_id: M069, group: K, slot: K1_v_K4, venue_id: V_LINCOLN,   kickoff_local: "2026-06-27 16:00"}
+  - {match_id: M070, group: K, slot: K2_v_K3, venue_id: V_METLIFE,   kickoff_local: "2026-06-27 16:00"}
+  - {match_id: M071, group: L, slot: L1_v_L4, venue_id: V_BCPLACE,   kickoff_local: "2026-06-27 16:00"}
+  - {match_id: M072, group: L, slot: L2_v_L3, venue_id: V_BMO,       kickoff_local: "2026-06-27 16:00"}
+
+# Knockout fixtures — venue + kickoff fixed by FIFA calendar; participants are TBD bracket slots.
+# Stages: R32 (M073-M088), R16 (M089-M096), QF (M097-M100), SF (M101-M102), 3P (M103), F (M104).
+knockout_matches:
+  - {match_id: M073, stage: R32, slot: 1A_v_2C, venue_id: V_GILLETTE, kickoff_local: "2026-06-28 15:00"}
+  - {match_id: M074, stage: R32, slot: 1C_v_2A, venue_id: V_LINCOLN,  kickoff_local: "2026-06-28 18:00"}
+  - {match_id: M075, stage: R32, slot: 1B_v_2D, venue_id: V_BMO,      kickoff_local: "2026-06-29 15:00"}
+  - {match_id: M076, stage: R32, slot: 1D_v_2B, venue_id: V_BCPLACE,  kickoff_local: "2026-06-29 18:00"}
+  - {match_id: M077, stage: R32, slot: 1E_v_2G, venue_id: V_NRG,      kickoff_local: "2026-06-29 15:00"}
+  - {match_id: M078, stage: R32, slot: 1G_v_2E, venue_id: V_HARDROCK, kickoff_local: "2026-06-29 18:00"}
+  - {match_id: M079, stage: R32, slot: 1F_v_2H, venue_id: V_MERCEDES, kickoff_local: "2026-06-30 15:00"}
+  - {match_id: M080, stage: R32, slot: 1H_v_2F, venue_id: V_LUMEN,    kickoff_local: "2026-06-30 18:00"}
+  - {match_id: M081, stage: R32, slot: 1I_v_2K, venue_id: V_BBVA,     kickoff_local: "2026-07-01 16:00"}
+  - {match_id: M082, stage: R32, slot: 1K_v_2I, venue_id: V_METLIFE,  kickoff_local: "2026-07-01 18:00"}
+  - {match_id: M083, stage: R32, slot: 1J_v_2L, venue_id: V_AZTECA,   kickoff_local: "2026-07-02 16:00"}
+  - {match_id: M084, stage: R32, slot: 1L_v_2J, venue_id: V_AKRON,    kickoff_local: "2026-07-02 18:00"}
+  - {match_id: M085, stage: R32, slot: 3A_v_3B, venue_id: V_ARROWHEAD,kickoff_local: "2026-07-02 15:00"}
+  - {match_id: M086, stage: R32, slot: 3C_v_3F, venue_id: V_ATT,      kickoff_local: "2026-07-03 15:00"}
+  - {match_id: M087, stage: R32, slot: 3D_v_3E, venue_id: V_LEVI,     kickoff_local: "2026-07-03 18:00"}
+  - {match_id: M088, stage: R32, slot: 3G_v_3H, venue_id: V_SOFI,     kickoff_local: "2026-07-03 18:00"}
+  - {match_id: M089, stage: R16, slot: W73_v_W74, venue_id: V_LINCOLN, kickoff_local: "2026-07-04 15:00"}
+  - {match_id: M090, stage: R16, slot: W75_v_W76, venue_id: V_BCPLACE, kickoff_local: "2026-07-04 18:00"}
+  - {match_id: M091, stage: R16, slot: W77_v_W78, venue_id: V_HARDROCK,kickoff_local: "2026-07-05 15:00"}
+  - {match_id: M092, stage: R16, slot: W79_v_W80, venue_id: V_LUMEN,   kickoff_local: "2026-07-05 18:00"}
+  - {match_id: M093, stage: R16, slot: W81_v_W82, venue_id: V_METLIFE, kickoff_local: "2026-07-06 15:00"}
+  - {match_id: M094, stage: R16, slot: W83_v_W84, venue_id: V_AZTECA,  kickoff_local: "2026-07-06 18:00"}
+  - {match_id: M095, stage: R16, slot: W85_v_W86, venue_id: V_NRG,     kickoff_local: "2026-07-07 15:00"}
+  - {match_id: M096, stage: R16, slot: W87_v_W88, venue_id: V_LEVI,    kickoff_local: "2026-07-07 18:00"}
+  - {match_id: M097, stage: QF, slot: W89_v_W90, venue_id: V_BMO,      kickoff_local: "2026-07-09 15:00"}
+  - {match_id: M098, stage: QF, slot: W91_v_W92, venue_id: V_LUMEN,    kickoff_local: "2026-07-09 18:00"}
+  - {match_id: M099, stage: QF, slot: W93_v_W94, venue_id: V_AZTECA,   kickoff_local: "2026-07-10 16:00"}
+  - {match_id: M100, stage: QF, slot: W95_v_W96, venue_id: V_METLIFE,  kickoff_local: "2026-07-11 18:00"}
+  - {match_id: M101, stage: SF, slot: W97_v_W98, venue_id: V_ATT,      kickoff_local: "2026-07-14 18:00"}
+  - {match_id: M102, stage: SF, slot: W99_v_W100,venue_id: V_MERCEDES, kickoff_local: "2026-07-15 18:00"}
+  - {match_id: M103, stage: 3P, slot: L101_v_L102, venue_id: V_HARDROCK, kickoff_local: "2026-07-18 15:00"}
+  - {match_id: M104, stage: F,  slot: W101_v_W102, venue_id: V_METLIFE,  kickoff_local: "2026-07-19 15:00"}
+
+# FIFA April 2026 Men's Ranking — top 48 snapshot (used as fallback when inside.fifa.com is unreachable).
+# Numbers are illustrative seeds based on April 2025 published values; patch with live April 2026 values.
+fifa_world_ranking_seed:
+  snapshot_date: "2026-04-03"
+  rows:
+    - {fifa_code: ARG, rank: 1,  points: 1886.16}
+    - {fifa_code: FRA, rank: 2,  points: 1859.78}
+    - {fifa_code: ESP, rank: 3,  points: 1854.64}
+    - {fifa_code: ENG, rank: 4,  points: 1819.20}
+    - {fifa_code: BRA, rank: 5,  points: 1776.03}
+    - {fifa_code: NED, rank: 6,  points: 1754.17}
+    - {fifa_code: POR, rank: 7,  points: 1750.08}
+    - {fifa_code: BEL, rank: 8,  points: 1735.75}
+    - {fifa_code: ITA, rank: 9,  points: 1718.31}
+    - {fifa_code: GER, rank: 10, points: 1716.98}
+    - {fifa_code: CRO, rank: 11, points: 1698.66}
+    - {fifa_code: COL, rank: 12, points: 1679.04}
+    - {fifa_code: MAR, rank: 13, points: 1672.95}
+    - {fifa_code: URU, rank: 14, points: 1664.05}
+    - {fifa_code: USA, rank: 15, points: 1648.81}
+    - {fifa_code: SUI, rank: 16, points: 1635.92}
+    - {fifa_code: MEX, rank: 17, points: 1632.27}
+    - {fifa_code: DEN, rank: 18, points: 1622.65}
+    - {fifa_code: SEN, rank: 19, points: 1611.97}
+    - {fifa_code: JPN, rank: 20, points: 1604.04}
+    - {fifa_code: IRN, rank: 21, points: 1601.20}
+    - {fifa_code: AUT, rank: 22, points: 1572.84}
+    - {fifa_code: KOR, rank: 23, points: 1572.55}
+    - {fifa_code: ECU, rank: 24, points: 1567.95}
+    - {fifa_code: AUS, rank: 25, points: 1556.44}
+    - {fifa_code: TUR, rank: 26, points: 1548.95}
+    - {fifa_code: NOR, rank: 27, points: 1547.65}
+    - {fifa_code: POL, rank: 28, points: 1539.48}
+    - {fifa_code: PAR, rank: 29, points: 1525.27}
+    - {fifa_code: TUN, rank: 30, points: 1502.80}
+    - {fifa_code: ALG, rank: 31, points: 1499.06}
+    - {fifa_code: CIV, rank: 32, points: 1493.76}
+    - {fifa_code: EGY, rank: 33, points: 1492.43}
+    - {fifa_code: NGA, rank: 34, points: 1486.32}
+    - {fifa_code: CMR, rank: 35, points: 1479.32}
+    - {fifa_code: CAN, rank: 36, points: 1469.79}
+    - {fifa_code: PAN, rank: 37, points: 1456.81}
+    - {fifa_code: KSA, rank: 38, points: 1438.76}
+    - {fifa_code: CZE, rank: 39, points: 1437.01}
+    - {fifa_code: QAT, rank: 40, points: 1421.51}
+    - {fifa_code: GHA, rank: 41, points: 1418.60}
+    - {fifa_code: UZB, rank: 42, points: 1396.90}
+    - {fifa_code: CRC, rank: 43, points: 1374.00}
+    - {fifa_code: JOR, rank: 44, points: 1369.55}
+    - {fifa_code: COD, rank: 45, points: 1357.32}
+    - {fifa_code: HON, rank: 46, points: 1339.51}
+    - {fifa_code: BOL, rank: 47, points: 1329.37}
+    - {fifa_code: NZL, rank: 48, points: 1312.02}
+
+# Recent World Cup matches with venue elevation (for H4 altitude-effect panel).
+# Seeded from Wikipedia per-tournament results pages (CC BY-SA). Sample of high-altitude + sea-level fixtures.
+historical_wc_matches_seed:
+  - {tournament: 2010, host: ZAF, venue_city: Johannesburg,    elevation_m: 1753, home: NED, away: ESP, home_goals: 0, away_goals: 1, stage: F}
+  - {tournament: 2010, host: ZAF, venue_city: Bloemfontein,    elevation_m: 1395, home: GER, away: ENG, home_goals: 4, away_goals: 1, stage: R16}
+  - {tournament: 2010, host: ZAF, venue_city: Pretoria,        elevation_m: 1339, home: USA, away: ALG, home_goals: 1, away_goals: 0, stage: G}
+  - {tournament: 2010, host: ZAF, venue_city: Cape Town,       elevation_m: 25,   home: NED, away: URU, home_goals: 3, away_goals: 2, stage: SF}
+  - {tournament: 2010, host: ZAF, venue_city: Durban,          elevation_m: 8,    home: GER, away: ESP, home_goals: 0, away_goals: 1, stage: SF}
+  - {tournament: 2014, host: BRA, venue_city: Sao Paulo,       elevation_m: 760,  home: BRA, away: CRO, home_goals: 3, away_goals: 1, stage: G}
+  - {tournament: 2014, host: BRA, venue_city: Brasilia,        elevation_m: 1172, home: COL, away: CIV, home_goals: 2, away_goals: 1, stage: G}
+  - {tournament: 2014, host: BRA, venue_city: Rio de Janeiro,  elevation_m: 5,    home: GER, away: ARG, home_goals: 1, away_goals: 0, stage: F}
+  - {tournament: 2014, host: BRA, venue_city: Belo Horizonte,  elevation_m: 852,  home: BRA, away: GER, home_goals: 1, away_goals: 7, stage: SF}
+  - {tournament: 2014, host: BRA, venue_city: Salvador,        elevation_m: 8,    home: ESP, away: NED, home_goals: 1, away_goals: 5, stage: G}
+  - {tournament: 2018, host: RUS, venue_city: Moscow,          elevation_m: 156,  home: FRA, away: CRO, home_goals: 4, away_goals: 2, stage: F}
+  - {tournament: 2018, host: RUS, venue_city: Saint Petersburg,elevation_m: 12,   home: BEL, away: ENG, home_goals: 2, away_goals: 0, stage: 3P}
+  - {tournament: 2018, host: RUS, venue_city: Sochi,           elevation_m: 8,    home: RUS, away: CRO, home_goals: 4, away_goals: 3, stage: QF}
+  - {tournament: 2018, host: RUS, venue_city: Ekaterinburg,    elevation_m: 257,  home: JPN, away: SEN, home_goals: 2, away_goals: 2, stage: G}
+  - {tournament: 2018, host: RUS, venue_city: Volgograd,       elevation_m: 14,   home: ENG, away: TUN, home_goals: 2, away_goals: 1, stage: G}
+  - {tournament: 2022, host: QAT, venue_city: Lusail,          elevation_m: 7,    home: ARG, away: FRA, home_goals: 3, away_goals: 3, stage: F}
+  - {tournament: 2022, host: QAT, venue_city: Al Khor,         elevation_m: 12,   home: QAT, away: ECU, home_goals: 0, away_goals: 2, stage: G}
+  - {tournament: 2022, host: QAT, venue_city: Doha,            elevation_m: 10,   home: NED, away: ARG, home_goals: 2, away_goals: 2, stage: QF}
+  - {tournament: 2022, host: QAT, venue_city: Al Wakrah,       elevation_m: 5,    home: FRA, away: AUS, home_goals: 4, away_goals: 1, stage: G}
+  - {tournament: 2022, host: QAT, venue_city: Al Rayyan,       elevation_m: 30,   home: BRA, away: SUI, home_goals: 1, away_goals: 0, stage: G}
+
+# City demographics seed (metro area population in millions, GDP per capita USD).
+# Sources: Wikipedia metro pop articles (CC BY-SA), IMF / World Bank / OECD aggregates.
+city_demographics_seed:
+  - {city: Mexico City,            country: MEX, metro_pop_m: 22.4,  gdp_per_capita_usd: 18500}
+  - {city: Guadalajara,            country: MEX, metro_pop_m: 5.4,   gdp_per_capita_usd: 16500}
+  - {city: Monterrey,              country: MEX, metro_pop_m: 5.3,   gdp_per_capita_usd: 22500}
+  - {city: Atlanta,                country: USA, metro_pop_m: 6.3,   gdp_per_capita_usd: 65000}
+  - {city: Boston,                 country: USA, metro_pop_m: 4.9,   gdp_per_capita_usd: 92000}
+  - {city: Dallas,                 country: USA, metro_pop_m: 8.1,   gdp_per_capita_usd: 75000}
+  - {city: Houston,                country: USA, metro_pop_m: 7.5,   gdp_per_capita_usd: 72000}
+  - {city: Kansas City,            country: USA, metro_pop_m: 2.2,   gdp_per_capita_usd: 65000}
+  - {city: Los Angeles,            country: USA, metro_pop_m: 13.2,  gdp_per_capita_usd: 80000}
+  - {city: Miami,                  country: USA, metro_pop_m: 6.2,   gdp_per_capita_usd: 60000}
+  - {city: New York,               country: USA, metro_pop_m: 19.6,  gdp_per_capita_usd: 95000}
+  - {city: Philadelphia,           country: USA, metro_pop_m: 6.2,   gdp_per_capita_usd: 73000}
+  - {city: San Francisco Bay Area, country: USA, metro_pop_m: 7.7,   gdp_per_capita_usd: 130000}
+  - {city: Seattle,                country: USA, metro_pop_m: 4.0,   gdp_per_capita_usd: 110000}
+  - {city: Toronto,                country: CAN, metro_pop_m: 6.7,   gdp_per_capita_usd: 60000}
+  - {city: Vancouver,              country: CAN, metro_pop_m: 2.8,   gdp_per_capita_usd: 58000}

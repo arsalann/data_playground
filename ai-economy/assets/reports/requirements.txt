@@ -1,0 +1,8 @@
+streamlit
+google-cloud-bigquery
+db-dtypes
+altair
+pandas
+numpy
+pydeck
+scipy

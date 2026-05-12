@@ -1,0 +1,165 @@
+name: AI Economy - Anthropic Economic Index v3
+description: |
+  Four-chart breakdown of the Anthropic Economic Index (AEI) v3 release joined
+  with BLS OEWS occupation data, World Bank country indicators, and the O*NET
+  task taxonomy. Shows where Claude is actually being used (occupation mix),
+  who is using it the most relative to economic size (country per-capita), how
+  enterprise vs consumer surfaces diverge by occupation, and how the
+  collaboration mix differs across the workforce.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+rows:
+  # ---------------------------------------------------------------------
+  # 1. Occupation share - Pareto
+  # ---------------------------------------------------------------------
+  - widgets:
+      - name: chart-1 overview
+        type: text
+        col: 12
+        content: |
+          # 1 - Share of Claude conversations by occupation group
+
+          **Insight:** The top three BLS major groups - Computer & Math (39.3 %), Education & Library (16.9 %), and Arts, Design & Media (9.5 %) - account for 65.6 % of all classified Claude conversations. Computer & Math alone exceeds the combined share of every group ranked below the top-2; the cumulative-share line crosses 50 % between ranks 1 and 2. Traffic is highly concentrated rather than spread evenly across the 22 BLS occupation categories.
+
+          **How to read the chart:** Bars are each group's share of global classified Claude conversations (left axis, %). The line is the running cumulative share from the largest group to the smallest. The horizontal axis lists the BLS SOC major groups sorted from largest share to smallest.
+  - widgets:
+      - name: 1 - Occupation share Pareto
+        hideName: true
+        type: chart
+        chart: combo
+        col: 12
+        file: queries/chart1_occupation_share.sql
+        x: occupation_group
+        y: [share_pct, cum_share_pct]
+        lines: [cum_share_pct]
+        yLabel: Share of Claude conversations (%)
+  - widgets:
+      - name: chart-1 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Anthropic Economic Index v3](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0), **[BLS OEWS May 2024](https://www.bls.gov/oes/)** (public domain).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Conversations are classified to O*NET tasks via Anthropic's Clio classifier; mis-classifications and the "not_classified" bucket are excluded from the denominator, so shares are conditional on a successful task assignment. SOC majors are computed by `LEFT(onet_soc_code, 2)` which is stable for the 22 active codes but does not handle the inactive 55 (Military) code. Groups with fewer than 200 task-rows are dropped to avoid noise.
+
+  # ---------------------------------------------------------------------
+  # 2. Country adoption - log-log scatter + top-15 table
+  # ---------------------------------------------------------------------
+  - widgets:
+      - name: chart-2 overview
+        type: text
+        col: 12
+        content: |
+          # 2 - Per-capita Claude adoption vs. GDP per capita
+
+          **Insight:** Across the 113 countries with population >= 1M and a World Bank GDP-per-capita reading, Claude conversations per million people scale tightly with national income. Spearman rank correlation = +0.89; Pearson on the log10-transformed axes = +0.88. The United States carries the largest share of global classified Claude conversations (~22 %) but, on a per-capita basis, Singapore (843.8 per million), Israel (794), the United States (645.9), South Korea (591.6), and Australia (569.5) lead the table.
+
+          **How to read the chart:** Each dot is one country. Horizontal axis = GDP per capita in USD, log scale. Vertical axis = classified Claude conversations per million residents, log scale. A straight-line cloud indicates a power-law relationship between income and per-capita Claude adoption. The companion table lists the 15 highest per-capita countries directly, since hovering individual dots only shows the numeric coordinates without country names.
+  - widgets:
+      - name: 2 - Country log-log scatter
+        hideName: true
+        type: chart
+        chart: scatter
+        col: 8
+        file: queries/chart2_country_adoption.sql
+        x: gdp_per_capita
+        y: [usage_per_million_people]
+        xScale: log
+        yScale: log
+        xLabel: GDP per capita (USD, log scale)
+        yLabel: Claude conversations per million people (log scale)
+      - name: Top-15 countries by per-capita usage
+        type: table
+        col: 4
+        file: queries/chart2_country_top.sql
+        columns:
+          - {name: country,             label: Country}
+          - {name: usage_per_million,   label: Per million}
+          - {name: share_of_global_pct, label: "% of global"}
+          - {name: gdp_per_capita_usd,  label: GDP/cap (USD)}
+          - {name: population,          label: Population}
+  - widgets:
+      - name: chart-2 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Anthropic Economic Index v3](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[World Bank WDI](https://databank.worldbank.org/source/world-development-indicators)** (CC BY 4.0).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Only the `release_2026_01_15` AEI snapshot is plotted. Countries with population below 1M are excluded so micro-states (Nauru, San Marino) do not dominate the per-capita view. Claude is unavailable in some jurisdictions (notably mainland China, parts of EMEA), and traffic from VPN-routed users is attributed to the egress country, not the user's true location - both effects bias the country-level reading. DAC has no native world-map widget, so the geographic view is presented as a scatter + top-N table, not a choropleth. The scatter tooltip shows numeric coordinates only - country names live in the companion table.
+
+  # ---------------------------------------------------------------------
+  # 3. Consumer vs API - diverging gap
+  # ---------------------------------------------------------------------
+  - widgets:
+      - name: chart-3 overview
+        type: text
+        col: 12
+        content: |
+          # 3 - Enterprise (1P API) vs consumer (Claude.ai) usage gap by occupation group
+
+          **Insight:** Computer & Math has by far the largest API-vs-consumer tilt at +11.3 pp - more than 8x the next-largest positive gap (Office & Admin Support at +1.4 pp). Eight other groups have small positive tilts (< 1.5 pp). On the consumer-skewed side, Education & Library leads at -9.1 pp, followed by Arts, Design & Media at -2.4 pp and Healthcare Practitioners at -0.9 pp - patterns consistent with one-shot question-asking on Claude.ai rather than agent-embedded API workloads.
+
+          **How to read the chart:** Vertical axis is API share minus consumer share, in percentage points (positive = API-skewed, negative = consumer-skewed). Horizontal axis lists occupation groups sorted by gap, largest API tilt first.
+  - widgets:
+      - name: 3 - API minus consumer share by group
+        hideName: true
+        type: chart
+        chart: bar
+        col: 12
+        file: queries/chart3_consumer_vs_api.sql
+        x: occupation_group
+        y: [api_minus_consumer_pp]
+        yLabel: API share minus consumer share (pp)
+  - widgets:
+      - name: chart-3 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Anthropic Economic Index v3 - consumer vs API report](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** AEI's "consumer" surface is Claude.ai web/desktop only; "API" is the 1P direct API and excludes traffic that reaches Claude through Bedrock or Vertex (those are in the third-party AEI release, not loaded here). Tasks shared by both surfaces are counted on each side, so the percentage shares per surface sum to >100 % within a group; the chart shows the raw gap for that reason. Groups with fewer than five shared tasks are dropped.
+
+  # ---------------------------------------------------------------------
+  # 4. Collaboration mix - 100% stacked bar
+  # ---------------------------------------------------------------------
+  - widgets:
+      - name: chart-4 overview
+        type: text
+        col: 12
+        content: |
+          # 4 - Collaboration-pattern mix by occupation group
+
+          **Insight:** Computer & Math is the only top-volume group where the feedback-loop pattern (29.5 %) is the largest slice, edged just ahead of directive (27.8 %) - characteristic of debug-and-iterate coding workflows. The learning pattern ("explain this to me") dominates in Healthcare Practitioners (53.6 %), Protective Services (40.8 %), and Community & Social Services (40.5 %). Validation - asking Claude to check completed work - is consistently the smallest slice across every group, peaking at 8.2 % in Education & Library.
+
+          **How to read the chart:** Each row represents one occupation group, segmented into the five AEI collaboration types. Within-group shares are renormalised to 100 % so the rows are directly comparable as compositions, not as volumes. Groups are sorted top-to-bottom by total AEI conversation volume.
+  - widgets:
+      - name: 4 - Collaboration mix by occupation group
+        hideName: true
+        type: chart
+        chart: bar
+        col: 12
+        stacked: true
+        direction: horizontal
+        file: queries/chart4_collaboration_mix.sql
+        x: occupation_group
+        y: [directive, task_iteration, feedback_loop, validation, learning]
+        yLabel: Within-group share (%)
+        yMin: "0"
+        yMax: "100"
+  - widgets:
+      - name: chart-4 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Anthropic Economic Index v3 - collaboration patterns](https://www.anthropic.com/research/anthropic-economic-index)** (CC BY 4.0), **[O*NET-SOC 28.3](https://www.onetcenter.org/database.html)** (CC BY 4.0).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** AEI publishes per-task percentages for each of the five collaboration types alongside `none` and `not_classified` - the latter two are dropped before renormalising. Each group's percentages are weighted by AEI conversation count so heavy tasks dominate within the group; an unweighted view would be flatter. Groups with fewer than 1,000 weighted conversations are dropped.

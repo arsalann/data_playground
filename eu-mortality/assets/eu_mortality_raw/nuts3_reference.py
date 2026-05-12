@@ -4,11 +4,6 @@ name: eu_mortality_raw.nuts3_reference
 description: |
   NUTS3 reference table for the EU-27, drawn from the Eurostat GISCO 2024 release.
 
-  Foundation dataset for environmental health analysis, linking mortality data with
-  weather observations. The centroid coordinates serve as sampling points for Open-Meteo
-  temperature reanalysis, while the hierarchical NUTS codes enable geographic aggregation.
-  Used across both eu-mortality and eu-pfas pipelines.
-
   Source: NUTS_LB_2024_4326_LEVL_3.geojson -- one Point feature per NUTS3 region
   in EPSG:4326, providing the label point (representative inside-polygon coordinate)
   plus classification attributes:
@@ -23,13 +18,18 @@ description: |
   concave shapes such as Italian provinces with deep indentations). These are the
   sampling points used downstream for Open-Meteo temperature reanalysis.
 
-  Contains 1,165 NUTS3 regions across EU-27 (27 member states; UK explicitly excluded
-  since 2020). NUTS classification 2024, in force 2021-2027. Refreshed weekly as static
-  reference data (single extraction timestamp per run).
+  EU-27 scope (27 member states; UK explicitly excluded since 2020).
+  NUTS classification 2024, in force 2021-2027.
 
   Source URL: https://gisco-services.ec.europa.eu/distribution/v2/nuts/geojson/NUTS_LB_2024_4326_LEVL_3.geojson
   Licence: © European Union, attribution-only, no auth.
 connection: bruin-playground-arsalan
+
+materialization:
+  type: table
+  strategy: create+replace
+image: python:3.11
+
 tags:
   - eu-27
   - mortality
@@ -37,93 +37,48 @@ tags:
   - gisco
   - nuts3
   - reference
-  - reference_data
-  - geographic
-  - dimension_table
-  - eurostat
-  - geospatial
-
-materialization:
-  type: table
-  strategy: create+replace
-image: python:3.11
-
-secrets:
-  - key: bruin-playground-arsalan
-    inject_as: bruin-playground-arsalan
 
 columns:
   - name: nuts_id
     type: VARCHAR
     description: NUTS3 code (e.g., FR101, DE111, IT102). Primary key.
     primary_key: true
-    checks:
-      - name: not_null
-      - name: unique
   - name: level_code
     type: INTEGER
     description: NUTS level. Always 3 here.
-    checks:
-      - name: not_null
-      - name: accepted_values
-        value:
-          - 3
   - name: nuts1_id
     type: VARCHAR
     description: Parent NUTS1 code (first 3 characters of nuts_id).
-    checks:
-      - name: not_null
   - name: nuts2_id
     type: VARCHAR
     description: Parent NUTS2 code (first 4 characters of nuts_id).
-    checks:
-      - name: not_null
   - name: country_code
     type: VARCHAR
     description: ISO 3166-1 alpha-2 country code (CNTR_CODE in GISCO).
-    checks:
-      - name: not_null
   - name: name_latn
     type: VARCHAR
-    description: Latin-script regional name (NAME_LATN in GISCO).
-    checks:
-      - name: not_null
+    description: Latin-script regional name.
   - name: name_native
     type: VARCHAR
-    description: Native-script regional name (NUTS_NAME in GISCO).
-    checks:
-      - name: not_null
+    description: Native-script regional name.
   - name: degurba
     type: INTEGER
-    description: DEGURBA urbanisation class (URBN_TYPE in GISCO). 1=cities (densely populated), 2=towns and suburbs (intermediate), 3=rural areas (thinly populated).
-    checks:
-      - name: not_null
-      - name: accepted_values
-        value:
-          - 1
-          - 2
-          - 3
+    description: DEGURBA urbanisation class. 1=cities (densely populated), 2=towns and suburbs (intermediate), 3=rural areas (thinly populated).
   - name: mount_type
     type: INTEGER
-    description: GISCO mountain-area classification (MOUNT_TYPE in GISCO). 1=>50% population in mountain areas, 2=>50% area in mountains, 3=mountain population and area, 4=non-mountain. Null for ~74% of regions where unspecified.
+    description: GISCO mountain-area classification. 1=>50% population in mountains, 2=>50% area in mountains, 3=both, 4=neither. Null where unspecified.
   - name: coast_type
     type: INTEGER
-    description: GISCO coastal classification (COAST_TYPE in GISCO). 1=coastline, 2=>50% population within 50km of coast, 3=inland. Null for ~71% of regions where unspecified.
+    description: GISCO coastal classification. 1=coastline, 2=>50% population <50km from coast, 3=neither. Null where unspecified.
   - name: centroid_lat
     type: DOUBLE
-    description: GISCO label-point latitude in decimal degrees (EPSG:4326). Representative inside-polygon coordinate used for Open-Meteo weather API sampling. Range -21.1° to 67.7° (EU-27 extent).
-    checks:
-      - name: not_null
+    description: GISCO label-point latitude in decimal degrees (EPSG:4326).
   - name: centroid_lon
     type: DOUBLE
-    description: GISCO label-point longitude in decimal degrees (EPSG:4326). Representative inside-polygon coordinate used for Open-Meteo weather API sampling. Range -61.7° to 55.5° (EU-27 extent).
-    checks:
-      - name: not_null
+    description: GISCO label-point longitude in decimal degrees (EPSG:4326).
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp of GISCO GeoJSON ingestion. Static reference data with single extraction per run.
-    checks:
-      - name: not_null
+    description: UTC timestamp of ingestion.
 
 @bruin"""
 

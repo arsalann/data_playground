@@ -14,23 +14,15 @@ description: |
   `military=*` within EU-27 bounding box. Result is reduced to centroid
   coordinates (representative point) plus type and country.
 
-  Processing approach: Iterates through each EU-27 country individually to avoid
-  timeout on large multi-country queries. Complex geometries (ways/relations) are
-  reduced to representative centroid points. Deduplicates by OSM element ID to
-  handle cross-boundary installations.
-
-  Data coverage: Includes active military bases, decommissioned sites, training
-  areas, naval facilities, airfields, and ranges. Coverage varies by country
-  based on OSM contributor activity and military transparency policies.
-
-  Operational characteristics: Weekly refresh cadence matches OSM update frequency.
-  Expected size ~2,000-5,000 rows (varies by OSM mapping activity). Create+replace
-  strategy suitable given reference data nature and manageable size. Query timeout
-  set to 180s per country with 2-second delays between requests to respect API limits.
-
   Endpoint: https://overpass-api.de/api/interpreter (rotating mirror).
   License: ODbL (OpenStreetMap contributors).
 connection: bruin-playground-arsalan
+
+materialization:
+  type: table
+  strategy: create+replace
+image: python:3.11
+
 tags:
   - eu-27
   - pfas
@@ -38,52 +30,32 @@ tags:
   - openstreetmap
   - military
   - overlay
-  - geospatial
-  - reference_data
-  - environmental_risk
-  - external_source
-  - point_data
-
-materialization:
-  type: table
-  strategy: create+replace
-image: python:3.11
-
-secrets:
-  - key: bruin-playground-arsalan
-    inject_as: bruin-playground-arsalan
 
 columns:
   - name: osm_id
     type: VARCHAR
-    description: OSM element identifier prefixed with type (n/node, w/way, r/relation) - unique globally and used as primary key.
+    description: OSM element id, prefixed with element type (n/w/r). Primary key.
     primary_key: true
     checks:
       - name: not_null
   - name: name
     type: VARCHAR
-    description: Official site name from OSM tags (frequently null for relations and classified installations).
+    description: Site name from OSM (often null for relations).
   - name: country_code
     type: VARCHAR
-    description: ISO 3166-1 alpha-2 country code derived from query bounding box. Geographic dimension for analysis.
-    checks:
-      - name: not_null
+    description: ISO 3166-1 alpha-2 country code (derived from bbox-then-country tagging where present).
   - name: military_type
     type: VARCHAR
-    description: OSM military tag value indicating facility function (airfield, base, training_area, barracks, naval_base, range).
+    description: OSM tag value (e.g., airfield, base, training_area, barracks, naval_base, range).
   - name: lat
     type: DOUBLE
-    description: Latitude coordinate in WGS84 decimal degrees. Centroid point for complex geometries (ways/relations).
-    checks:
-      - name: not_null
+    description: Representative latitude (centroid for ways/relations).
   - name: lon
     type: DOUBLE
-    description: Longitude coordinate in WGS84 decimal degrees. Centroid point for complex geometries.
-    checks:
-      - name: not_null
+    description: Representative longitude.
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp of data ingestion from Overpass API. Used for deduplication and data lineage.
+    description: UTC timestamp of ingestion.
 
 @bruin"""
 

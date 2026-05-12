@@ -14,11 +14,6 @@ description: |
   Drinking-water relevance flag: water-matrix samples (drinking water, ground
   water, surface water) are flagged is_water_sample for compliance use.
 connection: bruin-playground-arsalan
-tags:
-  - eu-27
-  - pfas
-  - staging
-  - nuts3
 
 materialization:
   type: table
@@ -26,10 +21,14 @@ materialization:
 
 depends:
   - eu_pfas_raw.forever_pollution_sites
+  # Cross-pipeline (eu-mortality):
+  #   eu_mortality_staging.em_nuts3_dim is read for the nearest-NUTS3 join.
 
-secrets:
-  - key: bruin-playground-arsalan
-    inject_as: bruin-playground-arsalan
+tags:
+  - eu-27
+  - pfas
+  - staging
+  - nuts3
 
 columns:
   - name: site_uid

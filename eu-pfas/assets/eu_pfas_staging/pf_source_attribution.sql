@@ -25,11 +25,6 @@ description: |
     - 'unattributed_sample'      -> site_type is 'Sampling location' with no nearby attributable source.
     - 'unattributed'             -> none of the above.
 connection: bruin-playground-arsalan
-tags:
-  - eu-27
-  - pfas
-  - staging
-  - attribution
 
 materialization:
   type: table
@@ -39,9 +34,11 @@ depends:
   - eu_pfas_staging.pf_sites_dim
   - eu_pfas_raw.manufacturer_facilities
 
-secrets:
-  - key: bruin-playground-arsalan
-    inject_as: bruin-playground-arsalan
+tags:
+  - eu-27
+  - pfas
+  - staging
+  - attribution
 
 columns:
   - name: site_uid

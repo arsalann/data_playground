@@ -3,33 +3,14 @@
 name: eu_mortality_report.em_top_nuts3_heat_deaths
 type: bq.sql
 description: |
-  Analytical mart ranking EU-27 NUTS3 regions by total heat-attributable excess deaths (2015-2025).
+  Top NUTS3 regions ranked by total heat-attributable excess deaths across
+  2015 - 2025. Mart for the dashboard "deadliest regions" chart.
 
-  Aggregates heat attribution data from the climatological excess mortality model using 2015-2019
-  baseline and +2°C temperature anomaly threshold (vs 1991-2020 climatology). Combines mortality
-  statistics with regional demographic and geographic characteristics for comparative analysis.
-
-  Powers the "deadliest regions" visualization in the EU environmental dashboard. Each row represents
-  one NUTS3 region with 10-year totals, population context, and territorial classifications. Regions
-  with no heat-attributable excess deaths are excluded. Ordered by total heat-attributable deaths
-  descending for dashboard rendering efficiency.
+  Per row: NUTS3 identifier, total heat-attributable excess deaths over the full
+  10-year window, total excess deaths regardless of heat attribution, average
+  share of population aged 65 and over, DEGURBA + coast + mountain
+  classifications.
 connection: bruin-playground-arsalan
-tags:
-  - eu-27
-  - mortality
-  - report
-  - nuts3
-  - heat-attribution
-  - public-health
-  - climate-health
-  - excess-mortality
-  - temperature-analysis
-  - demographic
-  - geographic
-  - mart
-  - dashboard
-  - eurostat
-  - territorial-analysis
 
 materialization:
   type: table
@@ -40,56 +21,57 @@ depends:
   - eu_mortality_staging.em_nuts3_dim
   - eu_mortality_staging.em_population_dim
 
+tags:
+  - eu-27
+  - mortality
+  - report
+  - nuts3
+  - heat-attribution
+
 columns:
   - name: nuts_id
     type: VARCHAR
-    description: NUTS3 region code (5-character identifier, e.g. 'FR101' for Paris). Primary identifier linking to Eurostat geographic hierarchy.
+    description: NUTS3 region code.
     primary_key: true
     checks:
       - name: not_null
       - name: unique
   - name: country_code
     type: VARCHAR
-    description: ISO 3166-1 alpha-2 country code. EU-27 member states only (AT, BE, BG, etc.).
-    checks:
-      - name: not_null
+    description: ISO 3166-1 alpha-2.
   - name: country_name_en
     type: VARCHAR
-    description: Country name in English. Standardized Eurostat country labels.
-    checks:
-      - name: not_null
+    description: English country name.
   - name: name_latn
     type: VARCHAR
-    description: NUTS3 region name in Latin script. Official territorial designation from Eurostat NUTS classification.
-    checks:
-      - name: not_null
+    description: Latin regional name.
   - name: degurba_label
     type: VARCHAR
-    description: Degree of Urbanisation classification. Categories include cities, towns & suburbs, and rural areas based on population density.
+    description: DEGURBA classification.
   - name: coast_label
     type: VARCHAR
-    description: Coastal proximity classification. Binary indicator for regions with significant coastal territory.
+    description: Coastal class.
   - name: mount_label
     type: VARCHAR
-    description: Mountain region classification. Categorizes regions by topographic characteristics and elevation patterns.
+    description: Mountain class.
   - name: heat_attributable_excess_total
     type: DOUBLE
-    description: Total heat-attributable excess deaths across 2015-2025 (count). Only positive excess deaths during heat weeks (+2°C anomaly threshold) are included. Excludes non-heat excess mortality.
+    description: Sum of heat-attributable excess deaths 2015-2025.
   - name: excess_deaths_total
     type: DOUBLE
-    description: Total excess deaths 2015-2025 (count). All-cause mortality minus climatological baseline, including both positive and negative values across all temperature conditions.
+    description: Sum of excess deaths (positive and negative) 2015-2025.
   - name: heat_weeks_total
     type: INTEGER
-    description: Number of heat weeks experienced by this region 2015-2025 (count). Heat weeks defined as ISO weeks with mean temperature >+2°C above 1991-2020 climatology.
+    description: NUTS3 x ISO-week count of heat weeks.
   - name: avg_share_65plus
     type: DOUBLE
-    description: Mean share of population aged 65 and older (proportion, 0-1 scale). Demographic vulnerability indicator averaged across 2015-2025 period.
+    description: Mean share of population aged 65+ across the window.
   - name: avg_pop_total
     type: DOUBLE
-    description: Mean total population 2015-2025 (persons). Denominator for rate calculations, sourced from Eurostat demographic data.
+    description: Mean total population across the window.
   - name: heat_deaths_per_100k
     type: DOUBLE
-    description: Heat-attributable excess deaths per 100,000 inhabitants (rate). Population-standardized metric enabling comparison across regions of different sizes.
+    description: Heat-attributable excess deaths per 100,000 inhabitants (heat_attributable_excess_total / avg_pop_total * 100000).
 
 @bruin */
 

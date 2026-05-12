@@ -17,12 +17,6 @@ description: |
   GAM with smooth seasonal terms) are tracked as future-work in the dashboard
   methodology section.
 connection: bruin-playground-arsalan
-tags:
-  - eu-27
-  - mortality
-  - staging
-  - baseline
-  - climatology
 
 materialization:
   type: table
@@ -31,9 +25,12 @@ materialization:
 depends:
   - eu_mortality_staging.em_mortality_panel
 
-secrets:
-  - key: bruin-playground-arsalan
-    inject_as: bruin-playground-arsalan
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - baseline
+  - climatology
 
 columns:
   - name: nuts_id

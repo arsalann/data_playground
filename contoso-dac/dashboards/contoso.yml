@@ -1,9 +1,9 @@
 name: Contoso Executive Dashboard
 description: |
-  Cross-functional analytics over the contoso-dac DuckDB warehouse — finance,
+  Cross-functional analytics over the Contoso BigQuery warehouse — finance,
   revenue, marketing, operations, workforce, engineering, and customer support.
   Built with Bruin DAC against the report-layer tables in contoso_reports.*.
-connection: contoso-duckdb-ro
+connection: bruin-playground-eu
 
 filters:
   - name: year_from
@@ -28,8 +28,9 @@ rows:
         content: |
           ## Contoso — Executive Dashboard
           Filter the year range in the sidebar; every tab below re-runs against
-          your selection. Source: `data/contoso.db` (DuckDB), populated by the
-          `contoso-dac` Bruin pipeline (raw → staging → reports).
+          your selection. Source: `bruin-playground-arsalan.contoso_reports.*`
+          (BigQuery), populated by the `contoso` Bruin pipeline (raw → staging
+          → reports).
 
   - widgets:
       - name: Total Revenue
@@ -104,10 +105,10 @@ rows:
         sql: |
           SELECT
             year,
-            ROUND(SUM(CASE WHEN line_item = 'Revenue' THEN amount END), 0) AS "Revenue",
-            ROUND(SUM(CASE WHEN line_item = 'Gross Profit' THEN amount END), 0) AS "Gross_Profit",
-            ROUND(SUM(CASE WHEN line_item = 'Total Operating Expenses' THEN amount END), 0) AS "Operating_Expenses",
-            ROUND(SUM(CASE WHEN line_item = 'Operating Income' THEN amount END), 0) AS "Operating_Income"
+            ROUND(SUM(CASE WHEN line_item = 'Revenue' THEN amount END), 0) AS `Revenue`,
+            ROUND(SUM(CASE WHEN line_item = 'Gross Profit' THEN amount END), 0) AS `Gross_Profit`,
+            ROUND(SUM(CASE WHEN line_item = 'Total Operating Expenses' THEN amount END), 0) AS `Operating_Expenses`,
+            ROUND(SUM(CASE WHEN line_item = 'Operating Income' THEN amount END), 0) AS `Operating_Income`
           FROM contoso_reports.profit_and_loss
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY year
@@ -153,14 +154,14 @@ rows:
         col: 5
         sql: |
           SELECT
-            line_item AS "Line item",
-            ROUND(SUM(amount), 0) AS "Actual",
-            ROUND(SUM(budget_amount), 0) AS "Budget",
-            ROUND(SUM(variance), 0) AS "Variance"
+            line_item AS `Line item`,
+            ROUND(SUM(amount), 0) AS `Actual`,
+            ROUND(SUM(budget_amount), 0) AS `Budget`,
+            ROUND(SUM(variance), 0) AS `Variance`
           FROM contoso_reports.profit_and_loss
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY line_item
-          ORDER BY ABS(SUM(variance)) DESC
+          ORDER BY ABS(`Variance`) DESC
           LIMIT 10
         columns:
           - { name: "Line item", label: "Line item" }
@@ -190,15 +191,15 @@ rows:
           - TV_and_Video
         sql: |
           SELECT
-            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
-            ROUND(SUM(CASE WHEN category_name = 'Audio' THEN revenue_usd END), 0) AS "Audio",
-            ROUND(SUM(CASE WHEN category_name = 'Cameras and camcorders' THEN revenue_usd END), 0) AS "Cameras_and_camcorders",
-            ROUND(SUM(CASE WHEN category_name = 'Cell phones' THEN revenue_usd END), 0) AS "Cell_phones",
-            ROUND(SUM(CASE WHEN category_name = 'Computers' THEN revenue_usd END), 0) AS "Computers",
-            ROUND(SUM(CASE WHEN category_name = 'Games and Toys' THEN revenue_usd END), 0) AS "Games_and_Toys",
-            ROUND(SUM(CASE WHEN category_name = 'Home Appliances' THEN revenue_usd END), 0) AS "Home_Appliances",
-            ROUND(SUM(CASE WHEN category_name = 'Music, Movies and Audio Books' THEN revenue_usd END), 0) AS "Music_Movies_and_Audio_Books",
-            ROUND(SUM(CASE WHEN category_name = 'TV and Video' THEN revenue_usd END), 0) AS "TV_and_Video"
+            FORMAT_DATE('%Y-%m', DATE(year, month, 1)) AS month_label,
+            ROUND(SUM(CASE WHEN category_name = 'Audio' THEN revenue_usd END), 0) AS `Audio`,
+            ROUND(SUM(CASE WHEN category_name = 'Cameras and camcorders' THEN revenue_usd END), 0) AS `Cameras_and_camcorders`,
+            ROUND(SUM(CASE WHEN category_name = 'Cell phones' THEN revenue_usd END), 0) AS `Cell_phones`,
+            ROUND(SUM(CASE WHEN category_name = 'Computers' THEN revenue_usd END), 0) AS `Computers`,
+            ROUND(SUM(CASE WHEN category_name = 'Games and Toys' THEN revenue_usd END), 0) AS `Games_and_Toys`,
+            ROUND(SUM(CASE WHEN category_name = 'Home Appliances' THEN revenue_usd END), 0) AS `Home_Appliances`,
+            ROUND(SUM(CASE WHEN category_name = 'Music, Movies and Audio Books' THEN revenue_usd END), 0) AS `Music_Movies_and_Audio_Books`,
+            ROUND(SUM(CASE WHEN category_name = 'TV and Video' THEN revenue_usd END), 0) AS `TV_and_Video`
           FROM contoso_reports.revenue_by_segment
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY 1
@@ -246,16 +247,16 @@ rows:
         col: 12
         sql: |
           SELECT
-            category_name AS "Category",
-            ROUND(SUM(revenue_usd), 0) AS "Revenue",
-            ROUND(SUM(profit_usd), 0) AS "Profit",
-            ROUND(SUM(profit_usd) * 100.0 / NULLIF(SUM(revenue_usd), 0), 2) AS "Margin %",
-            SUM(units_sold)::BIGINT AS "Units sold",
-            SUM(order_count) AS "Orders"
+            category_name AS `Category`,
+            ROUND(SUM(revenue_usd), 0) AS `Revenue`,
+            ROUND(SUM(profit_usd), 0) AS `Profit`,
+            ROUND(SUM(profit_usd) * 100.0 / NULLIF(SUM(revenue_usd), 0), 2) AS `Margin %`,
+            CAST(SUM(units_sold) AS INT64) AS `Units sold`,
+            SUM(order_count) AS `Orders`
           FROM contoso_reports.revenue_by_segment
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY category_name
-          ORDER BY "Revenue" DESC
+          ORDER BY `Revenue` DESC
         columns:
           - { name: "Category", label: "Category" }
           - { name: "Revenue", label: "Revenue", format: currency }
@@ -277,12 +278,12 @@ rows:
         y: [Display, Email, Paid_Search, Referral, Social]
         sql: |
           SELECT
-            year || '-Q' || quarter AS quarter_label,
-            ROUND(AVG(CASE WHEN channel = 'Display' THEN avg_roas END), 2) AS "Display",
-            ROUND(AVG(CASE WHEN channel = 'Email' THEN avg_roas END), 2) AS "Email",
-            ROUND(AVG(CASE WHEN channel = 'Paid Search' THEN avg_roas END), 2) AS "Paid_Search",
-            ROUND(AVG(CASE WHEN channel = 'Referral' THEN avg_roas END), 2) AS "Referral",
-            ROUND(AVG(CASE WHEN channel = 'Social' THEN avg_roas END), 2) AS "Social"
+            CONCAT(CAST(year AS STRING), '-Q', CAST(quarter AS STRING)) AS quarter_label,
+            ROUND(AVG(CASE WHEN channel = 'Display' THEN avg_roas END), 2) AS `Display`,
+            ROUND(AVG(CASE WHEN channel = 'Email' THEN avg_roas END), 2) AS `Email`,
+            ROUND(AVG(CASE WHEN channel = 'Paid Search' THEN avg_roas END), 2) AS `Paid_Search`,
+            ROUND(AVG(CASE WHEN channel = 'Referral' THEN avg_roas END), 2) AS `Referral`,
+            ROUND(AVG(CASE WHEN channel = 'Social' THEN avg_roas END), 2) AS `Social`
           FROM contoso_reports.marketing_channel_roi
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY 1
@@ -310,17 +311,17 @@ rows:
         col: 12
         sql: |
           SELECT
-            channel AS "Channel",
-            ROUND(SUM(total_spend), 0) AS "Spend",
-            ROUND(SUM(attributed_revenue_usd), 0) AS "Attributed Revenue",
-            ROUND(SUM(attributed_revenue_usd) / NULLIF(SUM(total_spend), 0), 2) AS "ROAS",
-            ROUND(AVG(avg_ctr) * 100, 2) AS "CTR %",
-            ROUND(AVG(avg_conversion_rate) * 100, 2) AS "Conv %",
-            ROUND(AVG(avg_cpa), 2) AS "Avg CPA"
+            channel AS `Channel`,
+            ROUND(SUM(total_spend), 0) AS `Spend`,
+            ROUND(SUM(attributed_revenue_usd), 0) AS `Attributed Revenue`,
+            ROUND(SUM(attributed_revenue_usd) / NULLIF(SUM(total_spend), 0), 2) AS `ROAS`,
+            ROUND(AVG(avg_ctr) * 100, 2) AS `CTR %`,
+            ROUND(AVG(avg_conversion_rate) * 100, 2) AS `Conv %`,
+            ROUND(AVG(avg_cpa), 2) AS `Avg CPA`
           FROM contoso_reports.marketing_channel_roi
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY channel
-          ORDER BY "Spend" DESC
+          ORDER BY `Spend` DESC
         columns:
           - { name: "Channel", label: "Channel" }
           - { name: "Spend", label: "Spend", format: currency }
@@ -343,15 +344,15 @@ rows:
         y: [DHL, FedEx, UPS, USPS]
         sql: |
           SELECT
-            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
+            FORMAT_DATE('%Y-%m', DATE(year, month, 1)) AS month_label,
             ROUND(SUM(CASE WHEN carrier = 'DHL' THEN delivered_count END) * 100.0
-              / NULLIF(SUM(CASE WHEN carrier = 'DHL' THEN shipment_count END), 0), 2) AS "DHL",
+              / NULLIF(SUM(CASE WHEN carrier = 'DHL' THEN shipment_count END), 0), 2) AS `DHL`,
             ROUND(SUM(CASE WHEN carrier = 'FedEx' THEN delivered_count END) * 100.0
-              / NULLIF(SUM(CASE WHEN carrier = 'FedEx' THEN shipment_count END), 0), 2) AS "FedEx",
+              / NULLIF(SUM(CASE WHEN carrier = 'FedEx' THEN shipment_count END), 0), 2) AS `FedEx`,
             ROUND(SUM(CASE WHEN carrier = 'UPS' THEN delivered_count END) * 100.0
-              / NULLIF(SUM(CASE WHEN carrier = 'UPS' THEN shipment_count END), 0), 2) AS "UPS",
+              / NULLIF(SUM(CASE WHEN carrier = 'UPS' THEN shipment_count END), 0), 2) AS `UPS`,
             ROUND(SUM(CASE WHEN carrier = 'USPS' THEN delivered_count END) * 100.0
-              / NULLIF(SUM(CASE WHEN carrier = 'USPS' THEN shipment_count END), 0), 2) AS "USPS"
+              / NULLIF(SUM(CASE WHEN carrier = 'USPS' THEN shipment_count END), 0), 2) AS `USPS`
           FROM contoso_reports.delivery_sla
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY 1
@@ -401,16 +402,16 @@ rows:
         col: 5
         sql: |
           SELECT
-            carrier AS "Carrier",
-            SUM(shipment_count) AS "Shipments",
-            ROUND(SUM(delivered_count) * 100.0 / NULLIF(SUM(shipment_count), 0), 2) AS "Delivery %",
-            ROUND(AVG(avg_total_lead_days), 2) AS "Avg lead",
-            ROUND(AVG(p95_lead_days), 1) AS "P95 lead",
-            ROUND(AVG(avg_cost_per_shipment), 2) AS "Avg cost"
+            carrier AS `Carrier`,
+            SUM(shipment_count) AS `Shipments`,
+            ROUND(SUM(delivered_count) * 100.0 / NULLIF(SUM(shipment_count), 0), 2) AS `Delivery %`,
+            ROUND(AVG(avg_total_lead_days), 2) AS `Avg lead`,
+            ROUND(AVG(p95_lead_days), 1) AS `P95 lead`,
+            ROUND(AVG(avg_cost_per_shipment), 2) AS `Avg cost`
           FROM contoso_reports.delivery_sla
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY carrier
-          ORDER BY "Shipments" DESC
+          ORDER BY `Shipments` DESC
         columns:
           - { name: "Carrier", label: "Carrier" }
           - { name: "Shipments", label: "Shipments", format: number }
@@ -448,7 +449,7 @@ rows:
         y: [hires, terminations]
         sql: |
           SELECT
-            year || '-Q' || quarter AS quarter_label,
+            CONCAT(CAST(year AS STRING), '-Q', CAST(quarter AS STRING)) AS quarter_label,
             SUM(new_hires) AS hires,
             SUM(terminations) AS terminations
           FROM contoso_reports.workforce_analytics
@@ -463,21 +464,21 @@ rows:
         col: 12
         sql: |
           SELECT
-            department_name AS "Department",
-            ROUND(AVG(active_headcount), 0) AS "Avg headcount",
-            ROUND(AVG(turnover_rate), 2) AS "Turnover %",
-            ROUND(AVG(avg_tenure_months), 1) AS "Avg tenure (mo)",
-            ROUND(AVG(avg_salary), 0) AS "Avg salary",
-            ROUND(SUM(quarterly_payroll_cost), 0) AS "Total payroll"
+            department_name AS `Department`,
+            ROUND(AVG(active_headcount), 0) AS `Avg headcount`,
+            ROUND(AVG(turnover_rate), 2) AS `Turnover %`,
+            ROUND(AVG(avg_tenure_months), 1) AS `Avg tenure mo`,
+            ROUND(AVG(avg_salary), 0) AS `Avg salary`,
+            ROUND(SUM(quarterly_payroll_cost), 0) AS `Total payroll`
           FROM contoso_reports.workforce_analytics
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY department_name
-          ORDER BY "Total payroll" DESC
+          ORDER BY `Total payroll` DESC
         columns:
           - { name: "Department", label: "Department" }
           - { name: "Avg headcount", label: "Avg headcount", format: number }
           - { name: "Turnover %", label: "Turnover %", format: number }
-          - { name: "Avg tenure (mo)", label: "Avg tenure (mo)", format: number }
+          - { name: "Avg tenure mo", label: "Avg tenure (mo)", format: number }
           - { name: "Avg salary", label: "Avg salary", format: currency }
           - { name: "Total payroll", label: "Total payroll", format: currency }
 
@@ -494,7 +495,7 @@ rows:
         y: [completion_rate, bug_ratio, rollback_rate]
         sql: |
           SELECT
-            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
+            FORMAT_DATE('%Y-%m', DATE(year, month, 1)) AS month_label,
             ROUND(AVG(completion_rate), 2) AS completion_rate,
             ROUND(AVG(bug_ratio), 2) AS bug_ratio,
             ROUND(AVG(avg_rollback_rate), 2) AS rollback_rate
@@ -513,9 +514,9 @@ rows:
         y: [deployments, rollbacks]
         sql: |
           SELECT
-            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
-            SUM(total_deployments)::BIGINT AS deployments,
-            SUM(total_rollbacks)::BIGINT AS rollbacks
+            FORMAT_DATE('%Y-%m', DATE(year, month, 1)) AS month_label,
+            CAST(SUM(total_deployments) AS INT64) AS deployments,
+            CAST(SUM(total_rollbacks) AS INT64) AS rollbacks
           FROM contoso_reports.engineering_report
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY 1
@@ -526,11 +527,11 @@ rows:
         col: 4
         sql: |
           SELECT
-            ROUND(AVG(completion_rate), 1) AS "Sprint completion %",
-            ROUND(AVG(avg_velocity), 1) AS "Avg velocity",
-            ROUND(AVG(bug_ratio), 2) AS "Bug ratio %",
-            ROUND(AVG(avg_cycle_time_days), 2) AS "Cycle time (days)",
-            ROUND(AVG(deploy_frequency), 2) AS "Deploys / day"
+            ROUND(AVG(completion_rate), 1) AS `Sprint completion %`,
+            ROUND(AVG(avg_velocity), 1) AS `Avg velocity`,
+            ROUND(AVG(bug_ratio), 2) AS `Bug ratio %`,
+            ROUND(AVG(avg_cycle_time_days), 2) AS `Cycle time days`,
+            ROUND(AVG(deploy_frequency), 2) AS `Deploys per day`
           FROM contoso_reports.engineering_report
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
 
@@ -548,11 +549,11 @@ rows:
         y: [Chat, Email, Phone, Social]
         sql: |
           SELECT
-            STRFTIME(MAKE_DATE(year, month, 1), '%Y-%m') AS month_label,
-            SUM(CASE WHEN channel = 'Chat' THEN ticket_count END)::BIGINT AS "Chat",
-            SUM(CASE WHEN channel = 'Email' THEN ticket_count END)::BIGINT AS "Email",
-            SUM(CASE WHEN channel = 'Phone' THEN ticket_count END)::BIGINT AS "Phone",
-            SUM(CASE WHEN channel = 'Social' THEN ticket_count END)::BIGINT AS "Social"
+            FORMAT_DATE('%Y-%m', DATE(year, month, 1)) AS month_label,
+            CAST(SUM(CASE WHEN channel = 'Chat' THEN ticket_count END) AS INT64) AS `Chat`,
+            CAST(SUM(CASE WHEN channel = 'Email' THEN ticket_count END) AS INT64) AS `Email`,
+            CAST(SUM(CASE WHEN channel = 'Phone' THEN ticket_count END) AS INT64) AS `Phone`,
+            CAST(SUM(CASE WHEN channel = 'Social' THEN ticket_count END) AS INT64) AS `Social`
           FROM contoso_reports.customer_support_report
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY 1
@@ -567,7 +568,7 @@ rows:
         sql: |
           SELECT
             category,
-            SUM(ticket_count)::BIGINT AS tickets
+            CAST(SUM(ticket_count) AS INT64) AS tickets
           FROM contoso_reports.customer_support_report
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY category
@@ -587,7 +588,7 @@ rows:
             category,
             ROUND(AVG(avg_resolution_days), 2) AS avg_resolution_days,
             ROUND(AVG(avg_satisfaction), 2) AS avg_satisfaction,
-            SUM(ticket_count)::BIGINT AS tickets
+            CAST(SUM(ticket_count) AS INT64) AS tickets
           FROM contoso_reports.customer_support_report
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY category
@@ -597,15 +598,15 @@ rows:
         col: 5
         sql: |
           SELECT
-            channel AS "Channel",
-            SUM(ticket_count)::BIGINT AS "Tickets",
-            ROUND(SUM(resolved_count) * 100.0 / NULLIF(SUM(ticket_count), 0), 2) AS "Resolution %",
-            ROUND(AVG(avg_resolution_days), 2) AS "Avg days",
-            ROUND(AVG(avg_satisfaction), 2) AS "CSAT"
+            channel AS `Channel`,
+            CAST(SUM(ticket_count) AS INT64) AS `Tickets`,
+            ROUND(SUM(resolved_count) * 100.0 / NULLIF(SUM(ticket_count), 0), 2) AS `Resolution %`,
+            ROUND(AVG(avg_resolution_days), 2) AS `Avg days`,
+            ROUND(AVG(avg_satisfaction), 2) AS `CSAT`
           FROM contoso_reports.customer_support_report
           WHERE year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
           GROUP BY channel
-          ORDER BY "Tickets" DESC
+          ORDER BY `Tickets` DESC
         columns:
           - { name: "Channel", label: "Channel" }
           - { name: "Tickets", label: "Tickets", format: number }

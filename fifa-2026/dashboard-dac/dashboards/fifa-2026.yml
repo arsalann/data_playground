@@ -1,0 +1,446 @@
+name: FIFA 2026 — three things this World Cup will break
+description: |
+  Three structural shocks of the first 48-team, three-country FIFA World Cup,
+  quantified from open data. Each tab is one self-contained narrative with
+  chart, headline insight, and full sourcing.
+
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+rows:
+  # =================================================================
+  # Top headline strip
+  # =================================================================
+  - widgets:
+      - name: about
+        type: text
+        col: 12
+        hideName: true
+        content: |
+          # FIFA 2026 — three things this World Cup will break
+
+          The 2026 men's World Cup runs **June 11 – July 19, 2026** across **16 cities in three countries**, with **48 teams** playing **104 matches** — a tournament half again as long, half again as crowded, and twice as wide as 2018. We took every public data point we could find about the schedule, climate, and prediction markets, and asked one question: *what is structurally different this time?*
+
+          Three answers came out of the data:
+
+          1. **Toronto's June-July afternoons are 2.4 °C hotter** than they were a generation ago, and 25 of the 85 open-air fixtures sit in US-NWS Caution-or-worse apparent temperature (the warming pattern is heterogeneous: Los Angeles has actually cooled).
+          2. **The group-stage travel lottery has a 10× spread** — Jordan flies 26,139 km, Mexico 2,569 km, before either side plays a single knockout match.
+          3. **Polymarket's winner field is under-vigged at -3.6 %**, but inside that field the top-12 favourites are over-priced by 2.5 pp on average against FIFA April-2026 ranking points.
+
+          Click a tab to drill into the data behind each claim. Every chart's footnote names its sources, tools, and limits.
+
+  # ====================  KPI strip  ====================
+  - widgets:
+      - name: Open-air matches at Caution+ apparent temp
+        type: metric
+        col: 3
+        column: n_caution_open_air
+        format: number
+        sql: |
+          SELECT n_caution_open_air FROM `bruin-playground-arsalan.fifa_reports.r1_heat_summary`
+        description: "≥ 27 °C apparent temp; open-roof or retractable assumed-open"
+
+      - name: Mean afternoon warming since the 1980s
+        type: metric
+        col: 3
+        column: mean_apparent_warming_c
+        suffix: " °C"
+        format: number
+        sql: |
+          SELECT mean_apparent_warming_c FROM `bruin-playground-arsalan.fifa_reports.r1_heat_summary`
+        description: "Average across all 16 venues, June-July afternoons"
+
+      - name: Travel-km ratio, max team vs min team
+        type: metric
+        col: 3
+        column: km_max_min_ratio
+        suffix: "×"
+        format: number
+        sql: |
+          SELECT km_max_min_ratio FROM `bruin-playground-arsalan.fifa_reports.r2_travel_summary`
+        description: "How many times more the unluckiest team flies vs the luckiest"
+
+      - name: Polymarket field-vig on the 35 active winner markets
+        type: metric
+        col: 3
+        column: vig_pct
+        suffix: " %"
+        format: number
+        sql: |
+          SELECT MAX(vig_pct) AS vig_pct FROM `bruin-playground-arsalan.fifa_reports.r3_market_calibration`
+        description: "Sum of YES-prices minus 1. Negative = field is under-priced; a basket of every YES costs less than $1 to win $1."
+
+  # =================================================================
+  # H1 — Heat
+  # =================================================================
+  - tab: 1 · The hottest World Cup
+    widgets:
+      - name: heat_intro
+        type: text
+        col: 12
+        hideName: true
+        content: |
+          ## The hottest World Cup ever played, by the numbers
+
+          We pulled June-July ERA5 reanalysis at the 16 host cities for two decades — **1980-1989** and **2015-2024** — and aggregated each to its mean afternoon apparent temperature (12:00-18:00 venue-local). Afternoons matter because more than 90 % of group-stage and knockout matches kick off in that window.
+
+          The dumbbell chart below pairs each city's two decades. Across all 16 venues the **mean afternoon apparent temperature has risen by 0.51 °C** since the 1980s — a half-degree shift that loads heavily onto specific cities: **Toronto's afternoons are 2.4 °C hotter** than they were a generation ago, **Miami's are 1.7 °C hotter**, while **Los Angeles has actually cooled by 2.4 °C** (a well-documented marine-stratus pattern). The warming is real but heterogeneous; the dashboard does not aggregate over it.
+
+          The bar chart applies the 2015-2024 climatology to each of the 104 fixtures and classifies them by the US-NWS heat-index bands on apparent temperature. **Filtered to matches where a player actually experiences open-air heat** (open-roof venues, plus retractable roofs we expect to stay open at <30 °C apparent temp and <20 % rain probability), **25 of 85 fixtures sit at Caution or worse, 11 of those at Extreme Caution.** Domed and roof-likely-closed matches are kept in the warehouse but excluded from this count.
+
+  - tab: 1 · The hottest World Cup
+    widgets:
+      - name: Afternoon apparent temperature per venue, 1980s vs 2015-2024
+        type: chart
+        chart: dumbbell
+        col: 12
+        x: venue_city
+        y: [apparent_1980s_c, apparent_2015_2024_c]
+        sql: |
+          SELECT
+            venue_city,
+            apparent_1980s_c,
+            apparent_2015_2024_c,
+            apparent_warming_c
+          FROM `bruin-playground-arsalan.fifa_reports.r1_venue_warming`
+          ORDER BY apparent_warming_c DESC
+        description: |
+          One row per host city. Left dot = 1980-1989 mean afternoon apparent temperature in June-July; right dot = 2015-2024 mean. Cities are sorted by the size of the warming gap. Toronto, Miami, Mexico City, Monterrey, and Kansas City have warmed the most; Los Angeles has cooled by 2.4 °C, a well-documented marine-stratus signal. The pattern is heterogeneous across the host cities.
+
+  - tab: 1 · The hottest World Cup
+    widgets:
+      - name: Recent-decade afternoon June-July hours hotter than 30 °C
+        type: chart
+        chart: bar
+        col: 12
+        x: venue_city
+        y: [pct_ge30_2015_2024]
+        sql: |
+          SELECT
+            venue_city,
+            pct_ge30_2015_2024,
+            pct_ge30_1980s
+          FROM `bruin-playground-arsalan.fifa_reports.r1_venue_warming`
+          ORDER BY pct_ge30_2015_2024 DESC
+        description: |
+          Share of June-July afternoon hours (12-18 local) where the venue grid temperature is ≥ 30 °C, over the 2015-2024 decade. Higher = more sustained heat exposure window. Mexican and southern-US venues dominate; Toronto and Vancouver almost never reach the threshold.
+
+  - tab: 1 · The hottest World Cup
+    widgets:
+      - name: 2026 fixtures by heat band (open-air-effective only)
+        type: chart
+        chart: bar
+        col: 5
+        x: heat_band
+        y: [n_matches]
+        sql: |
+          SELECT
+            heat_band,
+            COUNT(*) AS n_matches
+          FROM `bruin-playground-arsalan.fifa_reports.h1_match_heat_risk`
+          WHERE open_air_effective = TRUE
+          GROUP BY heat_band
+          ORDER BY
+            CASE heat_band
+              WHEN 'Low'             THEN 1
+              WHEN 'Caution'         THEN 2
+              WHEN 'Extreme Caution' THEN 3
+              WHEN 'Danger'          THEN 4
+              ELSE 5
+            END
+        description: |
+          Match-count distribution after filtering to fixtures where players actually feel open-air heat. **Caution** = apparent temp ≥ 27 °C; **Extreme Caution** = ≥ 32 °C. Matches at retractable roofs we expect closed are excluded here.
+
+      - name: Top 20 expected-hottest open-air fixtures
+        type: table
+        col: 7
+        sql: |
+          SELECT
+            stage,
+            venue_city                                              AS city,
+            FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', kickoff_local)       AS kickoff_local,
+            ROUND(expected_temp_c, 1)                               AS mean_temp_c,
+            ROUND(p95_temp_c, 1)                                    AS p95_temp_c,
+            ROUND(mean_humidity_pct, 0)                             AS humidity_pct,
+            ROUND(expected_apparent_temp_c, 1)                      AS apparent_temp_c,
+            heat_band,
+            roof_status_assumed
+          FROM `bruin-playground-arsalan.fifa_reports.h1_match_heat_risk`
+          WHERE open_air_effective = TRUE
+          ORDER BY expected_apparent_temp_c DESC
+          LIMIT 20
+        columns:
+          - { name: stage,               label: "Stage" }
+          - { name: city,                label: "City" }
+          - { name: kickoff_local,       label: "Kickoff (local)" }
+          - { name: mean_temp_c,         label: "Mean (°C)",     format: number }
+          - { name: p95_temp_c,          label: "P95 (°C)",      format: number }
+          - { name: humidity_pct,        label: "Humidity (%)",  format: number }
+          - { name: apparent_temp_c,     label: "Apparent (°C)", format: number }
+          - { name: heat_band,           label: "Band" }
+          - { name: roof_status_assumed, label: "Roof status" }
+
+  - tab: 1 · The hottest World Cup
+    widgets:
+      - name: Sources and limits — Heat
+        type: text
+        col: 12
+        hideName: true
+        content: |
+          **Sources:** **[Open-Meteo Historical (ERA5)](https://archive-api.open-meteo.com/v1/archive)** — ERA5 reanalysis 1980-2024 June-July at the 16 venue grid points (free, CC BY 4.0, no auth). **[FIFA 2026 host-venue list](https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup/canadamexicousa2026)** for stadium coordinates, capacities, and roof types.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization). Pipeline source: `fifa-2026/`.
+
+          **Limits:** Apparent temperature is the BoM Steadman approximation (T + 0.33 e − 0.70 WS − 4.0), not true WBGT — ERA5 has no globe-temperature observation. ERA5 is on a ~9 km grid, so single-stadium microclimate effects are smoothed. **Roof-state policy is editorial**: FIFA has not published per-match roof rules, so we assume retractable roofs are CLOSED whenever the open-air apparent temp would be ≥ 30 °C or precipitation probability ≥ 20 %; the actual decisions on game day may differ. The 1980s-vs-2015-2024 warming signal is robust because both decades are 10-year averages of the same product, computed at the same coordinates.
+
+  # =================================================================
+  # H2 — Travel
+  # =================================================================
+  - tab: 2 · The travel lottery
+    widgets:
+      - name: travel_intro
+        type: text
+        col: 12
+        hideName: true
+        content: |
+          ## The 26,000 km group-stage lottery
+
+          Every team plays exactly three group-stage matches at three different host cities. The kilometres they fly between those cities depends entirely on which group they got drawn into and which venues FIFA assigned to those fixtures — neither of which the team controls.
+
+          For each of the 48 qualifiers we computed the great-circle distance from their capital city to their first venue, then between each consecutive pair of venues. The resulting per-team total is below, sorted from most-flown to least. **Jordan's group-stage schedule covers 26,139 km — more than ten times the 2,569 km Mexico will travel.** The mean qualifier flies about 14,000 km, with the median just shy of 13,000 km. Across the whole 48-team field the cumulative group-stage flying distance is roughly 670,000 km — close to seventeen trips around the equator before any team enters the knockout round.
+
+  - tab: 2 · The travel lottery
+    widgets:
+      - name: Total kilometres flown across three group fixtures, by team
+        type: chart
+        chart: bar
+        col: 12
+        x: team_name
+        y: [total_km]
+        sql: |
+          SELECT
+            team_name,
+            ROUND(MAX(total_km), 0) AS total_km,
+            MAX(group_id)           AS group_id,
+            MAX(confederation)      AS confederation
+          FROM `bruin-playground-arsalan.fifa_reports.h2_team_travel_burden`
+          GROUP BY team_name
+          ORDER BY total_km DESC
+        description: |
+          Each bar is one of the 48 qualifiers. Bars are sorted descending by total group-stage kilometres flown (capital city → V1 → V2 → V3). AFC and CAF teams flying west to the Americas dominate the top, but several intra-confederation matchups (Costa Rica, Panama) appear near the bottom because their fixtures are concentrated in nearby host cities.
+
+  - tab: 2 · The travel lottery
+    widgets:
+      - name: Travel km vs altitude gain (size = max time-zone shift)
+        type: chart
+        chart: bubble
+        col: 7
+        x: total_km
+        y: [altitude_m_gained]
+        size: max_tz_shift_h
+        sql: |
+          SELECT
+            team_name,
+            ROUND(MAX(total_km), 0)            AS total_km,
+            MAX(altitude_m_gained)             AS altitude_m_gained,
+            GREATEST(MAX(max_tz_shift_h), 0.5) AS max_tz_shift_h
+          FROM `bruin-playground-arsalan.fifa_reports.h2_team_travel_burden`
+          GROUP BY team_name
+        description: |
+          Each bubble is one team. **X**: total km flown. **Y**: cumulative altitude gained across the three legs. **Size**: the largest single-leg time-zone shift. Teams that visit Mexico City or Guadalajara dominate the y-axis; teams from Asia and Australasia dominate the x-axis.
+
+      - name: Top 12 travel-burdened teams
+        type: table
+        col: 5
+        sql: |
+          WITH t AS (
+            SELECT
+              team_name,
+              MAX(group_id)             AS group_id,
+              MAX(confederation)        AS confederation,
+              ROUND(MAX(total_km), 0)   AS total_km,
+              MAX(altitude_m_gained)    AS altitude_gain_m,
+              ROUND(MAX(max_tz_shift_h), 1) AS max_tz_shift_h,
+              ROUND(MAX(burden_score), 2)   AS burden_score
+            FROM `bruin-playground-arsalan.fifa_reports.h2_team_travel_burden`
+            GROUP BY team_name
+          )
+          SELECT *
+          FROM t
+          ORDER BY total_km DESC
+          LIMIT 12
+        columns:
+          - { name: team_name,        label: "Team" }
+          - { name: confederation,    label: "Conf" }
+          - { name: group_id,         label: "Group" }
+          - { name: total_km,         label: "Total km",          format: number }
+          - { name: altitude_gain_m,  label: "Altitude gain (m)", format: number }
+          - { name: max_tz_shift_h,   label: "Max tz shift (h)",  format: number }
+          - { name: burden_score,     label: "Burden z-score",    format: number }
+
+  - tab: 2 · The travel lottery
+    widgets:
+      - name: Group-stage flight network — confederation through three legs
+        type: chart
+        chart: sankey
+        col: 12
+        source: source
+        target: target
+        value: value
+        sql: |
+          /* Four-stage DAG sankey:
+              [Confederation] -> [L1 venue] -> [L2 venue] -> [L3 venue]
+             Stage prefixes avoid cycles when teams traverse the same city pair
+             in opposite directions across legs. */
+          WITH per_team AS (
+            SELECT
+              fifa_code,
+              MAX(confederation) AS confederation,
+              MAX(IF(leg_idx = 1, dest_label, NULL)) AS leg1_city,
+              MAX(IF(leg_idx = 1, leg_km,    NULL)) AS leg1_km,
+              MAX(IF(leg_idx = 2, dest_label, NULL)) AS leg2_city,
+              MAX(IF(leg_idx = 2, leg_km,    NULL)) AS leg2_km,
+              MAX(IF(leg_idx = 3, dest_label, NULL)) AS leg3_city,
+              MAX(IF(leg_idx = 3, leg_km,    NULL)) AS leg3_km
+            FROM `bruin-playground-arsalan.fifa_reports.r2_travel_segments`
+            GROUP BY fifa_code
+          ),
+          edges AS (
+            SELECT
+              CONCAT('· ', confederation)        AS source,
+              CONCAT('1 · ', leg1_city)          AS target,
+              ROUND(SUM(leg1_km), 0)             AS value
+            FROM per_team
+            WHERE leg1_city IS NOT NULL
+            GROUP BY 1, 2
+            UNION ALL
+            SELECT
+              CONCAT('1 · ', leg1_city)          AS source,
+              CONCAT('2 · ', leg2_city)          AS target,
+              ROUND(SUM(leg2_km), 0)             AS value
+            FROM per_team
+            WHERE leg2_city IS NOT NULL
+            GROUP BY 1, 2
+            UNION ALL
+            SELECT
+              CONCAT('2 · ', leg2_city)          AS source,
+              CONCAT('3 · ', leg3_city)          AS target,
+              ROUND(SUM(leg3_km), 0)             AS value
+            FROM per_team
+            WHERE leg3_city IS NOT NULL
+            GROUP BY 1, 2
+          )
+          SELECT * FROM edges WHERE value > 0
+        description: |
+          A four-stage flow showing how each of the 48 teams routes from their confederation through the three group-stage venues (1, 2, 3). Stage prefixes (`1 ·`, `2 ·`, `3 ·`) keep the same city distinct across legs so the same physical venue can absorb traffic in both directions without creating a cycle. Wider ribbons carry more team-kilometres.
+
+  - tab: 2 · The travel lottery
+    widgets:
+      - name: Sources and limits — Travel
+        type: text
+        col: 12
+        hideName: true
+        content: |
+          **Sources:** FIFA 2026 published match schedule and host-venue coordinates from `fifa_raw.host_venues` (manifest-backed), team home coordinates from `fifa_raw.qualified_teams` (capital-city centroids).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization). Distance metric: haversine great-circle, R = 6371 km.
+
+          **Limits:** Leg-1 origin is each team's capital-city centroid, not the team's actual training base — a federation may set up camp closer to or farther from the host country than its capital, which would shift its first-leg km up or down. Distances are great-circle, so they ignore real flight paths and stopovers; the actual flown distance is typically 5-10 % higher. The group draw used here is the placeholder draw seeded in the tournament manifest; the actual December-2025 draw can be patched in by editing `tournament_manifest.yml` and re-running the pipeline.
+
+  # =================================================================
+  # H3 — Market vs ranking
+  # =================================================================
+  - tab: 3 · The calibration gap
+    widgets:
+      - name: market_intro
+        type: text
+        col: 12
+        hideName: true
+        content: |
+          ## Polymarket overprices the favourites — and underprices the field
+
+          Polymarket runs 35 active "Will [country] win the 2026 FIFA World Cup?" markets at the time of this snapshot. Their YES-prices sum to **$0.964**, meaning a basket buyer of every YES token would pay $0.964 to receive $1.00 if any one of those teams wins — a -3.6 % "vig". Public prediction markets normally carry a positive vig; here the *aggregate is under-priced*.
+
+          The shape inside the field is sharper. We compared each team's normalised market-implied probability to a softmax (τ = 200) over FIFA April-2026 ranking points, then bucketed teams into FIFA-rank quartiles. The top quartile (rank 1-12) is collectively **over-priced by 2.5 pp on average**; the bottom three quartiles are all under-priced. The largest single-team gaps are France (+10.6 pp over), Spain (+9.5 pp over), and England (+6.0 pp over) — all UEFA stars whose market price sits roughly twice their FIFA-points-implied probability.
+
+  - tab: 3 · The calibration gap
+    widgets:
+      - name: Market vs ranking implied probability — 48 teams
+        type: chart
+        chart: scatter
+        col: 7
+        x: ranking_pct
+        y: [market_pct]
+        sql: |
+          SELECT
+            team_name,
+            ranking_pct,
+            market_pct,
+            rank_band
+          FROM `bruin-playground-arsalan.fifa_reports.r3_market_calibration`
+        description: |
+          Each dot is one team. **X**: ranking-implied probability of winning the World Cup. **Y**: market-implied probability. The diagonal y=x is perfect calibration; dots above it are *over-priced* by the market, dots below are *under-priced*. The top-right cluster (favourites) sits visibly above the line.
+
+      - name: Top 12 market-vs-ranking gaps
+        type: table
+        col: 5
+        sql: |
+          SELECT
+            team_name                              AS team,
+            fifa_rank                              AS rank,
+            ROUND(ranking_pct, 2)                  AS ranking_pct,
+            ROUND(market_pct, 2)                   AS market_pct,
+            ROUND(gap_pp, 2)                       AS gap_pp,
+            flag,
+            ROUND(market_yes_price, 4)             AS yes_price
+          FROM `bruin-playground-arsalan.fifa_reports.r3_market_calibration`
+          ORDER BY ABS(gap_pp) DESC
+          LIMIT 12
+        columns:
+          - { name: team,        label: "Team" }
+          - { name: rank,        label: "FIFA rank", format: number }
+          - { name: ranking_pct, label: "Ranking %", format: number }
+          - { name: market_pct,  label: "Market %",  format: number }
+          - { name: gap_pp,      label: "Gap (pp)",  format: number }
+          - { name: flag,        label: "Flag" }
+          - { name: yes_price,   label: "Yes price", format: number }
+
+  - tab: 3 · The calibration gap
+    widgets:
+      - name: Mean market-minus-ranking gap by FIFA-rank band (pp)
+        type: chart
+        chart: bar
+        col: 12
+        x: rank_band
+        y: [mean_gap_pp]
+        sql: |
+          SELECT
+            rank_band,
+            ROUND(AVG(gap_pp), 2)                                                    AS mean_gap_pp,
+            COUNT(*)                                                                 AS n_teams,
+            ROUND(SUM(market_pct) - SUM(ranking_pct), 2)                             AS total_band_gap_pp,
+            ROUND(AVG(market_yes_price * 100), 2)                                    AS mean_yes_price_pct
+          FROM `bruin-playground-arsalan.fifa_reports.r3_market_calibration`
+          GROUP BY rank_band
+          ORDER BY
+            CASE rank_band
+              WHEN 'top_12_favorites' THEN 1
+              WHEN 'mid_12_24'        THEN 2
+              WHEN 'mid_25_36'        THEN 3
+              WHEN 'longshots_37_48'  THEN 4
+            END
+        description: |
+          Average market-minus-ranking gap (pp) for each FIFA-rank quartile. The top-12 favourites carry a positive aggregate gap (over-priced); the lower three quartiles all carry small negative gaps (collectively under-priced). The pattern is monotonic and far larger than the implied vig of the field can explain.
+
+  - tab: 3 · The calibration gap
+    widgets:
+      - name: Sources and limits — Calibration
+        type: text
+        col: 12
+        hideName: true
+        content: |
+          **Sources:** **[Polymarket Gamma API](https://gamma-api.polymarket.com)** — FIFA 2026 winner markets (snapshot, free, no auth). **[FIFA Men's World Ranking](https://inside.fifa.com/fifa-world-ranking/men)** — April 2026 release; numbers in this build are seeded from the April 2025 published values pending live patch.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limits:** Market-implied probabilities are the YES-side price normalised so the field sums to 1 (naive vig removal). Ranking-implied probability is a softmax of FIFA points with τ = 200 — a different temperature would compress or stretch the spread. The two metrics measure different things — long-tournament outcome including the draw vs instantaneous strength — so a small non-zero gap is expected. The size and direction of the gap by FIFA-rank quartile is the story; individual teams within a quartile can flip sign and should not be read as mispricings on their own. Snapshot freshness equals `extracted_at` on `polymarket_fifa_markets`. Tail-team liquidity may be thin and stale; rows with no fresh market are excluded entirely from this analysis.

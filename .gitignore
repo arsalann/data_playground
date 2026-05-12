@@ -240,3 +240,6 @@ __pycache__/
 *.py[cod]
 data/*
 cache/*
+logs/runs
+logs/*.log
+logs/queries

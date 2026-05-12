@@ -25,6 +25,13 @@ materialization:
 depends:
   - eu_mortality_staging.em_mortality_panel
 
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - baseline
+  - climatology
+
 columns:
   - name: nuts_id
     type: VARCHAR

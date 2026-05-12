@@ -21,10 +21,21 @@ depends:
   - eu_mortality_staging.em_nuts3_dim
   - eu_mortality_staging.em_population_dim
 
+tags:
+  - eu-27
+  - mortality
+  - report
+  - nuts3
+  - heat-attribution
+
 columns:
   - name: nuts_id
     type: VARCHAR
     description: NUTS3 region code.
+    primary_key: true
+    checks:
+      - name: not_null
+      - name: unique
   - name: country_code
     type: VARCHAR
     description: ISO 3166-1 alpha-2.
@@ -60,7 +71,7 @@ columns:
     description: Mean total population across the window.
   - name: heat_deaths_per_100k
     type: DOUBLE
-    description: heat_attributable_excess_total / avg_pop_total * 100,000.
+    description: Heat-attributable excess deaths per 100,000 inhabitants (heat_attributable_excess_total / avg_pop_total * 100000).
 
 @bruin */
 

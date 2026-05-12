@@ -32,6 +32,13 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
+tags:
+  - eu-27
+  - pfas
+  - raw
+  - forever-pollution-project
+  - sites
+
 columns:
   - name: site_uid
     type: VARCHAR

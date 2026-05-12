@@ -22,6 +22,13 @@ depends:
   - eu_mortality_raw.eurostat_weekly_deaths
   - eu_mortality_staging.em_nuts3_dim
 
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - panel
+  - weekly
+
 columns:
   - name: nuts_id
     type: VARCHAR

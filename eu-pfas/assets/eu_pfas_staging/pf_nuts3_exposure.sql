@@ -26,6 +26,16 @@ materialization:
 depends:
   - eu_pfas_staging.pf_sites_dim
   - eu_pfas_staging.pf_source_attribution
+  # Cross-pipeline (eu-mortality):
+  #   eu_mortality_staging.em_nuts3_dim - NUTS3 dimension anchor.
+  #   eu_mortality_staging.em_population_dim - 2023 population denominator.
+
+tags:
+  - eu-27
+  - pfas
+  - staging
+  - nuts3
+  - exposure
 
 columns:
   - name: nuts_id

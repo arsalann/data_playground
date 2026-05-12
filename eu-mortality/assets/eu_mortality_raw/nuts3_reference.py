@@ -30,6 +30,14 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
+tags:
+  - eu-27
+  - mortality
+  - raw
+  - gisco
+  - nuts3
+  - reference
+
 columns:
   - name: nuts_id
     type: VARCHAR

@@ -33,6 +33,13 @@ depends:
   - eu_mortality_staging.em_temperature_panel
   - eu_mortality_staging.em_population_dim
 
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - panel
+  - heat-attribution
+
 columns:
   - name: nuts_id
     type: VARCHAR

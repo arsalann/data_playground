@@ -23,6 +23,13 @@ materialization:
 depends:
   - eu_mortality_raw.nuts3_reference
 
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - dimension
+  - nuts3
+
 columns:
   - name: nuts_id
     type: VARCHAR

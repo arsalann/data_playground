@@ -34,6 +34,12 @@ depends:
   - eu_pfas_staging.pf_sites_dim
   - eu_pfas_raw.manufacturer_facilities
 
+tags:
+  - eu-27
+  - pfas
+  - staging
+  - attribution
+
 columns:
   - name: site_uid
     type: VARCHAR

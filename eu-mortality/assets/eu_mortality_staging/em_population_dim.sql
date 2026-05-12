@@ -24,6 +24,13 @@ depends:
   - eu_mortality_raw.eurostat_population
   - eu_mortality_staging.em_nuts3_dim
 
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - dimension
+  - population
+
 columns:
   - name: nuts_id
     type: VARCHAR

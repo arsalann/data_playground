@@ -16,17 +16,31 @@ materialization:
 
 depends:
   - eu_mortality_staging.em_heat_attribution
+  - eu_mortality_staging.em_population_dim
+  - eu_mortality_staging.em_nuts3_dim
+
+tags:
+  - eu-27
+  - mortality
+  - report
+  - country
 
 columns:
   - name: country_code
     type: VARCHAR
-    description: ISO 3166-1 alpha-2.
+    description: ISO 3166-1 alpha-2 country code.
+    primary_key: true
+    checks:
+      - name: not_null
   - name: country_name_en
     type: VARCHAR
     description: English country name.
   - name: year
     type: INTEGER
-    description: Calendar year.
+    description: Calendar year (ISO).
+    primary_key: true
+    checks:
+      - name: not_null
   - name: total_excess_deaths
     type: DOUBLE
     description: Sum of weekly excess deaths across the year (positive and negative).

@@ -31,6 +31,13 @@ depends:
   - eu_mortality_raw.openmeteo_daily_temperature
   - eu_mortality_staging.em_nuts3_dim
 
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - temperature
+  - climatology
+
 columns:
   - name: nuts_id
     type: VARCHAR

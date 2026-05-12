@@ -21,6 +21,14 @@ materialization:
 
 depends:
   - eu_pfas_raw.forever_pollution_sites
+  # Cross-pipeline (eu-mortality):
+  #   eu_mortality_staging.em_nuts3_dim is read for the nearest-NUTS3 join.
+
+tags:
+  - eu-27
+  - pfas
+  - staging
+  - nuts3
 
 columns:
   - name: site_uid

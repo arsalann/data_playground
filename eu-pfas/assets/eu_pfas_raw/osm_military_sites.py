@@ -23,6 +23,14 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
+tags:
+  - eu-27
+  - pfas
+  - raw
+  - openstreetmap
+  - military
+  - overlay
+
 columns:
   - name: osm_id
     type: VARCHAR

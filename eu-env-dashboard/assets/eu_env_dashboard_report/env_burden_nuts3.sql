@@ -26,6 +26,19 @@ materialization:
   type: table
   strategy: create+replace
 
+depends:
+  # All upstreams live in sibling pipelines (cross-pipeline references are not
+  # tracked by Bruin's per-pipeline DAG):
+  #   eu_mortality_staging.em_nuts3_dim
+  #   eu_mortality_report.em_top_nuts3_heat_deaths
+  #   eu_pfas_staging.pf_nuts3_exposure
+
+tags:
+  - eu-27
+  - environmental-burden
+  - report
+  - nuts3
+  - composite-index
 
 columns:
   - name: nuts_id
@@ -85,10 +98,10 @@ columns:
     description: Sites self-classified as military / firefighting.
   - name: burden_idx_pfas_only
     type: DOUBLE
-    description: Z-scored PFAS exceedance density (centred and scaled across the EU-27 panel).
+    description: PFAS-only composite burden score - z-score of exceedance_density_per_100k centred on the EU-27 NUTS3 mean and scaled by its standard deviation. Higher = more concentrated PFAS contamination relative to population.
   - name: burden_idx_heat_pfas
     type: DOUBLE
-    description: Mean of z(heat_deaths_per_100k) and z(exceedance_density_per_100k).
+    description: Heat+PFAS composite burden score - arithmetic mean of z(heat_deaths_per_100k) and z(exceedance_density_per_100k). Currently dominated by PFAS because the heat-attribution temperature panel is partially ingested (3 of 1,165 NUTS3).
 
 @bruin */
 

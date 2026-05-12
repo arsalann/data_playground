@@ -29,6 +29,15 @@ materialization:
   strategy: create+replace
 image: python:3.11
 
+tags:
+  - eu-27
+  - mortality
+  - raw
+  - open-meteo
+  - era5
+  - temperature
+  - daily
+
 columns:
   - name: nuts_id
     type: VARCHAR

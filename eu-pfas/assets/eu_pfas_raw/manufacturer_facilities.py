@@ -7,7 +7,7 @@ description: |
   (Currenta), Saint-Gobain Performance Plastics, Miteni (defunct, source of the
   Veneto catastrophe).
 
-  Source: assets/eu_pfas_raw/manufacturer_facilities.yml (in-repo seed).
+  Source: seed/manufacturer_facilities.yml (in-repo seed, sibling of assets/).
 
   Why a seed and not a scraping job: this is a small, slow-changing list curated
   from press coverage, ICIJ Toxic Bonds / Forever Lobbying reporting, and EPA /
@@ -19,6 +19,13 @@ materialization:
   type: table
   strategy: create+replace
 image: python:3.11
+
+tags:
+  - eu-27
+  - pfas
+  - raw
+  - seed
+  - manufacturer
 
 columns:
   - name: facility_name
@@ -71,7 +78,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-SEED = Path(__file__).parent / "manufacturer_facilities.yml"
+SEED = Path(__file__).resolve().parents[2] / "seed" / "manufacturer_facilities.yml"
 
 
 def materialize():

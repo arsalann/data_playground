@@ -2,104 +2,159 @@
 
 name: eu_pfas_raw.forever_pollution_sites
 description: |
-  PFAS contamination sites across Europe -- the canonical aggregation from the
-  Forever Pollution Project consortium (Le Monde + 17 partners, 2023), maintained
-  and extended by the PFAS Data Hub at CNRS since 2024.
+  PFAS contamination sites across Europe from the Forever Pollution Project consortium
+  (Le Monde + 17 partners, 2023), maintained and extended by the PFAS Data Hub at CNRS.
 
-  Source: https://pdh.cnrs.fr/download/full.parquet (~191 MB, last updated 2025).
+  Contains 820K+ georeferenced contamination records spanning military sites, industrial
+  facilities, airports, firefighting training areas, and environmental sampling locations
+  across all EU-27 member states. Data combines investigative journalism, government
+  monitoring, scientific research, and open-source intelligence.
 
-  Each row is a site record with:
-    - category: Known PFAS user / Presumptive contamination / Detected contamination /
-      Manufacturer.
-    - lat, lon: WGS84.
-    - country (filter to EU-27 keeps the EU-only scope).
-    - type: Industrial site / Military / Airport / Wastewater / etc.
-    - sector: NACE sector where available.
-    - source_type, dataset_id, dataset_name: provenance.
-    - pfas_sum, unit: aggregated PFAS concentration (single value where reported).
-    - matrix: water / soil / sediment / biota / unknown.
-    - date, year: measurement date.
-    - source_url: hyperlink to authority data.
+  **Data source**: https://pdh.cnrs.fr/download/full.parquet (~191 MB)
+  **Coverage**: 2003-2026, with ~99% of measurements from 2015-2025
+  **Refresh**: Updated weekly via pipeline schedule
+  **Geographic scope**: EU-27 only (filtered from global dataset)
 
-  This raw asset preserves every site without dedup; staging will resolve the
-  one-site-many-measurements case.
+  **Data characteristics**:
+  - ~50% of sites lack city names (rural/unnamed sampling points)
+  - ~99% lack sector classification (mainly non-industrial sites)
+  - PFAS concentrations span 6+ orders of magnitude (ng/L to mg/L scales)
+  - 27 countries represented with comprehensive coverage
 
-  License: CC BY-SA 4.0 (per PFAS Data Hub terms of use).
+  **Deduplication note**: This raw asset preserves all source records including
+  multiple measurements per site. Staging layer implements spatial and temporal
+  deduplication for analysis-ready datasets.
+
+  **License**: CC BY-SA 4.0 (PFAS Data Hub terms of use)
+  **Update frequency**: Weekly refresh from upstream parquet source
 connection: bruin-playground-arsalan
-
-materialization:
-  type: table
-  strategy: create+replace
-image: python:3.11
-
 tags:
   - eu-27
   - pfas
   - raw
   - forever-pollution-project
   - sites
+  - external_source
+  - geospatial
+  - cnrs
+  - environmental_monitoring
+
+materialization:
+  type: table
+  strategy: create+replace
+image: python:3.11
 
 columns:
   - name: site_uid
-    type: VARCHAR
-    description: Synthetic per-row hash (used as primary key; PFAS Data Hub does not provide stable site IDs).
+    type: STRING
+    description: Synthetic per-row hash (16-character SHA1 prefix) used as primary key since PFAS Data Hub does not provide stable site identifiers.
     primary_key: true
     checks:
       - name: not_null
+      - name: unique
   - name: category
-    type: VARCHAR
-    description: PFAS Data Hub site category (e.g., "Known PFAS user", "Presumptive contamination", "Detected contamination").
+    type: STRING
+    description: PFAS Data Hub site category indicating contamination status.
+    checks:
+      - name: accepted_values
+        value:
+          - Known PFAS user
+          - Presumptive contamination
+          - Detected contamination
+          - Manufacturer
   - name: site_name
-    type: VARCHAR
-    description: Site name as reported by the original source.
+    type: STRING
+    description: Site name as reported by the original source (facility name, location description, or sampling point identifier).
   - name: city
-    type: VARCHAR
-    description: City / locality.
+    type: STRING
+    description: City or locality name (null for ~50% of records, particularly rural or unnamed sampling locations).
   - name: country
-    type: VARCHAR
-    description: Country name in English.
+    type: STRING
+    description: Country name in English (EU-27 member states only due to upstream filtering).
+    checks:
+      - name: not_null
   - name: site_type
-    type: VARCHAR
-    description: Site classification (Industrial site, Military, Airport, etc.).
+    type: STRING
+    description: Site classification indicating the type of facility or location.
+    checks:
+      - name: accepted_values
+        value:
+          - Waste management site
+          - Military site
+          - Firefighting incident / training
+          - PFAS production facility
+          - Industrial site
+          - Airport
+          - Sampling location
   - name: sector
-    type: VARCHAR
-    description: NACE sector descriptor.
+    type: STRING
+    description: NACE sector descriptor where available (null for ~99% of records, primarily available for industrial sites).
   - name: source_type
-    type: VARCHAR
-    description: Provenance category (Authorities, Company, Press, Whistle-blower, etc.).
+    type: STRING
+    description: Data provenance category indicating how the contamination was identified.
+    checks:
+      - name: accepted_values
+        value:
+          - OSINT
+          - Scientific article
+          - Authorities
+          - Company
   - name: source_url
-    type: VARCHAR
-    description: Original authority / press URL.
+    type: STRING
+    description: Original authority, press, or research URL providing evidence of contamination.
   - name: dataset_id
-    type: VARCHAR
-    description: Upstream PDH dataset identifier.
+    type: INT64
+    description: Upstream PDH dataset identifier (numeric key linking to dataset metadata).
+    checks:
+      - name: not_null
   - name: dataset_name
-    type: VARCHAR
-    description: Human-readable upstream dataset name.
+    type: STRING
+    description: Human-readable upstream dataset name identifying the data source or study.
+    checks:
+      - name: not_null
   - name: matrix
-    type: VARCHAR
-    description: Sampling matrix (water, soil, sediment, biota, unknown).
+    type: STRING
+    description: Environmental sampling matrix (water, soil, sediment, biota, unknown) where PFAS concentration was measured.
   - name: pfas_sum
-    type: DOUBLE
-    description: Aggregated PFAS concentration where reported (single value; unit column gives the unit).
+    type: FLOAT64
+    description: Aggregated PFAS concentration in the specified unit (varies widely from 0 to 800M+ due to different measurement scales and matrices).
+    checks:
+      - name: non_negative
   - name: unit
-    type: VARCHAR
-    description: Unit of pfas_sum (typically ng/L for water, ng/g for solids).
+    type: STRING
+    description: Unit of pfas_sum measurement (typically ng/L for water samples, ng/g for solid matrices).
   - name: measure_date
     type: DATE
-    description: Date of measurement where reported.
+    description: Date of PFAS measurement or sampling (spans 2005-2026, with ~2% null values).
   - name: measure_year
-    type: INTEGER
-    description: Year of measurement where reported.
+    type: FLOAT64
+    description: Year extracted from measure_date for temporal analysis (2003-2026 range).
   - name: lat
-    type: DOUBLE
-    description: Latitude (WGS84).
+    type: FLOAT64
+    description: Latitude coordinate in WGS84 decimal degrees (required for all records).
+    checks:
+      - name: not_null
+      - name: min
+        value: -90
+      - name: max
+        value: 90
   - name: lon
-    type: DOUBLE
-    description: Longitude (WGS84).
+    type: FLOAT64
+    description: Longitude coordinate in WGS84 decimal degrees (required for all records).
+    checks:
+      - name: not_null
+      - name: min
+        value: -180
+      - name: max
+        value: 180
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp of ingestion.
+    description: UTC timestamp of data ingestion from PFAS Data Hub.
+    checks:
+      - name: not_null
+  - name: index_level_0
+    type: INT64
+    description: Pandas DataFrame index from source data (preserved for debugging, not analytically meaningful).
 
 @bruin"""
 

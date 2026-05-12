@@ -22,6 +22,12 @@ description: |
   others. We label only the positive excess on hot weeks to avoid claiming heat
   attribution on otherwise-elevated weeks. This is conservative.
 connection: bruin-playground-arsalan
+tags:
+  - eu-27
+  - mortality
+  - staging
+  - panel
+  - heat-attribution
 
 materialization:
   type: table
@@ -33,12 +39,9 @@ depends:
   - eu_mortality_staging.em_temperature_panel
   - eu_mortality_staging.em_population_dim
 
-tags:
-  - eu-27
-  - mortality
-  - staging
-  - panel
-  - heat-attribution
+secrets:
+  - key: bruin-playground-arsalan
+    inject_as: bruin-playground-arsalan
 
 columns:
   - name: nuts_id

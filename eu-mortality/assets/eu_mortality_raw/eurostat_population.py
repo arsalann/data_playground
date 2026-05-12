@@ -13,44 +13,75 @@ description: |
   Yearly granularity (1 January). One request per year (each request returns
   ~6,000 cells, well below Eurostat's ~50k limit).
 
+  This dataset serves as the population denominator for excess mortality rate
+  calculations in the eu-mortality pipeline. The age group selection focuses on
+  heat-vulnerable populations (65+) for heat-attributable death analysis. Raw data
+  includes broader EU geographic scope than just EU-27; downstream staging filters
+  to EU-27 NUTS3 codes only.
+
   https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/DEMO_R_PJANGRP3
 connection: bruin-playground-arsalan
-
-materialization:
-  type: table
-  strategy: create+replace
-image: python:3.11
-
 tags:
   - eu-27
   - mortality
   - raw
   - eurostat
   - population
+  - annual
+  - heat_vulnerability
+  - demographic_denominator
+
+materialization:
+  type: table
+  strategy: create+replace
+image: python:3.11
+
+secrets:
+  - key: bruin-playground-arsalan
+    inject_as: bruin-playground-arsalan
 
 columns:
   - name: nuts_id
     type: VARCHAR
-    description: NUTS3 region code.
+    description: |
+      NUTS3 region code following European statistical classification. Length varies
+      from 2-character country codes (national totals) to 9-character NUTS3 codes.
+      Covers EU-27 member states plus some non-EU regions returned by Eurostat API.
+      Examples: 'DE' (Germany total), 'DE111' (Stuttgart NUTS3 region).
     primary_key: true
     checks:
       - name: not_null
   - name: ref_year
     type: INTEGER
-    description: Reference year (1 January).
+    description: |
+      Reference year for population count (measured on 1 January). Range: 2015-2025.
+      Annual granularity only - no sub-yearly breakdowns available from Eurostat.
     primary_key: true
     checks:
       - name: not_null
   - name: age_group
     type: VARCHAR
-    description: Eurostat age class code (TOTAL, Y65-69, Y70-74, Y75-79, Y_GE80).
+    description: |
+      Eurostat age classification code. Subset focused on heat-vulnerable populations:
+      - TOTAL: All ages combined (population denominator)
+      - Y65-69, Y70-74, Y75-79, Y_GE80: Elderly age bands (heat-vulnerable groups)
+      Downstream staging sums the four elderly bands into a single "65+" aggregate.
     primary_key: true
+    checks:
+      - name: not_null
   - name: population
     type: DOUBLE
-    description: Population count for the (NUTS3, year, age_group, sex=Total) combination.
+    description: |
+      Population count (persons) for the (NUTS3 region, year, age group) combination.
+      Sex=Total only (male+female combined). Can include fractional values due to
+      Eurostat estimation methods. Range: 0 to ~514M (largest values are country totals).
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp of ingestion.
+    description: |
+      UTC timestamp when data was extracted from Eurostat API. Single extraction
+      timestamp per pipeline run (all rows share the same extracted_at value).
+    checks:
+      - name: not_null
 
 @bruin"""
 

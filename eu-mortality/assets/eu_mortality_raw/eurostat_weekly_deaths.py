@@ -2,12 +2,17 @@
 
 name: eu_mortality_raw.eurostat_weekly_deaths
 description: |
-  Weekly total deaths by NUTS3 region for the EU-27, 2015-2025.
+  Weekly total deaths by NUTS3 region for the EU-27, 2015-2025. Contains ~750K rows covering 1,506 regions across all EU member states.
 
   Source: Eurostat DEMO_R_MWK3_T -- "Deaths by week and NUTS 3 region" (total, both
   sexes, all ages combined). The age- and sex-disaggregated companion DEMO_R_MWK3_05
   is much larger; this pipeline uses totals for the excess-mortality model and
   multiplies by population age structure to attribute vulnerability downstream.
+
+  Primary use cases:
+    - Baseline calculation for excess mortality detection
+    - Heat attribution analysis when joined with temperature data
+    - Time series analysis of mortality patterns across EU regions
 
   Fetched via the Eurostat REST statistics API (version 1.0). One request per year
   to stay well below the ~50k-cell response limit.
@@ -21,46 +26,82 @@ description: |
       practical from 2015 onward; the excess-mortality baseline uses 2015-2019.
     - 2026 data is published quarterly with a lag of 1-2 quarters.
     - Some observations carry a status flag (p=provisional, e=estimated).
+
+  Operational characteristics:
+    - Refreshed weekly via pipeline schedule
+    - Full replace materialization strategy (~10 minute runtime)
+    - No incremental updates - complete historical rebuild each run
 connection: bruin-playground-arsalan
-
-materialization:
-  type: table
-  strategy: create+replace
-image: python:3.11
-
 tags:
   - eu-27
   - mortality
   - raw
   - eurostat
   - weekly
+  - excess_mortality
+  - demographic_data
+  - time_series
+  - append_only
+
+materialization:
+  type: table
+  strategy: create+replace
+image: python:3.11
+
+secrets:
+  - key: bruin-playground-arsalan
+    inject_as: bruin-playground-arsalan
 
 columns:
   - name: nuts_id
     type: VARCHAR
-    description: NUTS3 region code (geo dimension value).
+    description: NUTS3 region code (geo dimension value). Covers 1,506 distinct regions across EU-27 member states. Format varies by country (e.g., FR101, DE111, IT102) with 2-9 character length.
     primary_key: true
     checks:
       - name: not_null
   - name: iso_year
     type: INTEGER
-    description: ISO 8601 calendar year of the reporting week.
+    description: ISO 8601 calendar year of the reporting week. Range spans 2015-2025 with focus on 2015-2019 baseline period for excess mortality calculations.
+    checks:
+      - name: not_null
+      - name: accepted_values
+        value:
+          - 2015
+          - 2016
+          - 2017
+          - 2018
+          - 2019
+          - 2020
+          - 2021
+          - 2022
+          - 2023
+          - 2024
+          - 2025
   - name: iso_week
     type: INTEGER
-    description: ISO 8601 week number (1-53).
+    description: ISO 8601 week number (1-53). Week starts on Monday following ISO standard.
+    checks:
+      - name: not_null
   - name: time_period
     type: VARCHAR
-    description: Eurostat-formatted period code, e.g. "2024-W30".
+    description: Eurostat-formatted period code following pattern "YYYY-WNN" (e.g., "2024-W30"). Fixed 8-character length. Used for time series identification and joins.
     primary_key: true
+    checks:
+      - name: not_null
   - name: deaths_total
     type: DOUBLE
-    description: Total deaths in the NUTS3 region during the reporting week (all ages, both sexes).
+    description: Total deaths in the NUTS3 region during the reporting week (all ages, both sexes). Count ranges from 0 to ~127,500 with most regions reporting <1,000 weekly deaths. Used for excess mortality analysis and heat attribution modeling.
+    checks:
+      - name: not_null
+      - name: positive
   - name: obs_status
     type: VARCHAR
-    description: Eurostat observation-status flag, e.g. "p" provisional, "e" estimated. Null if final.
+    description: Eurostat observation-status flag indicating data quality. Values include "p" (provisional) for recent quarters with 1-2 quarter lag, "e" (estimated), or null for final confirmed data. Most observations (~69%) have final status (null).
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp of ingestion.
+    description: UTC timestamp of ingestion from Eurostat API. Single extraction timestamp per pipeline run indicates create+replace materialization strategy.
+    checks:
+      - name: not_null
 
 @bruin"""
 

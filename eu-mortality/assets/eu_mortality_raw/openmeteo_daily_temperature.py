@@ -2,33 +2,29 @@
 
 name: eu_mortality_raw.openmeteo_daily_temperature
 description: |
-  Daily 2m air temperature at every EU-27 NUTS3 centroid, 2015-01-01 to 2025-12-31.
+  Daily 2-meter air temperature at every EU-27 NUTS3 centroid, supporting environmental
+  health analysis and heat-mortality attribution studies. Foundation dataset for
+  investigating temperature-related excess mortality across 1,165 European regions.
+
+  Temperature measurements are sampled at GISCO label points (representative inside-polygon
+  coordinates) for each NUTS3 region and aggregated to weekly climatology panels downstream.
+  Used to compute heat anomalies against 2015-2019 baselines following ISGlobal/Ballester
+  (2023) methodology for excess mortality attribution.
 
   Source: Open-Meteo Historical Weather API (ERA5-Seamless reanalysis), free for
-  non-commercial use, no API key.
-
+  non-commercial use, no API key required.
   https://archive-api.open-meteo.com/v1/archive
 
   ERA5-Seamless is the ECMWF ERA5 reanalysis blended with surface observations
-  on a 9 km grid. It is the same physical product as the Copernicus C3S Climate
+  on a 9km grid. Provides the same physical product as the Copernicus C3S Climate
   Data Store ERA5-Land but served via a simpler REST endpoint without registration.
 
-  One request per NUTS3 region. Daily aggregates:
-    - temperature_2m_max
-    - temperature_2m_mean
-    - temperature_2m_min
-
-  Rate-limit posture: 3 concurrent threads, each with a 0.5 s minimum spacing
-  between requests, well within Open-Meteo's free-tier limits (10,000 calls/day,
-  ~10 req/s burst). Failed NUTS3 are reported but not retried beyond the per-
-  request backoff -- the staging layer tolerates missing rows.
+  Technical implementation: One API request per NUTS3 region retrieving daily aggregates
+  (temperature_2m_max, temperature_2m_mean, temperature_2m_min). Concurrent processing
+  with 3 worker threads and 0.6s inter-request spacing respects Open-Meteo's free-tier
+  limits (10,000 calls/day, ~10 req/s burst). Failed NUTS3 requests are logged but not
+  retried; the staging layer handles missing rows through deduplication logic.
 connection: bruin-playground-arsalan
-
-materialization:
-  type: table
-  strategy: create+replace
-image: python:3.11
-
 tags:
   - eu-27
   - mortality
@@ -37,38 +33,60 @@ tags:
   - era5
   - temperature
   - daily
+  - environmental_health
+  - climatology
+  - heat_attribution
+  - external_api
+  - nuts3
+  - reanalysis
+  - weather_data
+
+materialization:
+  type: table
+  strategy: create+replace
+image: python:3.11
+
+secrets:
+  - key: bruin-playground-arsalan
+    inject_as: bruin-playground-arsalan
 
 columns:
   - name: nuts_id
     type: VARCHAR
-    description: NUTS3 region code (matches eu_mortality_staging.em_nuts3_dim.nuts_id).
+    description: NUTS3 region code (5 characters, e.g., FR101, DE111). Links to eu_mortality_raw.nuts3_reference. Primary identifier for European statistical regions at NUTS3 level (1,165 regions across EU-27).
     primary_key: true
     checks:
       - name: not_null
   - name: obs_date
     type: DATE
-    description: Calendar date (Open-Meteo timezone=UTC).
+    description: Calendar observation date in UTC timezone. Daily resolution weather data from ERA5-Seamless reanalysis. Range spans 2015-2025 with actual coverage limited by API request dates.
     primary_key: true
     checks:
       - name: not_null
   - name: temp_min_c
     type: DOUBLE
-    description: Minimum 2m temperature on the day, degrees Celsius.
+    description: Daily minimum 2-meter air temperature in degrees Celsius. ERA5-Seamless reanalysis on 9km grid blended with surface observations. Used for heat/cold exposure analysis in mortality studies. Typical range 5-25°C for EU-27 regions.
+    checks:
+      - name: not_null
   - name: temp_mean_c
     type: DOUBLE
-    description: Mean 2m temperature on the day, degrees Celsius.
+    description: Daily mean 2-meter air temperature in degrees Celsius. ERA5-Seamless reanalysis on 9km grid blended with surface observations. Primary metric for climatology baselines in mortality attribution studies.
+    checks:
+      - name: not_null
   - name: temp_max_c
     type: DOUBLE
-    description: Maximum 2m temperature on the day, degrees Celsius.
+    description: Daily maximum 2-meter air temperature in degrees Celsius. ERA5-Seamless reanalysis on 9km grid blended with surface observations. Critical for heat wave detection and excess mortality attribution (95th percentile used downstream).
+    checks:
+      - name: not_null
   - name: centroid_lat
     type: DOUBLE
-    description: Sampled latitude (EPSG:4326).
+    description: GISCO label-point latitude in decimal degrees (EPSG:4326). Representative inside-polygon coordinate from NUTS3 reference data. Used as sampling point for Open-Meteo API query. EU-27 range approximately 35-68°N.
   - name: centroid_lon
     type: DOUBLE
-    description: Sampled longitude (EPSG:4326).
+    description: GISCO label-point longitude in decimal degrees (EPSG:4326). Representative inside-polygon coordinate from NUTS3 reference data. Used as sampling point for Open-Meteo API query. EU-27 range approximately -10 to 30°E.
   - name: extracted_at
     type: TIMESTAMP
-    description: UTC timestamp of ingestion.
+    description: UTC timestamp when data was ingested from Open-Meteo API. Single extraction per pipeline run. Used for deduplication in downstream staging (row_number() over partition by natural key order by extracted_at desc).
 
 @bruin"""
 

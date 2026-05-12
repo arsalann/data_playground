@@ -68,6 +68,7 @@ streamlit run berlin-weather/assets/reports/streamlit_app.py
 - **google-trends** — Google search trends analysis
 - **hormuz-effect** — Strait of Hormuz oil crisis impact on markets (FRED + S&P 500)
 - **nyc-taxi** — NYC taxi trip data
+- **pension-crisis** — Global retirement and pension crisis (38 OECD countries; UN WPP 2024 + OECD Pensions at a Glance + Mercer CFA GPI 2025)
 - **polymarket-insights** — Prediction market analysis (Polymarket)
 - **stackoverflow-trends** — Stack Overflow activity trends (2008-present)
 - **stock-market** — S&P 500 stock market data (FMP API)

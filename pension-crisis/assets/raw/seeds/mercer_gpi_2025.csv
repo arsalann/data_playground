@@ -1,0 +1,38 @@
+iso3_code,country_name,overall_index,adequacy_sub_index,sustainability_sub_index,integrity_sub_index,grade
+# Mercer CFA Institute Global Pension Index 2025
+# Source: https://rpc.cfainstitute.org/sites/default/files/docs/research-reports/global-pension-index-2025_main-report_final.pdf
+# Published: October 2025 (Figure 4, Executive Summary, pages 12-14)
+# Methodology: single harmonized framework scoring pension systems on Adequacy (40%), Sustainability (35%), Integrity (25%).
+# Grades: A (>80), B+ (75-80), B (65-75), C+ (60-65), C (50-60), D (35-50).
+# Note: Mercer GPI 2025 covers 52 systems globally. Only the 28 OECD-38 countries that
+# appear in the Mercer report are included below. The remaining 10 OECD countries
+# (Costa Rica, Czechia, Estonia, Greece, Hungary, Latvia, Lithuania, Luxembourg, Slovakia,
+# Slovenia) are not scored by Mercer and will show null for Mercer indicators.
+AUS,Australia,77.6,69.0,81.1,86.4,B+
+AUT,Austria,54.5,67.5,24.0,76.4,C
+BEL,Belgium,69.2,81.5,42.7,86.8,B
+CAN,Canada,70.4,67.2,67.0,80.2,B
+CHL,Chile,76.6,71.9,74.9,86.6,B+
+COL,Colombia,62.5,64.3,55.9,69.0,C+
+DNK,Denmark,82.3,82.9,85.0,77.6,A
+FIN,Finland,76.6,77.4,65.6,90.6,B+
+FRA,France,70.3,85.2,48.6,76.8,B
+DEU,Germany,67.8,81.0,47.5,75.0,B
+ISL,Iceland,84.0,83.0,85.7,83.3,A
+IRL,Ireland,67.7,72.9,51.6,81.8,B
+ISR,Israel,80.3,75.6,83.2,83.6,A
+ITA,Italy,57.0,69.4,27.9,77.8,C
+JPN,Japan,56.3,57.1,48.0,66.8,C
+KOR,Korea,53.9,40.1,53.3,76.8,C
+MEX,Mexico,69.3,73.5,64.1,69.8,B
+NLD,Netherlands,85.4,86.1,83.5,86.8,A
+NZL,New Zealand,70.4,65.2,68.2,81.7,B
+NOR,Norway,76.0,77.8,65.2,88.4,B+
+POL,Poland,57.0,59.5,45.9,68.6,C
+PRT,Portugal,67.6,83.7,36.4,85.4,B
+ESP,Spain,63.8,83.0,34.2,74.4,C+
+SWE,Sweden,78.2,76.8,76.3,83.0,B+
+CHE,Switzerland,72.4,66.3,72.9,81.6,B
+TUR,Türkiye,48.2,49.0,31.1,71.1,D
+GBR,United Kingdom,72.2,75.9,63.2,79.0,B
+USA,United States,61.1,64.1,59.9,58.0,C+

@@ -6,6 +6,8 @@ This repository contains data pipelines built with **Bruin**, warehoused in **Bi
 
 **Dashboard rule:** All new dashboards in this repo MUST be built with Bruin DAC. Streamlit is the legacy pattern — do not start new Streamlit dashboards. When modifying an existing Streamlit dashboard, consider migrating it to DAC if the change is non-trivial. See `DAC.md` for the working reference on DAC conventions, quirks, and our local fork features.
 
+**Visualization rule:** Every chart in every dashboard MUST strictly follow `VISUALIZATIONS.md` at the repo root. That document is the single source of truth for chart structure, color/accessibility, truthful axes, encoding discipline, labels, layout, and framework-specific rules (DAC, Altair, Matplotlib polar). Violations are bugs.
+
 ## Repository Structure
 
 ```
@@ -344,83 +346,14 @@ The full list lives in `DAC.md` under "Hard-won quirks". The high-impact ones:
 
 #### Data Visualization Standards
 
-These rules are **mandatory** for every chart in every dashboard. They encode best practices from Tufte, Cleveland, Few, Munzner, and the ethical data visualization principles from the Data Visualization Society. Violations should be treated like bugs.
+**All visualization standards live in `VISUALIZATIONS.md` at the repo root. Every chart in every dashboard MUST strictly follow that document.** It is the single source of truth for chart structure, color and accessibility, truthful representation, encoding discipline, label readability, annotation, layout, and framework-specific rules (DAC, Altair, Matplotlib polar). Treat any violation as a bug.
 
-#### Per-Chart Structure (mandatory)
-
-Every chart in every dashboard MUST be wrapped in the same three-row DAC structure, in this exact order. A chart that skips any part is incomplete. The pattern is: **header text widget → chart widget → footnote text widget**, each on its own row at `col: 12`. Use `hideName: true` on the chart widget so the WidgetFrame name strip doesn't compete with the header text.
-
-1. **Header text widget** — `type: text`, contains:
-   - **Title** as a Markdown `#` heading that names what the chart *is* (not the finding). Example: `# Hourly temperature, six Paris stations, 2026-04-06`. Be unambiguous about entities, units, and time range.
-   - **Description** in bold paragraph form — 1–3 sentences stating the *insight*: what the reader should take away, with magnitudes (correlation, slope, ratio, top-N). This is where you say "supports", "rejects", "no signal" relative to the hypothesis.
-   - **Encoding key** as a final line listing what each visual channel means (e.g. `**Left axis:** temperature (°C). **Right axis:** Polymarket Yes-price (0–1, dashed).`).
-2. **Chart widget** — `type: chart`, `hideName: true`, `col: 12`. Height bumps are not reachable from YAML (fork heights apply); make charts span the full row when in doubt. Use `seriesNames:` to map snake_case columns to readable legend labels (line-chart fork). For non-line charts where DAC renders no legend, ensure the encoding key in the header text widget covers every series — or switch the chart type to `combo`.
-3. **Footnote text widget** — `type: text`, three bolded sections separated by blank lines:
-   - **Sources:** every dataset used by *this* chart, with publisher and license. Bold the proper-noun source names and link them. Example: `**Sources:** **[Meteostat](https://meteostat.net)**, **[Open-Meteo](https://archive-api.open-meteo.com/v1/archive)**.`
-   - **Tools:** `**Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).` — use "Bruin cli" for the pipeline (ingestion/staging/report) and "Bruin dac" for the visualization layer (capital `B`).
-   - **Limitations:** sample-size warnings, geographic scope, time-window caveats, data-source quirks, methodology notes. Be specific. The footnote is per-chart, not per-dashboard, because each chart's caveats differ.
-
-Title vs. description vs. footnote roles:
-- **Title** = what the chart shows (entities, metric, units, time range).
-- **Description** = the insight (finding with magnitude).
-- **Footnote** = sources, tools, limitations.
-
-End every dashboard with a **Methodology** section (a final `type: text` widget) that consolidates joins, normalizations, definitions, and threshold choices that apply across charts.
-
-#### Before You Build Any Chart
-
-- **Validate the data first.** Before writing any visualization code, query the data like a data analyst: check row counts, null rates, distributions, outliers, duplicates, and correlations. Understand what you actually have. Compute percentiles, check for join fanouts, verify dedup logic. Never visualize data you haven't inspected.
-- **Analyze, don't summarize.** A dashboard that just shows "here's the data" is not analysis. Find correlations, compute derived metrics (e.g. price/ELO, gap ratios), identify Pareto frontiers, test hypotheses. Each chart must prove or disprove something non-obvious. If the takeaway is "the data exists," the chart has failed.
-- **Follow the narrative arc.** Every dashboard tells a story structured as: (1) hypothesis/question, (2) evidence that the phenomenon exists, (3) evidence that it is systematic or repeatable, (4) quantification of the magnitude, (5) implications and limitations. If a chart doesn't advance this arc, cut it.
-- **Fewer charts, more narrative.** 2–4 well-chosen charts with clear explanatory text beats 8 charts that overwhelm the viewer. Every chart must earn its place by answering a specific question. If you can say it in a sentence, don't make a chart.
-- **Enrich aggressively.** Before building the dashboard, check what other datasets exist in BigQuery that could be joined. Cross-domain correlations (pricing + stock prices, quality rankings + prediction markets) are what make analysis interesting.
-- **Be honest about sample sizes.** If a data point is based on 3 observations, say so. Surface sample sizes in the chart's header text widget. Small-n medians are noise, not signal.
-- **Explain the data.** Every dashboard must include: where the data comes from (with links), how it was collected and transformed, what the key metrics mean (with units), and what the limitations are. Use the per-chart footnote text widget for source/tools/limitations, and a final Methodology text widget for cross-chart context. State explicitly what the data cannot tell you.
-- **Don't make claims the data doesn't support.** If only 18 of 348 models have quality rankings, don't title a chart "Every Arena-Ranked Model" — say "The 18 models we can actually rank." If early time periods have tiny samples, caveat the trend explicitly.
-- **Tables can be better than charts.** A 10-row dataset does not need a chart. Use `type: table` (with `columns:` to control display) and let the reader scan the numbers. Charts are for patterns in data too large to read as a table.
-- **Quantify the insight.** The chart's header description must state the specific finding with numbers (e.g. "r = 0.23, n = 580", "18x price difference for 5% quality gap"). The chart shows the pattern; the text states the magnitude.
-
-#### Color and Accessibility
-
-- **Colorblind-safe palette only.** Use the Wong (2011) palette from *Nature Methods*: `#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey. These 8 colors are the **maximum** for categorical encoding. If you need more categories, aggregate or facet — do not invent new colors. The DAC `ibm-cb-dark` theme provides a colorblind-safe `chart-1..chart-8` palette via CSS custom properties; prefer it for any new dashboard.
-- **Never rely on color alone.** DAC currently has no per-series shape or stroke-dash channel exposed in the widget schema (except `yRight` lines render dashed via the local fork). So every series must also be **directly labeled in the encoding-key line** of the header text widget, or in the legend label via `seriesNames:`. A viewer who cannot distinguish any two colors must still be able to read the chart from the surrounding text.
-- **No red/green for binary states.** Use vermillion (`#D55E00`) and sky blue (`#56B4E9`) or vermillion and grey instead.
-- **Sequential and diverging scales.** For continuous color scales prefer `blues` or `viridis` (sequential) and `blueorange` (diverging). Never use `redgreen`, `redblue`, or `rainbow`/`jet` — all are colorblind-hostile or perceptually non-uniform.
-- **Legends must accompany multi-series charts.** Where DAC's chart type does not render a native legend (line, area, bar-unstacked, scatter, bubble, heatmap), the encoding-key line in the header text widget IS the legend — make it explicit and exhaustive. For line charts, the local fork adds a bottom legend automatically; rely on `seriesNames:` to give it readable labels.
-
-#### Truthful Representation
-
-- **Y-axis baseline.** Bar charts and area charts must start the quantitative axis at zero. A truncated axis exaggerates differences and misleads the viewer. DAC's `yMin`/`yMax` exist — do not use them to truncate a bar chart. If zero-baseline makes the data unreadable (e.g. ELO scores clustered in 1300–1500), switch to a line/scatter chart with `yMin`/`yMax`, never a truncated bar.
-- **Log scales must be labeled.** When using log scales, the chart's header title or encoding-key line MUST include "(Log Scale)" and the description must explain *why* (e.g. "Log scale used because values span 3+ orders of magnitude"). Never use a log scale to make a trend look more dramatic.
-- **No dual Y-axes by default.** They are virtually always misleading — the viewer cannot compare magnitudes across two unrelated scales. Use vertically stacked widgets for related metrics with different scales. The only sanctioned exception is the local fork's `yRight` on `chart: line` for cases where co-temporal alignment matters more than independent reading (e.g. temperature °C vs Polymarket Yes-price 0–1) — and in that case the description MUST call out the dual axis explicitly.
-- **No pie charts, no 3D.** 3D adds no information and distorts area/length perception. Pie charts are inferior to bar charts for comparing quantities (Cleveland & McGill 1984). Use horizontal bar charts sorted by value instead.
-
-#### Encoding Discipline
-
-- **Every visual encoding must be explained** in the header text widget's encoding-key line or via a native legend. If a chart uses size, color, or shape as a data channel, name what each channel encodes.
-- **Limit encodings to 3 channels max per chart.** Position (x, y) + one of {color, size}. Adding more channels overloads working memory. If you need more dimensions, use a second widget or a `type: table`.
-- **Tooltips are mandatory** and on by default in DAC. Ensure every encoded field has a sensible column name and a `format:` where numeric formatting is needed. Numeric values in tooltips and metrics should use format strings (`,.0f` for integers, `$.3f` for prices, `,.1%` for percentages).
-- **Sort bars by value.** Categorical bar charts must be sorted by the quantitative axis (largest to smallest or vice versa) unless there is a natural order (e.g. time, tiers). Do the sort in SQL (`ORDER BY` in the widget's query).
-- **Consistent widget sizing.** Within a row, sum of `col:` values should be ≤ 12. Use `col: 12` for full-width hero charts; `col: 6` + `col: 6` for paired comparisons; `col: 3` × 4 for KPI rows. Never put unrelated charts side-by-side.
-
-#### Label Readability
-
-- **Don't pre-truncate string fields.** Pass the full string into the chart and let the rendering layer handle width — pre-slicing the data ("…") strips information from the tooltip and prevents readers from seeing the full text on hover.
-- **Column names are visible.** DAC's legend (where rendered) and tooltips show the SQL column name verbatim unless you provide `seriesNames:` (line-chart fork only). Pick column names that look OK unmangled (`yes_price`, not `yp_x25_raw`).
-- **Axis titles include units.** Use `yLabel:` / `yRightLabel:` (line-chart fork) to set axis titles, or include units in the encoding-key line of the header text widget.
-
-#### Annotation and Context
-
-- **Reference lines.** DAC does not currently expose a generic reference-line API on chart widgets. If you need a reference threshold, emit it as an additional series in SQL (e.g. a constant column) and include it in the chart, then call it out in the description.
-- **Chart titles state what is shown** (entities, metric, units, time range). The *finding* belongs in the description. Per repo memory: **title = what the chart is, description = insight, footnote = sources + tools + limitations.**
-- **Axis titles are required** on both axes unless the meaning is unambiguous from context. For `chart: line`, use the fork's `yLabel:` / `yRightLabel:`. For other chart types, name the units in the encoding-key line of the header text widget.
-
-#### DAC Layout
-
-- Use a 3-row pattern per chart (header text → chart → footnote text), each at `col: 12`, with `hideName: true` on the chart widget.
-- Place KPI rows above the first chart story. Use `type: metric` widgets at `col: 3` × 4 (or `col: 4` × 3) with `prefix:`, `suffix:`, and `format:` for numeric formatting.
-- Use `type: divider` between major story sections, not between every chart.
-- Data tables complement charts. Show the underlying data (top N, summary) as a `type: table` widget below a complex chart so the viewer can verify what they see.
+Highlights you cannot skip (full text in `VISUALIZATIONS.md`):
+- **Per-chart 3-row structure**: header text widget → chart widget (`hideName: true`) → footnote text widget, each at `col: 12`. Title = what the chart is; description = insight with magnitude; footnote = sources + tools + limitations.
+- **Wong (2011) colorblind palette** only, paired with a second channel (stroke-dash, shape, position, or encoding-key text). Never rely on color alone.
+- **Zero baseline** on bar/area charts. **No pie, no 3D, no dual y-axes** (sole exception: local-fork `yRight` on `chart: line`).
+- **Snake_case SQL columns**, map to display labels via `seriesNames:` (line-chart fork) or the header encoding-key line.
+- Every dashboard ends with a **Methodology** text widget.
 
 ## Bruin Asset Metadata Reference
 
@@ -607,16 +540,6 @@ Start with the most insightful chart. Show it to the user. Get feedback. Iterate
 - Include units on all metrics
 - Include methodology section with data source links and limitations
 
-## Altair Gotchas
+## Visualization Framework Rules
 
-Lessons learned from building dashboards with Altair:
-
-- **Layered charts must share field names.** If a dot layer uses `population_2015` and a line layer uses `y`, Altair creates independent scales. Rename DataFrame columns to match across layers.
-- **Angle values must be 0-360.** `angle=-33` raises a validation error in newer Altair. Use `angle=327` instead (equivalent rotation).
-- **Log scales on all layers.** When using `alt.Scale(type="log")`, every layer sharing that axis must also specify the log scale explicitly — it does not propagate across layers.
-- **`zero=False` on Y-axis.** When data is clustered in a narrow range (e.g., building heights 10-50m), use `alt.Scale(zero=False)` on scatter/point charts to spread the data. Never do this on bar charts.
-- **Interactive legends.** Use `alt.selection_point(fields=[...], bind="legend")` so viewers can click legend entries to filter. Encode both color and shape on the same field for dual encoding (accessibility).
-
-## Matplotlib Polar Plot Gotchas
-
-- **Default orientation is wrong for compass bearings.** Matplotlib's default: 0° at East (right), counter-clockwise. For street orientation plots, set `ax.set_theta_zero_location("N")` and `ax.set_theta_direction(-1)` to get North at top, clockwise. Do this before drawing bars.
+Altair gotchas (legacy Streamlit only), Matplotlib polar-plot orientation, DAC chart structure / palette / encoding, and any other framework-specific viz rules all live in `VISUALIZATIONS.md`. Read that file before writing any chart code.

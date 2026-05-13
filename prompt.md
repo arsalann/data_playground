@@ -8,7 +8,7 @@ Generic prompt for an agent to build a new data pipeline in this repo. Copy, fil
 
 Build a new pipeline for **[DOMAIN / DATA SOURCE]**.
 
-**Context:** Utilize Bruin MCP and Bruin CLI, reference Bruin docs. Follow @AGENTS.md strictly — these are the rules for this repo. If you are about to break any rule in AGENTS.md, stop and ask for clarification and permission before proceeding.
+**Context:** Utilize Bruin MCP and Bruin CLI, reference Bruin docs. Follow @AGENTS.md strictly — these are the rules for this repo. If you are about to break any rule in AGENTS.md, stop and ask for clarification and permission before proceeding. All dashboards must be built with Bruin DAC (see @DAC.md and the `create-dashboard` skill); do not write a new Streamlit dashboard.
 
 ### Data source
 
@@ -57,6 +57,7 @@ Start building the pipeline:
 3. Test each raw asset individually for a small subset of data ([describe subset, e.g. "2-3 days" or "a single quarter"])
 4. Build the staging SQL transformation assets, test them
 5. Test the entire pipeline end-to-end for a slightly larger window ([describe window, e.g. "1 week"])
+6. Build the DAC dashboard in `dashboard-dac/dashboards/<name>.yml` with per-chart structure (header text → chart → footnote text). Validate with `dac validate`, then `dac check`, then `dac serve --port 8321` and share the `http://localhost:8321` link.
 
 ### Constraints (optional)
 
@@ -117,17 +118,42 @@ The data warehouse. All raw and staging tables land here.
 
 - Connection name: `bruin-playground-arsalan` (configured in `.bruin.yml`)
 - Verify data after each raw asset run: check row counts, date ranges, column types, null rates.
-- For Streamlit dashboards, use service account credentials from `.streamlit/secrets.toml` (gitignored).
+- DAC dashboards query BigQuery via `bruin query` using the same `.bruin.yml` connection — no per-dashboard credentials needed. Run `gcloud auth application-default login` once locally.
 
-### Streamlit + Altair
+### Bruin DAC (Dashboards)
 
-Dashboard framework. Copy the BigQuery client boilerplate from an existing pipeline (e.g., `baby-bust/assets/reports/streamlit_app.py`).
+Dashboard framework for ALL new dashboards in this repo. Reference implementation: `polymarket-weather/dashboard-dac/`. Detailed working notes (quirks, fork features, conventions): `DAC.md` at the repo root. Widget syntax reference: the `create-dashboard` skill at `.claude/skills/create-dashboard/SKILL.md`.
 
-- Use `st.secrets["gcp_service_account"]` for auth.
-- Use `@st.cache_resource` for the BigQuery client.
-- Use `st.altair_chart(..., use_container_width=True)` for all Altair charts.
-- Use `st.pyplot(fig)` for Matplotlib charts (e.g., polar plots).
-- Place `.streamlit/secrets.toml` in the reports directory, not the repo root.
+Layout:
+
+```
+<pipeline>/dashboard-dac/
+  dashboards/
+    <name>.yml                   # one file per dashboard
+    queries/
+      <widget>.sql               # SQL referenced by `file:` widgets
+```
+
+CLI:
+
+```bash
+dac validate --dir <pipeline>/dashboard-dac          # fast schema check
+dac check    --dir <pipeline>/dashboard-dac          # validate + execute every query
+dac serve    --dir <pipeline>/dashboard-dac --port 8321
+# → open http://localhost:8321
+dac query    --dir <pipeline>/dashboard-dac --dashboard "Name" --widget "Widget"  # debug
+```
+
+Always surface the localhost URL when you start `dac serve`. Always run `dac check` before declaring a dashboard done.
+
+Conventions:
+
+- Every chart is a 3-row block: header text widget (title + insight description + encoding key) → chart widget (`hideName: true`) → footnote text widget (sources, tools, limitations).
+- Title states *what* the chart is (entities, metric, units, time range). Description states the *insight* (with numbers). Footnote states sources, tools, limitations.
+- Use the `ibm-cb-dark` theme for colorblind-safe defaults.
+- For multi-series line charts, use the local fork's `seriesNames:`, `yLabel:`, `yRight:`, `yRightLabel:` fields (see `DAC.md` § 10).
+- Use `snake_case` for SQL output column names — `bruin query` rejects spaces / dashes / parens / accents.
+- For sub-hour x-axis labels, emit a STRING (`FORMAT_TIMESTAMP('%H:%M', ts)`) — ISO timestamps get auto-stripped to date-only labels.
 
 ### Domain-Specific Tools (use only when relevant to the pipeline topic)
 
@@ -202,37 +228,37 @@ Start with the most insightful chart. Show it. Get feedback. Iterate. Expect to:
 
 ## Visualization Rules
 
-These are mandatory. See @AGENTS.md for the full specification.
+These are mandatory. See @AGENTS.md for the full specification and @DAC.md for DAC-specific quirks.
 
 ### Color
-- **Wong (2011) palette only**: `#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey.
-- Never rely on color alone — always dual-encode with shape, labels, or position.
+- **Wong (2011) palette only**: `#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey. The DAC `ibm-cb-dark` theme exposes a compatible `chart-1..chart-8` palette via CSS custom properties.
+- Never rely on color alone — name every series in the encoding-key line of the header text widget (or in `seriesNames:` for line charts).
 - Sequential: `blues` or `viridis`. Diverging: `blueorange`. Never `rainbow`/`jet`/`redgreen`.
 
 ### Truthful representation
-- Bar/area charts: y-axis starts at zero. No exceptions.
-- Log scales: label the axis with "(Log Scale)" and explain why.
-- No dual y-axes, no 3D, no pie charts.
-- Every encoding (size, color, shape) needs a legend or direct label.
+- Bar/area charts: y-axis starts at zero. No exceptions. Do not use `yMin`/`yMax` to truncate bars.
+- Log scales: include "(Log Scale)" in the axis title (or encoding-key line) and explain why in the description.
+- No dual y-axes by default. The sanctioned exception is the local fork's `yRight` on `chart: line` for co-temporal alignment where the description explicitly flags the dual axis.
+- No 3D, no pie charts. Use horizontal bar charts sorted by value.
+- Every encoding (size, color) must be named in the encoding-key line of the header text widget or in a native legend.
 
-### Altair-specific
-- **Layered charts must share field names** across layers to share scales.
-- **Angle values must be 0-360** (not negative).
-- **Log scales must be specified on every layer** sharing that axis — they don't propagate.
-- **`zero=False`** on scatter y-axes when data clusters in a narrow range. Never on bar charts.
-- **Interactive legends**: `alt.selection_point(fields=[...], bind="legend")`.
-- **Tooltips mandatory**: format strings on all numeric fields.
-- Standard height: 380. Scatter/dense: 450-500.
+### DAC-specific
+- **Many chart types render no legend.** `line`, `bar`-unstacked, `area`, scatter, bubble, heatmap, etc. The repo's local fork adds a legend to `chart: line`. For other chart types, either use `chart: combo` or document the encoding in the header text widget.
+- **Column names visible in legend/tooltip.** Use `snake_case` and map to display labels via `seriesNames:` (line-chart fork only).
+- **ISO timestamps get reformatted.** For sub-day labels, emit a STRING column in SQL.
+- **Tooltips on by default.** Use `format:` to control numeric formatting.
+- Widget sizing: 12-column grid, sum of `col:` per row ≤ 12. Full-width hero: `col: 12`. Paired charts: `col: 6` × 2. KPI rows: `col: 3` × 4.
 
-### Matplotlib polar plots
+### Per-chart structure
+Three rows per chart, each at `col: 12`:
+1. **Header text widget** — Markdown `#` title (what the chart shows) + bold insight description (with numbers) + encoding-key line (what each axis/color means).
+2. **Chart widget** — `hideName: true` to hide the WidgetFrame name strip.
+3. **Footnote text widget** — three bolded sections: `**Sources:**` (with publisher links), `**Tools:** **Bruin cli**, **BigQuery**, **Bruin dac**.`, `**Limitations:**` (caveats specific to this chart).
+
+End every dashboard with a Methodology text widget covering joins, normalizations, definitions, and threshold choices.
+
+### Matplotlib polar plots (only if needed for raw-asset analysis, not for DAC dashboards)
 - **North at top**: `ax.set_theta_zero_location("N")` and `ax.set_theta_direction(-1)` BEFORE drawing bars. Default is East at top, counter-clockwise — wrong for compass bearings.
-
-### Layout
-- KPIs at top with `st.metric()`.
-- `st.divider()` between story sections.
-- Insight blockquote after every chart: `st.markdown("> ...")` with specific numbers.
-- Data source footer on every chart.
-- Methodology section at bottom.
 
 ---
 

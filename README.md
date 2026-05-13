@@ -1,6 +1,6 @@
 # data_playground
 
-A collection of data pipelines for exploring public datasets, built with Bruin and warehoused in BigQuery.
+A collection of data pipelines for exploring public datasets, built with Bruin, warehoused in BigQuery, and visualized with Bruin DAC dashboards.
 
 ## Getting Started
 
@@ -11,9 +11,14 @@ A collection of data pipelines for exploring public datasets, built with Bruin a
    ```bash
    curl -LsSf https://getbruin.com/install/cli | sh
    ```
-3. **Google Cloud credentials** — place your service account key at `credentials/playground_key.json` (this directory is gitignored)
-4. **Bruin config** — create `.bruin.yml` at the repo root with your connection credentials (this file is gitignored — see `AGENTS.md` for the expected structure)
-5. **Python dependencies** — install from the repo root:
+3. **Bruin DAC** — install with:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/bruin-data/dac/main/install.sh | bash
+   ```
+   This installs the `dac` binary to `~/.local/bin/dac`. See `DAC.md` for the local fork build steps (used for line-chart legends and dual y-axis).
+4. **Google Cloud credentials** — place your service account key at `credentials/playground_key.json` (this directory is gitignored), and run `gcloud auth application-default login` once for DAC's BigQuery access.
+5. **Bruin config** — create `.bruin.yml` at the repo root with your connection credentials (this file is gitignored — see `AGENTS.md` for the expected structure)
+6. **Python dependencies** — install from the repo root:
    ```bash
    pip install -r requirements.txt
    ```
@@ -24,7 +29,7 @@ A collection of data pipelines for exploring public datasets, built with Bruin a
 
 - `.bruin.yml` — Bruin connection credentials (gitignored)
 - `credentials/` — GCP service account JSON files (gitignored)
-- `.streamlit/secrets.toml` — Streamlit app credentials (gitignored)
+- `**/secrets.toml` — legacy Streamlit dashboard credentials (gitignored). New DAC dashboards do not use this — they query through `bruin query` against the connection in `.bruin.yml`.
 
 See `AGENTS.md` for full secrets management guidelines.
 
@@ -46,7 +51,29 @@ bruin run berlin-weather/assets/raw/weather_raw.py
 bruin run berlin-weather/assets/staging/weather_daily.sql
 ```
 
-To launch the dashboard:
+### Launching a Dashboard
+
+All new dashboards are Bruin DAC projects under `<pipeline>/dashboard-dac/`. Use the `polymarket-weather/dashboard-dac/` project as the reference implementation.
+
+```bash
+# validate dashboard YAML + references (fast)
+dac validate --dir polymarket-weather/dashboard-dac
+
+# validate + execute every query end-to-end
+dac check --dir polymarket-weather/dashboard-dac
+
+# live-reload dev server
+dac serve --dir polymarket-weather/dashboard-dac --port 8321
+# → open http://localhost:8321
+```
+
+When you start `dac serve`, always check `http://localhost:8321` (or whichever `--port` you pick) in the browser. See `DAC.md` for the full CLI cheat sheet, quirks, and fork-only fields (`yLabel`, `yRight`, `yRightLabel`, `seriesNames`, `hideName`).
+
+For dashboard-authoring conventions (widget structure, color palette, accessibility, methodology section), see `AGENTS.md` § "Reports Layer (Bruin DAC)" and the `create-dashboard` skill in `.claude/skills/create-dashboard/`.
+
+#### Legacy: Streamlit
+
+A handful of pre-DAC pipelines still ship a `streamlit_app.py` in `assets/reports/`. Those continue to work but should not be extended. New dashboards must use DAC. To launch a legacy Streamlit dashboard:
 
 ```bash
 streamlit run berlin-weather/assets/reports/streamlit_app.py
@@ -75,11 +102,12 @@ streamlit run berlin-weather/assets/reports/streamlit_app.py
 
 ## Stack
 
-- **[Bruin](https://github.com/bruin-data/bruin)** — Pipeline orchestration, data quality, and materialization
+- **[Bruin CLI](https://github.com/bruin-data/bruin)** — Pipeline orchestration, data quality, and materialization
 - **BigQuery** — Data warehouse (+ public datasets)
 - **Python / Pandas** — Raw data ingestion from APIs
 - **SQL** — Staging transformations and aggregations
-- **Streamlit / Altair** — Interactive dashboards
+- **[Bruin DAC](https://github.com/bruin-data/dac)** — Dashboard-as-Code: YAML/TSX dashboards served by a React/Recharts frontend, queries routed through `bruin query`. See `DAC.md`.
+- **Streamlit / Altair** _(legacy)_ — Pre-DAC dashboards in some pipelines. Not used for new work.
 
 ## Dataset Discovery
 

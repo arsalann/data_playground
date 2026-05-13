@@ -1,0 +1,280 @@
+name: Europe's PFAS crisis - the headline numbers
+description: |
+  Three-chart summary of the most newsworthy findings from the eu-env-mortality
+  investigation: where PFAS contamination concentrates, which country dominates
+  the EU exceedance count, and how all-cause excess mortality has trended since
+  2015. For the full atlas (attribution decomposition, vulnerability by DEGURBA,
+  cross-burden composite, methodology), see eu_environmental_mortality.yml.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+rows:
+  # ===========================================================================
+  # SECTION 1: HERO
+  # ===========================================================================
+  - widgets:
+      - name: Headline
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          # Europe's PFAS crisis is hyper-concentrated
+
+          **Of 20,482 EU drinking-water samples that exceed the EU Drinking Water
+          Directive 2020/2184 threshold (500 ng/L total PFAS, in force from 12
+          January 2026), 39% are recorded in Belgium - a country with 3% of the
+          EU population. One Belgian arrondissement (Antwerp, downstream of the
+          3M Zwijndrecht plume) records 3,751 exceedances on its own - more than
+          France's nationwide total of 4,865.**
+
+  - widgets:
+      - name: EU DWD exceedances since 2015
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.eu_pfas_staging.pf_sites_dim`
+          WHERE pfas_sum_ng_l >= 500 AND is_water_sample
+
+      - name: Belgium share of EU exceedances
+        type: metric
+        col: 3
+        column: value
+        suffix: " %"
+        format: number
+        sql: |
+          WITH eu_total AS (
+              SELECT COUNT(*) AS total
+              FROM `bruin-playground-arsalan.eu_pfas_staging.pf_sites_dim`
+              WHERE pfas_sum_ng_l >= 500 AND is_water_sample
+          ),
+          be_total AS (
+              SELECT COUNT(*) AS belgium
+              FROM `bruin-playground-arsalan.eu_pfas_staging.pf_sites_dim`
+              WHERE pfas_sum_ng_l >= 500 AND is_water_sample
+                AND country_code = 'BE'
+          )
+          SELECT ROUND(be_total.belgium / eu_total.total * 100, 1) AS value
+          FROM be_total CROSS JOIN eu_total
+
+      - name: Antwerp arrondissement exceedances
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT n_exceed_eu_dwd AS value
+          FROM `bruin-playground-arsalan.eu_pfas_staging.pf_nuts3_exposure`
+          ORDER BY n_exceed_eu_dwd DESC
+          LIMIT 1
+
+      - name: Highest PFAS concentration recorded
+        type: metric
+        col: 3
+        column: value
+        suffix: "x EU limit"
+        format: number
+        sql: |
+          SELECT ROUND(MAX(max_pfas_ng_l_water) / 500) AS value
+          FROM `bruin-playground-arsalan.eu_pfas_staging.pf_nuts3_exposure`
+
+  - widgets:
+      - name: Hero footnote
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Forever Pollution Project](https://foreverpollution.eu/) / [PFAS Data Hub (CNRS)](https://pdh.cnrs.fr/)**, **[Eurostat DEMO_R_MWK3_T](https://ec.europa.eu/eurostat/databrowser/view/demo_r_mwk3_t)**, **[Eurostat DEMO_R_PJANGRP3](https://ec.europa.eu/eurostat/databrowser/view/demo_r_pjangrp3)**, **[Eurostat GISCO NUTS 2024](https://gisco-services.ec.europa.eu/distribution/v2/nuts/)**, **[EU Drinking Water Directive 2020/2184](https://eur-lex.europa.eu/eli/dir/2020/2184/oj)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** PFAS monitoring density varies sharply across member states - France, Belgium and Italy publish far more measurements than CEE countries, so a low exceedance count for a country may reflect monitoring gaps, not safety. The 500 ng/L threshold is the EU DWD cap on the sum of 20 specified PFAS compounds; underlying data aggregates across different compound mixes.
+
+  - widgets:
+      - name: section divider 1
+        hideName: true
+        type: divider
+        col: 12
+
+  # ===========================================================================
+  # CHART 1: Top 15 NUTS3 by exceedance count
+  # ===========================================================================
+  - widgets:
+      - name: Chart 1 header
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          # Chart 1 - Top 10 NUTS3 regions by PFAS EU-DWD exceedance count, 2015-2025
+
+          **One Belgian arrondissement (Antwerp, downstream of the 3M Zwijndrecht plume)
+          records 3,751 exceedances - more than France's entire 4,865 nationwide total.
+          Italy's Vicenza and Verona, legacy of the 2013 Miteni / Trissino disaster in
+          Veneto, follow at 2,557 and 2,750. Six of the top ten regions are Belgian
+          arrondissements (five Flemish plus Brussels-Capital) downstream of the 3M plume.**
+
+          **X-axis:** EU-DWD exceedance count (water samples >= 500 ng/L total PFAS, 2015-2025).
+          **Y-axis:** NUTS3 region (Latin name, country ISO 3166-1 alpha-2).
+
+  - widgets:
+      - name: PFAS exceedances by NUTS3 region (count)
+        hideName: true
+        type: chart
+        chart: bar
+        col: 12
+        file: queries/headline_top_nuts3.sql
+        x: region
+        y: [exceedances]
+
+  - widgets:
+      - name: Chart 1 footnote
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Forever Pollution Project / PFAS Data Hub (CNRS)](https://pdh.cnrs.fr/)** (CC BY-SA 4.0), **[Eurostat GISCO NUTS3 2024](https://gisco-services.ec.europa.eu/distribution/v2/nuts/)**, **[EU Drinking Water Directive 2020/2184](https://eur-lex.europa.eu/eli/dir/2020/2184/oj)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Each PFAS site contributes one or many measurements; this chart counts every exceedance individually, so densely monitored regions can outrank less-monitored regions with comparable contamination intensity. NUTS3 assignment is by nearest-centroid Haversine - accurate inland, less precise near borders and coastlines. "Arr." prefix in Belgian region names is the French / Dutch abbreviation for "arrondissement".
+
+  - widgets:
+      - name: section divider 2
+        hideName: true
+        type: divider
+        col: 12
+
+  # ===========================================================================
+  # CHART 2: Country exceedances per million inhabitants
+  # ===========================================================================
+  - widgets:
+      - name: Chart 2 header
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          # Chart 2 - PFAS EU-DWD exceedance rate per million inhabitants, by country
+
+          **Belgium records 676 exceedances per million inhabitants - 6x Italy's 107,
+          9x France's 71, and 50x Germany's 13. The Belgian rate is driven almost
+          entirely by the 3M Antwerp plume; France's high sample volume (633k measurements)
+          produces a relatively low per-capita exceedance rate because contamination is
+          diffuse, not concentrated.**
+
+          **X-axis:** country. **Y-axis:** EU-DWD exceedances per million inhabitants (2023 population denominator).
+
+  - widgets:
+      - name: PFAS exceedances per million inhabitants by country
+        hideName: true
+        type: chart
+        chart: bar
+        col: 12
+        file: queries/headline_country_per_million.sql
+        x: country
+        y: [exceedances_per_million]
+
+  - widgets:
+      - name: Chart 2 footnote
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Forever Pollution Project / PFAS Data Hub (CNRS)](https://pdh.cnrs.fr/)** (CC BY-SA 4.0), **[Eurostat DEMO_R_PJANGRP3](https://ec.europa.eu/eurostat/databrowser/view/demo_r_pjangrp3)** for 2023 NUTS3 population.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Cross-country rates conflate monitoring density with actual contamination. Countries without bulk-accessible national monitoring (most CEE states, plus Greece, Portugal, Ireland) appear data-sparse, not contamination-free. Population denominator is 2023; exceedance numerator is cumulative since 2015.
+
+  - widgets:
+      - name: section divider 3
+        hideName: true
+        type: divider
+        col: 12
+
+  # ===========================================================================
+  # CHART 3: EU-27 annual excess deaths
+  # ===========================================================================
+  - widgets:
+      - name: Chart 3 header
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          # Chart 3 - EU-27 annual excess deaths above the 2015-2019 baseline
+
+          **2020-2022 recorded ~1.32M cumulative excess deaths above the pre-pandemic
+          baseline, dominated by COVID-19 (and concentrated heatwaves in summer 2022).
+          2023-2025 remained elevated (~83k, 52k, 69k) - three consecutive post-pandemic
+          years above baseline. Heat-attribution at NUTS3 requires the temperature panel,
+          which is currently partial (3 of 1,165 NUTS3 regions ingested).**
+
+          **X-axis:** ISO calendar year. **Y-axis:** all-cause excess deaths vs 2015-2019 weekly NUTS3 baseline (count).
+
+  - widgets:
+      - name: EU-27 annual all-cause excess deaths
+        hideName: true
+        type: chart
+        chart: bar
+        col: 12
+        file: queries/headline_eu_annual_excess.sql
+        x: year
+        y: [excess_deaths]
+
+  - widgets:
+      - name: Chart 3 footnote
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Eurostat DEMO_R_MWK3_T](https://ec.europa.eu/eurostat/databrowser/view/demo_r_mwk3_t)** weekly all-cause deaths by NUTS3, 2015-2025. Baseline methodology adapted from **[ISGlobal / Ballester et al. (Nature Medicine, 2023)](https://doi.org/10.1038/s41591-023-02419-z)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Excess is all-cause and conflates COVID-19 (2020-2022 dominant), heat, cold, infectious disease, and demographic ageing. The 2015-2019 climatological baseline is the simple mean of weekly deaths for the same NUTS3 + week-of-year; a richer Serfling or ARIMA baseline is tracked as future work. 2025 is partial (provisional weekly data with publication lag of 1-2 quarters).
+
+  - widgets:
+      - name: section divider 4
+        hideName: true
+        type: divider
+        col: 12
+
+  # ===========================================================================
+  # METHODOLOGY
+  # ===========================================================================
+  - widgets:
+      - name: Methodology
+        hideName: true
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          **Pipelines.** `eu-mortality` + `eu-pfas` (Bruin / BigQuery) on a shared
+          NUTS3 dimension drawn from Eurostat GISCO 2024 (1,165 EU-27 regions).
+          `eu-env-dashboard` builds the composite-burden mart and serves DAC.
+
+          **PFAS data.** 822,919 EU-27 site records harmonised from the Forever
+          Pollution Project / PFAS Data Hub bulk parquet (~191 MB). Concentrations
+          normalised to ng/L (water matrix) using unit conversions for ug/L and
+          mg/L. Sites spatially assigned to NUTS3 by nearest-centroid Haversine
+          in BigQuery GEOGRAPHY.
+
+          **Excess mortality.** Weekly NUTS3 deaths from Eurostat DEMO_R_MWK3_T.
+          Baseline is the simple mean of weekly deaths for the same NUTS3 +
+          week-of-year across 2015-2019 (pre-COVID, pre-2022-heatwave reference
+          window, following ISGlobal / Ballester 2023). Excess = observed -
+          expected. Heat-attribution at NUTS3 requires the temperature panel,
+          which is partially ingested due to Open-Meteo's free-tier hourly quota.
+
+          **Threshold.** EU DWD 2020/2184 caps total PFAS in drinking water at
+          500 ng/L (sum of 20 specified compounds); in force from 12 January 2026.
+          The underlying samples in this dashboard pre-date enforcement and
+          mix compound coverage across authority datasets.
+
+          **Reproducibility.** All Bruin pipeline definitions and DAC YAML are
+          under `montreal-v1/eu-mortality/`, `montreal-v1/eu-pfas/`, and
+          `montreal-v1/eu-env-dashboard/`. Re-run with `bruin run <pipeline-name>`
+          for ingest + transformation, and `dac serve --dir eu-env-dashboard --port 8321`
+          for the dashboard.

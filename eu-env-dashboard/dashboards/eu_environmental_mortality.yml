@@ -167,25 +167,26 @@ rows:
           **Limitations:** Each PFAS site contributes one or many measurements; this chart counts each exceedance separately, so densely monitored regions can appear higher than less-monitored regions with comparable contamination. NUTS3 assignment is by nearest-centroid Haversine -- accurate for inland regions, less precise near borders and coastlines.
 
   - widgets:
-      - name: PFAS contamination by attribution class
+      - name: PFAS DWD exceedances by attribution class
         type: chart
-        chart: pie
-        col: 6
+        chart: bar
+        col: 12
         file: queries/pfas_attribution_breakdown.sql
-        label: attribution
-        value: exceedances
+        x: attribution
+        y: [exceedances]
         description: |
-          **EU DWD exceedances by attribution class. "Unattributed_sample" (general
-          monitoring locations without specific industrial / military attribution)
+          **EU DWD exceedances by attribution class, sorted descending. "Unattributed_sample"
+          (general monitoring locations without specific industrial / military attribution)
           dominates the count because most state monitoring networks sample at water
           supply outlets rather than at sources. Where attribution is possible:
           industrial sites and PFAS production facilities concentrate the highest-
           concentration exceedances, military / firefighting and airports the legacy
           aqueous film-forming foam (AFFF) plumes.**
 
-      - name: Attribution counts
+  - widgets:
+      - name: Attribution counts (sites and exceedances by class)
         type: table
-        col: 6
+        col: 12
         file: queries/pfas_attribution_breakdown.sql
         description: |
           **Per-class site and exceedance counts. The classification combines (a) the
@@ -304,24 +305,35 @@ rows:
           decomposition below.**
 
   - widgets:
-      - name: Heat by DEGURBA
+      - name: Excess deaths by DEGURBA urbanisation class, 2015-2025
         type: chart
         chart: bar
         col: 12
         file: queries/heat_by_degurba.sql
         x: degurba
-        y: [excess_deaths_total, exceedances_total]
-        stacked: false
+        y: [excess_deaths_total]
         description: |
-          **Excess deaths (all-cause, 2015-2025) and PFAS DWD exceedances decomposed by
-          DEGURBA urbanisation class. Cities (densely populated) carry both the heaviest
-          absolute excess-death burden and the most PFAS exceedances - consistent with
-          dense monitoring networks, larger elderly populations, and a higher density
-          of industrial PFAS sources. Two scales are shown on the same axis; consult
-          the table below for per-class values.**
+          **Cumulative all-cause excess deaths 2015-2025 decomposed by DEGURBA class.
+          Densely populated cities carry the heaviest absolute burden because they have
+          the largest baselines (urban areas concentrate the EU population and the
+          elderly). The DEGURBA table below shows per-class values alongside PFAS
+          exceedance density.**
 
   - widgets:
-      - name: DEGURBA table
+      - name: PFAS DWD exceedances by DEGURBA urbanisation class
+        type: chart
+        chart: bar
+        col: 12
+        file: queries/heat_by_degurba.sql
+        x: degurba
+        y: [exceedances_total]
+        description: |
+          **EU DWD exceedance counts by DEGURBA class. Cities again dominate -- consistent
+          with denser monitoring networks AND a higher density of industrial PFAS
+          sources. Per-class normalised values are in the DEGURBA table below.**
+
+  - widgets:
+      - name: DEGURBA decomposition table
         type: table
         col: 12
         file: queries/heat_by_degurba.sql

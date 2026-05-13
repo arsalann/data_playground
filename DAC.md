@@ -278,19 +278,9 @@ with `overflow-y: auto/scroll` and call `el.scrollBy(...)` on that.
 
 ## Conventions for footnotes / descriptions
 
-Sourcing block on every chart:
-
-```
-**Sources:** **[Source A](url)**, **[Source B](url)**, ...
-
-**Tools:** **Bruin cli**, **BigQuery**, **Bruin dac**.
-
-**Limitations:** ...
-```
-
-Use `Bruin cli` for the pipeline (ingestion/staging/report) and `Bruin dac`
-for the visualization layer (capital `B`). Bold the proper-noun source /
-tool names.
+See `VISUALIZATIONS.md` § 2 for the mandatory per-chart 3-row structure
+(header text → chart → footnote text) and the exact format of the
+sources / tools / limitations footnote block.
 
 ## Connection: BigQuery details
 

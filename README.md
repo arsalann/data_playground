@@ -69,7 +69,7 @@ dac serve --dir polymarket-weather/dashboard-dac --port 8321
 
 When you start `dac serve`, always check `http://localhost:8321` (or whichever `--port` you pick) in the browser. See `DAC.md` for the full CLI cheat sheet, quirks, and fork-only fields (`yLabel`, `yRight`, `yRightLabel`, `seriesNames`, `hideName`).
 
-For dashboard-authoring conventions (widget structure, color palette, accessibility, methodology section), see `AGENTS.md` § "Reports Layer (Bruin DAC)" and the `create-dashboard` skill in `.claude/skills/create-dashboard/`.
+For dashboard-authoring conventions (widget structure, color palette, accessibility, methodology section), see `VISUALIZATIONS.md` at the repo root. DAC mechanics and quirks live in `DAC.md`. Widget syntax reference: the `create-dashboard` skill in `.claude/skills/create-dashboard/`.
 
 #### Legacy: Streamlit
 

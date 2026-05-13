@@ -146,14 +146,7 @@ dac query    --dir <pipeline>/dashboard-dac --dashboard "Name" --widget "Widget"
 
 Always surface the localhost URL when you start `dac serve`. Always run `dac check` before declaring a dashboard done.
 
-Conventions:
-
-- Every chart is a 3-row block: header text widget (title + insight description + encoding key) → chart widget (`hideName: true`) → footnote text widget (sources, tools, limitations).
-- Title states *what* the chart is (entities, metric, units, time range). Description states the *insight* (with numbers). Footnote states sources, tools, limitations.
-- Use the `ibm-cb-dark` theme for colorblind-safe defaults.
-- For multi-series line charts, use the local fork's `seriesNames:`, `yLabel:`, `yRight:`, `yRightLabel:` fields (see `DAC.md` § 10).
-- Use `snake_case` for SQL output column names — `bruin query` rejects spaces / dashes / parens / accents.
-- For sub-hour x-axis labels, emit a STRING (`FORMAT_TIMESTAMP('%H:%M', ts)`) — ISO timestamps get auto-stripped to date-only labels.
+Conventions: see `VISUALIZATIONS.md` for the full set (3-row chart structure, color palette, axes, encoding key, methodology section, fork-only fields) and `DAC.md` for DAC-mechanism quirks.
 
 ### Domain-Specific Tools (use only when relevant to the pipeline topic)
 
@@ -228,37 +221,7 @@ Start with the most insightful chart. Show it. Get feedback. Iterate. Expect to:
 
 ## Visualization Rules
 
-These are mandatory. See @AGENTS.md for the full specification and @DAC.md for DAC-specific quirks.
-
-### Color
-- **Wong (2011) palette only**: `#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey. The DAC `ibm-cb-dark` theme exposes a compatible `chart-1..chart-8` palette via CSS custom properties.
-- Never rely on color alone — name every series in the encoding-key line of the header text widget (or in `seriesNames:` for line charts).
-- Sequential: `blues` or `viridis`. Diverging: `blueorange`. Never `rainbow`/`jet`/`redgreen`.
-
-### Truthful representation
-- Bar/area charts: y-axis starts at zero. No exceptions. Do not use `yMin`/`yMax` to truncate bars.
-- Log scales: include "(Log Scale)" in the axis title (or encoding-key line) and explain why in the description.
-- No dual y-axes by default. The sanctioned exception is the local fork's `yRight` on `chart: line` for co-temporal alignment where the description explicitly flags the dual axis.
-- No 3D, no pie charts. Use horizontal bar charts sorted by value.
-- Every encoding (size, color) must be named in the encoding-key line of the header text widget or in a native legend.
-
-### DAC-specific
-- **Many chart types render no legend.** `line`, `bar`-unstacked, `area`, scatter, bubble, heatmap, etc. The repo's local fork adds a legend to `chart: line`. For other chart types, either use `chart: combo` or document the encoding in the header text widget.
-- **Column names visible in legend/tooltip.** Use `snake_case` and map to display labels via `seriesNames:` (line-chart fork only).
-- **ISO timestamps get reformatted.** For sub-day labels, emit a STRING column in SQL.
-- **Tooltips on by default.** Use `format:` to control numeric formatting.
-- Widget sizing: 12-column grid, sum of `col:` per row ≤ 12. Full-width hero: `col: 12`. Paired charts: `col: 6` × 2. KPI rows: `col: 3` × 4.
-
-### Per-chart structure
-Three rows per chart, each at `col: 12`:
-1. **Header text widget** — Markdown `#` title (what the chart shows) + bold insight description (with numbers) + encoding-key line (what each axis/color means).
-2. **Chart widget** — `hideName: true` to hide the WidgetFrame name strip.
-3. **Footnote text widget** — three bolded sections: `**Sources:**` (with publisher links), `**Tools:** **Bruin cli**, **BigQuery**, **Bruin dac**.`, `**Limitations:**` (caveats specific to this chart).
-
-End every dashboard with a Methodology text widget covering joins, normalizations, definitions, and threshold choices.
-
-### Matplotlib polar plots (only if needed for raw-asset analysis, not for DAC dashboards)
-- **North at top**: `ax.set_theta_zero_location("N")` and `ax.set_theta_direction(-1)` BEFORE drawing bars. Default is East at top, counter-clockwise — wrong for compass bearings.
+All visualization rules — palette, structure, axes, legends, framework-specific quirks (DAC, Altair, Matplotlib polar) — live in `VISUALIZATIONS.md` at the repo root. Read it before writing any chart code. Every chart MUST strictly follow that document.
 
 ---
 

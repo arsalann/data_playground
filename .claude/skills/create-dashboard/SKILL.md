@@ -269,3 +269,7 @@ TSX supports the same dashboard model as YAML. Keep semantic logic declarative; 
 - Validate both YAML and TSX dashboards after changes.
 - Do not require semantic models for regular SQL dashboards.
 - Do not put secrets in dashboard files; use Bruin connection config.
+
+## Visualization Standards
+
+Every chart in every dashboard MUST strictly follow `VISUALIZATIONS.md` at the repo root — chart structure (header → chart → footnote), Wong (2011) colorblind palette, axis baselines, encoding-key conventions, fork-only fields. This SKILL covers DAC schema/syntax; `VISUALIZATIONS.md` covers what good charts look like. Read both.

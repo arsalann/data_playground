@@ -1,0 +1,578 @@
+name: OECD Pension Systems
+description: |
+  Cross-country snapshot of pension systems across the 38 OECD member countries.
+  Built from harmonized international sources (UN WPP 2024, OECD PAG/SOCX/GPS/IDD,
+  Mercer CFA GPI 2025, IMF WEO). Source tables in
+  `bruin-playground-arsalan.staging.pc_*`, populated by the `pension-crisis` Bruin
+  pipeline.
+connection: bruin-playground-arsalan
+
+rows:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Header
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: About
+        type: text
+        col: 12
+        content: |
+          # OECD Pension Systems — A Cross-Country Snapshot
+
+          Coverage is the 38 OECD member countries. Every indicator is pinned to a
+          single reference year and uses one harmonized methodology, so every
+          cross-country comparison is apples-to-apples. Reference years:
+          retirement age = **2024**, net replacement rate = **2024**, public
+          pension spending = **2021**, pension assets = **2023**; demographic
+          indicators are **2024** observed and **2050** projected (UN WPP 2024
+          medium variant).
+
+  # Headline metrics
+  - widgets:
+      - name: OECD countries covered
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT iso3_code) AS value
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+
+      - name: Highest dependency 2024
+        type: metric
+        col: 3
+        column: value
+        suffix: " per 100"
+        format: number
+        sql: |
+          SELECT ROUND(MAX(old_age_dep_ratio_today), 1) AS value
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+
+      - name: Highest dependency 2050
+        type: metric
+        col: 3
+        column: value
+        suffix: " per 100"
+        format: number
+        sql: |
+          SELECT ROUND(MAX(old_age_dep_ratio_2050), 1) AS value
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+
+      - name: Median 2050 dependency
+        type: metric
+        col: 3
+        column: value
+        suffix: " per 100"
+        format: number
+        sql: |
+          SELECT ROUND(APPROX_QUANTILES(old_age_dep_ratio_2050, 2)[OFFSET(1)], 1) AS value
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Chart 1 — Old-age dependency ratio trajectory
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Chart 1 header
+        type: text
+        col: 12
+        content: |
+          ## Chart 1 — Old-age dependency ratio, seven OECD countries, 1990–2050
+
+          **Description.** Every selected country has seen its old-age dependency
+          ratio rise since 1990, and projections to 2050 show continued increase
+          in all seven. Japan and Korea sit at the steepest end; Mexico and
+          Türkiye remain lower in absolute terms but show the same upward
+          direction. The ratio is the number of people aged 65+ per 100
+          working-age adults (15–64) — a direct proxy for the number of retirees
+          each worker must support through taxes and contributions. Values from
+          1990–2024 are historical estimates; 2025–2050 are UN WPP 2024 medium-variant
+          projections.
+
+  - widgets:
+      - name: Old-age dependency ratio (per 100 working-age, 15-64)
+        type: chart
+        chart: combo
+        col: 12
+        x: year
+        y: [japan, italy, germany, united_states, korea, mexico, turkiye]
+        lines: [japan, italy, germany, united_states, korea, mexico, turkiye]
+        sql: |
+          SELECT
+            year,
+            ROUND(MAX(CASE WHEN iso3_code = 'JPN' THEN old_age_dep_ratio END), 2) AS japan,
+            ROUND(MAX(CASE WHEN iso3_code = 'ITA' THEN old_age_dep_ratio END), 2) AS italy,
+            ROUND(MAX(CASE WHEN iso3_code = 'DEU' THEN old_age_dep_ratio END), 2) AS germany,
+            ROUND(MAX(CASE WHEN iso3_code = 'USA' THEN old_age_dep_ratio END), 2) AS united_states,
+            ROUND(MAX(CASE WHEN iso3_code = 'KOR' THEN old_age_dep_ratio END), 2) AS korea,
+            ROUND(MAX(CASE WHEN iso3_code = 'MEX' THEN old_age_dep_ratio END), 2) AS mexico,
+            ROUND(MAX(CASE WHEN iso3_code = 'TUR' THEN old_age_dep_ratio END), 2) AS turkiye
+          FROM `bruin-playground-arsalan.staging.pc_demographics_annual`
+          WHERE year BETWEEN 1990 AND 2050
+            AND iso3_code IN ('JPN','ITA','DEU','USA','KOR','MEX','TUR')
+          GROUP BY year
+          ORDER BY year
+
+  - widgets:
+      - name: Chart 1 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** **[United Nations World Population Prospects 2024](https://population.un.org/wpp/)**
+          (released 11 July 2024), medium-variant projections.
+
+          **Tools.** **Bruin cli** (ingest/staging), **BigQuery** (storage), **Bruin dac** (visualization).
+
+          **Limitations.** Country set chosen to span the observed OECD range
+          (Japan/Italy at the high end; Mexico/Türkiye at the low end). UN WPP
+          medium-variant is one scenario — high- and low-variant projections
+          diverge noticeably by 2050. The series transitions from historical
+          (≤2024) to projected (2025+) without visual distinction in this view;
+          the inflection point is at year 2024.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Chart 2 — Statutory retirement age vs life expectancy at 65
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Chart 2 header
+        type: text
+        col: 12
+        content: |
+          ## Chart 2 — Statutory retirement age (2024) vs. remaining life expectancy at 65 (2024)
+
+          **Description.** The implied number of years a full-career worker
+          spends in retirement varies widely across the OECD. Countries with
+          lower statutory retirement ages and high life expectancy (upper-left)
+          imply the longest average retirements; countries with high retirement
+          ages and moderate life expectancy (lower-right) imply the shortest.
+          Series are split by region — **Europe**, **Americas**, **Asia-Pacific** —
+          using the Wong colorblind-safe palette via DAC's default chart colors.
+
+  - widgets:
+      - name: Statutory retirement age (x) vs. life expectancy at 65 (y), by region
+        type: chart
+        chart: scatter
+        col: 12
+        x: retirement_age
+        y: [europe, americas, asia_pacific]
+        sql: |
+          SELECT
+            iso3_code,
+            country_name,
+            ROUND(retirement_age_latest, 1) AS retirement_age,
+            ROUND(CASE WHEN region = 'Europe'       THEN life_expectancy_at_65_today END, 2) AS europe,
+            ROUND(CASE WHEN region = 'Americas'     THEN life_expectancy_at_65_today END, 2) AS americas,
+            ROUND(CASE WHEN region = 'Asia-Pacific' THEN life_expectancy_at_65_today END, 2) AS asia_pacific
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE retirement_age_latest IS NOT NULL
+            AND life_expectancy_at_65_today IS NOT NULL
+          ORDER BY country_name
+
+  - widgets:
+      - name: Years-in-retirement leaderboard (life expectancy at 65 minus (retirement age − 65))
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            iso3_code AS `ISO3`,
+            country_name AS `Country`,
+            region AS `Region`,
+            ROUND(retirement_age_latest, 1) AS `Retirement age`,
+            ROUND(life_expectancy_at_65_today, 1) AS `Life exp at 65`,
+            ROUND(years_in_retirement_today, 1) AS `Years in retirement`
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE retirement_age_latest IS NOT NULL
+            AND life_expectancy_at_65_today IS NOT NULL
+          ORDER BY `Years in retirement` DESC
+        columns:
+          - { name: "ISO3", label: "ISO3" }
+          - { name: "Country", label: "Country" }
+          - { name: "Region", label: "Region" }
+          - { name: "Retirement age", label: "Retirement age", format: number }
+          - { name: "Life exp at 65", label: "Life exp at 65", format: number }
+          - { name: "Years in retirement", label: "Years in retirement", format: number }
+
+  - widgets:
+      - name: Chart 2 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** **[OECD Pensions at a Glance](https://data-explorer.oecd.org/)**
+          (dataflow `DSD_PAG@DF_DPS`, measure `CRPLF22` — Current Retirement,
+          Pension Length-of-service, Full-career, entry age 22), reference year
+          2024. Life expectancy at 65 from
+          **[UN WPP 2024](https://population.un.org/wpp/)** abridged life tables,
+          both sexes, 2024.
+
+          **Tools.** **Bruin cli** (OECD SDMX + UN WPP ingestion), **BigQuery**
+          (joins), **Bruin dac** (visualization).
+
+          **Limitations.** Statutory retirement age is the legal norm; actual
+          effective retirement age differs in many OECD countries due to
+          early-retirement pathways. Life-expectancy figures are period (not
+          cohort) estimates. Statutory age is an average of male/female values
+          where both are reported.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Chart 3 — Pension spending vs old-age dependency, today vs 2050
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Chart 3 header
+        type: text
+        col: 12
+        content: |
+          ## Chart 3 — Public pension spending (% of GDP, 2021) vs. old-age dependency, 2024 and 2050
+
+          **Description.** Each OECD country appears as two points sharing the
+          same horizontal position (pension spending is a single reference year).
+          The first series (**dep ratio 2024**) is the latest observed value; the
+          second (**dep ratio 2050**) is the UN WPP medium-variant projection.
+          The vertical gap between a country's two points shows how much
+          additional demographic pressure is still ahead, independent of current
+          spending levels.
+
+  - widgets:
+      - name: Public pension spending vs old-age dependency ratio, 2024 vs 2050
+        type: chart
+        chart: scatter
+        col: 12
+        x: spending_pct_gdp
+        y: [dep_ratio_2024, dep_ratio_2050]
+        sql: |
+          SELECT
+            iso3_code,
+            country_name,
+            region,
+            ROUND(pension_spending_pct_gdp_latest, 2) AS spending_pct_gdp,
+            ROUND(old_age_dep_ratio_today, 2) AS dep_ratio_2024,
+            ROUND(old_age_dep_ratio_2050, 2) AS dep_ratio_2050
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE pension_spending_pct_gdp_latest IS NOT NULL
+            AND old_age_dep_ratio_today IS NOT NULL
+            AND old_age_dep_ratio_2050 IS NOT NULL
+          ORDER BY country_name
+
+  - widgets:
+      - name: Fiscal pressure snapshot — observed vs projected dependency change
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            iso3_code AS `ISO3`,
+            country_name AS `Country`,
+            region AS `Region`,
+            ROUND(pension_spending_pct_gdp_latest, 2) AS `Spending % GDP 2021`,
+            ROUND(old_age_dep_ratio_today, 1) AS `Dep ratio 2024`,
+            ROUND(old_age_dep_ratio_2050, 1) AS `Dep ratio 2050`,
+            ROUND(old_age_dep_ratio_2050 - old_age_dep_ratio_today, 1) AS `Change`
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE pension_spending_pct_gdp_latest IS NOT NULL
+            AND old_age_dep_ratio_today IS NOT NULL
+            AND old_age_dep_ratio_2050 IS NOT NULL
+          ORDER BY `Change` DESC
+        columns:
+          - { name: "ISO3", label: "ISO3" }
+          - { name: "Country", label: "Country" }
+          - { name: "Region", label: "Region" }
+          - { name: "Spending % GDP 2021", label: "Spending % GDP (2021)", format: number }
+          - { name: "Dep ratio 2024", label: "Dep. ratio (2024)", format: number }
+          - { name: "Dep ratio 2050", label: "Dep. ratio (2050)", format: number }
+          - { name: "Change", label: "Change (2050 − 2024)", format: number }
+
+  - widgets:
+      - name: Chart 3 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Public pension spending from
+          **[OECD Pensions at a Glance](https://data-explorer.oecd.org/)**
+          (dataflow `DSD_PAG@DF_PAG`, measure `PEP` — public expenditure on
+          pensions as % of GDP), reference year 2021 (latest year with full
+          OECD-38 reporting coverage). Dependency ratios from
+          **[UN WPP 2024](https://population.un.org/wpp/)** medium variant.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Public pension spending excludes private and
+          occupational pension payouts, which are material in funded systems
+          (Netherlands, Denmark, Iceland). Spending at a single reference year
+          does not capture rising-cost trajectories already under way.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Chart 4 — Mercer sustainability vs 2050 dependency (bubble)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Chart 4 header
+        type: text
+        col: 12
+        content: |
+          ## Chart 4 — Mercer sustainability sub-index (2025) vs. projected 2050 dependency
+
+          **Description.** The Mercer CFA Institute Global Pension Index rates
+          pension systems on coverage, asset accumulation, demographics, and
+          contribution levels using a single published methodology. Plotting the
+          sustainability sub-index against projected 2050 dependency identifies
+          which OECD systems face the largest gap between their current
+          sustainability posture and the demographic pressure they will face.
+          Bubble size encodes pension fund assets as a share of GDP — a measure
+          of how much pre-funding each system has in place.
+
+  - widgets:
+      - name: Mercer sustainability (x) vs. 2050 old-age dependency (y), size = pension assets % GDP
+        type: chart
+        chart: bubble
+        col: 12
+        x: mercer_sustainability
+        y: [dep_ratio_2050]
+        size: assets_pct_gdp
+        sql: |
+          SELECT
+            iso3_code,
+            country_name,
+            region,
+            ROUND(mercer_sustainability, 1) AS mercer_sustainability,
+            ROUND(old_age_dep_ratio_2050, 1) AS dep_ratio_2050,
+            ROUND(COALESCE(pension_assets_pct_gdp_latest, 5.0), 1) AS assets_pct_gdp
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE mercer_sustainability IS NOT NULL
+            AND old_age_dep_ratio_2050 IS NOT NULL
+          ORDER BY country_name
+
+  - widgets:
+      - name: Chart 4 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** **[Mercer CFA Institute Global Pension Index 2025](https://www.mercer.com/insights/investments/market-outlook-and-ideas/mercer-cfa-institute-global-pension-index/)**
+          (released October 2025), sustainability sub-index (0–100). Dependency
+          ratios from **[UN WPP 2024](https://population.un.org/wpp/)**
+          medium variant. Pension fund assets from
+          **[OECD Global Pension Statistics](https://data-explorer.oecd.org/)**
+          (dataflow `DSD_FP@DF_PA`, unit `PT_B1GQ`, vehicle type `_T` — all
+          financing vehicles combined), reference year 2023.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Mercer sub-index weightings are opinionated (published
+          methodology, not reproduced by a competing index). Mercer covers 52
+          countries globally; only the OECD intersection (≈28 of 38) appears
+          here. Bubble size for countries with no GPS coverage uses a 5%-of-GDP
+          placeholder so the marker stays visible.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Chart 5 — Public debt × 2050 dependency
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Chart 5 header
+        type: text
+        col: 12
+        content: |
+          ## Chart 5 — General-government gross debt vs. projected 2050 old-age dependency
+
+          **Description.** Two independent sources of fiscal pressure overlaid:
+          the stock of public debt a government already carries (IMF World
+          Economic Outlook) and the demographic pressure it will face by 2050
+          (UN WPP 2024). Countries in the upper-right region of the chart enter
+          the demographic transition with both elevated debt and steep projected
+          dependency growth. Bubble size encodes current public pension spending
+          (% of GDP, 2021) — larger bubbles indicate that a larger share of the
+          fiscal burden is already committed to retirees.
+
+  - widgets:
+      - name: Public debt % GDP (x) vs. 2050 old-age dependency (y), size = pension spending % GDP
+        type: chart
+        chart: bubble
+        col: 12
+        x: debt_pct_gdp
+        y: [dep_ratio_2050]
+        size: spending_pct_gdp
+        sql: |
+          SELECT
+            iso3_code,
+            country_name,
+            region,
+            ROUND(public_debt_pct_gdp_latest, 1) AS debt_pct_gdp,
+            ROUND(old_age_dep_ratio_2050, 1) AS dep_ratio_2050,
+            ROUND(COALESCE(pension_spending_pct_gdp_latest, 3.0), 2) AS spending_pct_gdp,
+            public_debt_pct_gdp_year AS debt_year
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE public_debt_pct_gdp_latest IS NOT NULL
+            AND old_age_dep_ratio_2050 IS NOT NULL
+          ORDER BY country_name
+
+  - widgets:
+      - name: Upper-pressure leaderboard — above-median debt and above-median 2050 dependency
+        type: table
+        col: 12
+        sql: |
+          WITH medians AS (
+            SELECT
+              APPROX_QUANTILES(public_debt_pct_gdp_latest, 2)[OFFSET(1)] AS med_debt,
+              APPROX_QUANTILES(old_age_dep_ratio_2050, 2)[OFFSET(1)]     AS med_dep
+            FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+            WHERE public_debt_pct_gdp_latest IS NOT NULL
+              AND old_age_dep_ratio_2050 IS NOT NULL
+          )
+          SELECT
+            p.iso3_code AS `ISO3`,
+            p.country_name AS `Country`,
+            p.region AS `Region`,
+            ROUND(p.public_debt_pct_gdp_latest, 1) AS `Debt % GDP`,
+            p.public_debt_pct_gdp_year AS `Debt year`,
+            ROUND(p.old_age_dep_ratio_2050, 1) AS `Dep ratio 2050`,
+            ROUND(p.pension_spending_pct_gdp_latest, 2) AS `Spending % GDP`
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile` AS p
+          CROSS JOIN medians m
+          WHERE p.public_debt_pct_gdp_latest > m.med_debt
+            AND p.old_age_dep_ratio_2050    > m.med_dep
+          ORDER BY `Debt % GDP` DESC
+        columns:
+          - { name: "ISO3", label: "ISO3" }
+          - { name: "Country", label: "Country" }
+          - { name: "Region", label: "Region" }
+          - { name: "Debt % GDP", label: "Debt % GDP", format: number }
+          - { name: "Debt year", label: "Debt year" }
+          - { name: "Dep ratio 2050", label: "Dep. ratio 2050", format: number }
+          - { name: "Spending % GDP", label: "Spending % GDP", format: number }
+
+  - widgets:
+      - name: Chart 5 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** **[IMF World Economic Outlook](https://www.imf.org/external/datamapper/api/v1/GGXWDG_NGDP)**
+          — indicator `GGXWDG_NGDP` (general-government gross debt as % of GDP),
+          via the IMF DataMapper API. Latest reported year per country.
+          Dependency ratios from **[UN WPP 2024](https://population.un.org/wpp/)**
+          medium variant. Pension spending from
+          **[OECD Pensions at a Glance](https://data-explorer.oecd.org/)**
+          (measure `PEP`), reference year 2021.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Gross (not net) debt — some countries (Japan, Norway)
+          hold large offsetting sovereign assets that this measure does not net
+          out. Bubble size for countries without a published spending value uses
+          a 3%-of-GDP placeholder so the marker stays visible.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Chart 6 — Mercer sustainability vs measured old-age poverty
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Chart 6 header
+        type: text
+        col: 12
+        content: |
+          ## Chart 6 — Mercer sustainability sub-index (2025) vs. measured old-age poverty rate
+
+          **Description.** The Mercer sustainability sub-index rates *system
+          design* — coverage, pre-funding, contribution levels, demographics.
+          The OECD Income Distribution Database poverty rate measures the
+          *outcome* — the share of persons aged 65+ living below 50% of national
+          median equivalised disposable income. Plotting one against the other
+          shows where design-quality scores decouple from measured old-age
+          poverty. A sustainable system that still produces widespread old-age
+          poverty suggests sustainability is being achieved through inadequacy
+          rather than robustness.
+
+  - widgets:
+      - name: Mercer sustainability (x) vs. share of 65+ below 50% median income (y), by region
+        type: chart
+        chart: scatter
+        col: 12
+        x: mercer_sustainability
+        y: [europe, americas, asia_pacific]
+        sql: |
+          SELECT
+            iso3_code,
+            country_name,
+            ROUND(mercer_sustainability, 1) AS mercer_sustainability,
+            ROUND(CASE WHEN region = 'Europe'       THEN old_age_poverty_rate_latest END, 1) AS europe,
+            ROUND(CASE WHEN region = 'Americas'     THEN old_age_poverty_rate_latest END, 1) AS americas,
+            ROUND(CASE WHEN region = 'Asia-Pacific' THEN old_age_poverty_rate_latest END, 1) AS asia_pacific
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE mercer_sustainability IS NOT NULL
+            AND old_age_poverty_rate_latest IS NOT NULL
+          ORDER BY country_name
+
+  - widgets:
+      - name: Score vs. outcome leaderboard — highest measured 65+ poverty rates
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            iso3_code AS `ISO3`,
+            country_name AS `Country`,
+            region AS `Region`,
+            ROUND(mercer_sustainability, 1) AS `Mercer sustainability`,
+            ROUND(mercer_overall, 1) AS `Mercer overall`,
+            ROUND(old_age_poverty_rate_latest, 1) AS `65+ poverty %`,
+            old_age_poverty_rate_year AS `Poverty year`,
+            ROUND(net_replacement_rate_latest, 1) AS `Net replacement %`
+          FROM `bruin-playground-arsalan.staging.pc_country_pension_profile`
+          WHERE mercer_sustainability IS NOT NULL
+            AND old_age_poverty_rate_latest IS NOT NULL
+          ORDER BY `65+ poverty %` DESC
+        columns:
+          - { name: "ISO3", label: "ISO3" }
+          - { name: "Country", label: "Country" }
+          - { name: "Region", label: "Region" }
+          - { name: "Mercer sustainability", label: "Mercer sustainability", format: number }
+          - { name: "Mercer overall", label: "Mercer overall", format: number }
+          - { name: "65+ poverty %", label: "65+ poverty %", format: number }
+          - { name: "Poverty year", label: "Poverty year" }
+          - { name: "Net replacement %", label: "Net replacement %", format: number }
+
+  - widgets:
+      - name: Chart 6 footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** **[Mercer CFA Institute Global Pension Index 2025](https://www.mercer.com/insights/investments/market-outlook-and-ideas/mercer-cfa-institute-global-pension-index/)**
+          (October 2025), sustainability sub-index (0–100). Old-age poverty rate
+          from **[OECD Income Distribution Database](https://data-explorer.oecd.org/)**
+          (dataflow `DSD_WISE_IDD@DF_IDD`, measure `PR_INC_DISP`, age `Y_GT65`,
+          methodology `METH2012`, definition `D_CUR`, poverty line `PL_50` —
+          50% of national median equivalised disposable income).
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** The OECD relative poverty line is anchored to
+          national median income, so poverty rates across countries are not
+          purely absolute. Mercer's sustainability methodology is proprietary
+          and weights system-design factors that are not outcome measures; the
+          two series are conceptually distinct rather than redundant. Most
+          country-year poverty values are 2020–2023 while Mercer scores are
+          2025.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Methodology
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          ## Methodology, data vintages, and limitations
+
+          **Scope.** All charts cover the 38 OECD member countries only.
+
+          **Reference-year pinning.** To avoid silent cross-country drift when
+          one country reports through 2024 and another only through 2019, each
+          pension indicator is pinned to a single reference year:
+          retirement age = **2024**, net replacement rate = **2024**, public
+          pension spending = **2021**, pension fund assets = **2023**;
+          demographic indicators are **2024** observed and **2050** projected.
+
+          **Pipeline.** **Bruin cli** orchestrates raw ingestion (`raw.pc_*`),
+          staging and per-country mart tables
+          (`staging.pc_country_pension_profile`, `staging.pc_demographics_annual`)
+          on **BigQuery**. **Bruin dac** renders the dashboard from those
+          tables.
+
+          **General limitations.** UN WPP medium-variant projections are a
+          single scenario; OECD indicators reflect statutory parameters, not
+          actual effective behaviour; public pension spending excludes private
+          and occupational pension payouts; Mercer GPI covers 52 countries
+          globally, so 10 OECD members (Czechia, Estonia, Greece, Hungary,
+          Latvia, Lithuania, Luxembourg, Slovakia, Slovenia, Costa Rica) are
+          absent from the 2025 release; correlations shown above are
+          point-in-time and do not imply causation.

@@ -72,7 +72,7 @@ columns:
     description: Concentration normalised to ng/L (NULL for non-water matrices or unparseable units).
   - name: nuts_id
     type: VARCHAR
-    description: NUTS3 region assigned by nearest-centroid join. May be NULL if the nearest centroid is > 200 km (offshore / extra-EU coords).
+    description: NUTS3 region assigned by the nearest GISCO label point within the site's country (country_code-scoped nearest-centroid join). Always populated for EU-27 sites; sites whose country is outside the EU-27 country_map are dropped upstream.
   - name: distance_to_centroid_km
     type: DOUBLE
     description: Haversine distance from site to assigned NUTS3 centroid (km).

@@ -49,7 +49,7 @@ columns:
     description: Standard deviation of weekly deaths across 2015-2019 baseline years.
   - name: baseline_n_years
     type: INTEGER
-    description: Number of years contributing to the baseline (1-5).
+    description: Number of years contributing to the baseline (3-5). Buckets with fewer than 3 reference years are dropped (HAVING clause) to keep the climatological mean statistically meaningful.
 
 @bruin */
 

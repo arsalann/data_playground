@@ -79,6 +79,11 @@ OVERPASS_MIRRORS = [
     "https://overpass.osm.ch/api/interpreter",
 ]
 
+REQUEST_HEADERS = {
+    "User-Agent": "bruin-eu-pfas-pipeline/1.0 (contact: arsalan.noorafkan@getbruin.com)",
+    "Accept": "application/json",
+}
+
 EU27_ISO2 = [
     "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
     "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
@@ -102,7 +107,8 @@ def fetch_country(iso2: str, retries_per_mirror: int = 2) -> dict | None:
     for mirror in OVERPASS_MIRRORS:
         for attempt in range(retries_per_mirror):
             try:
-                r = requests.post(mirror, data={"data": query}, timeout=240)
+                r = requests.post(mirror, data={"data": query},
+                                  headers=REQUEST_HEADERS, timeout=240)
                 if r.status_code == 200:
                     return r.json()
                 if r.status_code in (429, 502, 503, 504):

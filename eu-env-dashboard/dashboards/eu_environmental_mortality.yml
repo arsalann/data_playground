@@ -20,8 +20,10 @@ rows:
           **An EU-27 NUTS3-resolution atlas of PFAS ("forever chemical") drinking-water
           contamination and all-cause excess weekly mortality, 2015-2025. Combining
           822,919 PFAS site records from the Forever Pollution Project / PFAS Data Hub,
-          weekly mortality reporting from Eurostat for 1,165 NUTS3 regions, and
-          population and urbanisation dimensions from the Eurostat regional database.**
+          weekly Eurostat mortality reporting (DEMO_R_MWK3_T covers 722 of the 1,165
+          EU-27 NUTS3 regions; Germany, Croatia, Slovenia, Ireland and Malta publish
+          weekly deaths only at national or NUTS1 level), and population and
+          urbanisation dimensions from the Eurostat regional database.**
 
           ### What the dashboard answers
 
@@ -82,7 +84,7 @@ rows:
 
           **Tools:** **Bruin cli** (pipeline orchestration), **BigQuery** (warehouse), **Bruin dac** (visualization).
 
-          **Limitations:** PFAS reporting density varies sharply across member states - France, Belgium and Italy publish far more measurements than CEE countries, so a low exceedance count for a country may reflect monitoring gaps, not safety. The 500 ng/L threshold is the regulatory cap on the sum of 20 specified PFAS compounds; the underlying data aggregates across compound mixes that differ between sites. Excess-mortality baselines use 2015-2019 (pre-COVID) climatology; positive excess in 2020-2021 conflates COVID-19 with other drivers. **Heat-attribution at the NUTS3 level requires the Open-Meteo ERA5 reanalysis temperature panel, which is partially ingested in the current build (3 NUTS3 of 1,165) due to upstream hourly rate limits; the heat_attributable_excess column is therefore zero for most regions in this build.** Excess-mortality numbers presented are all-cause.
+          **Limitations:** PFAS reporting density varies sharply across member states - France, Belgium and Italy publish far more measurements than CEE countries, so a low exceedance count for a country may reflect monitoring gaps, not safety. The 500 ng/L threshold is the regulatory cap on the sum of 20 specified PFAS compounds; the underlying data aggregates across compound mixes that differ between sites. Excess-mortality baselines use 2015-2019 (pre-COVID) climatology; positive excess in 2020-2021 conflates COVID-19 with other drivers. **Eurostat DEMO_R_MWK3_T (weekly NUTS3 deaths) covers 722 of 1,165 EU-27 NUTS3 regions; Germany (all 400 Kreise), Croatia (21), Slovenia (12), Ireland (8) and Malta (2) publish weekly mortality at national or NUTS1 level only, so they do not appear in any NUTS3-level or country-level mortality chart below.** **Heat-attribution at the NUTS3 level requires the Open-Meteo ERA5 reanalysis temperature panel, which is partially ingested in the current build (3 NUTS3 of 1,165) due to upstream hourly rate limits; the heat_attributable_excess column is therefore zero for most regions in this build.** Excess-mortality numbers presented are all-cause.
 
   # ===========================================================================
   # SECTION 2: PFAS CONTAMINATION
@@ -100,8 +102,9 @@ rows:
           across Europe. After harmonising to NUTS3 regions and unifying concentration
           units to ng/L (water matrix), the EU-27 panel contains 822,919 site records
           including 20,482 water samples >= 500 ng/L (the EU DWD 2020/2184 threshold).
-          Belgium concentrates 39% of all exceedances despite being 3% of the EU
-          population, driven by the 3M Antwerp / Zwijndrecht plume.**
+          Belgium concentrates 39% of all exceedances despite being 2.6% of the EU-27
+          population, driven by the 3M Antwerp / Zwijndrecht plume; Italy holds 31% of
+          exceedances and France 24%.**
 
   - widgets:
       - name: PFAS exceedances per million inhabitants, by country
@@ -145,11 +148,11 @@ rows:
         description: |
           **NUTS3 regions ranked by number of water-matrix PFAS samples >= 500 ng/L.
           Arr. Antwerpen (BE) tops the list with 3,751 exceedances -- the 3M Zwijndrecht
-          plume. Vicenza and Verona (IT) follow at 2,557 and 2,750 -- the legacy of the
+          plume. Verona and Vicenza (IT) follow at 2,750 and 2,557 -- the legacy of the
           Miteni / Trissino disaster that exposed an estimated 300,000 people to high
           PFAS levels in drinking water. Soest (DE) reflects the Sauerland agricultural
-          PFAS contamination case. Six of the top 10 are Flemish arrondissements
-          downstream of the 3M plume.**
+          PFAS contamination case. Six of the top 10 are Belgian arrondissements (five
+          Flemish plus Brussels-Capital) downstream of the 3M plume.**
 
   - widgets:
       - name: PFAS NUTS3 footnote
@@ -213,13 +216,15 @@ rows:
         content: |
           # Heat mortality -- the EU's deadliest weeks
 
-          **Eurostat publishes weekly all-cause death counts at NUTS3 resolution. Excess
-          weekly mortality is computed against a 2015-2019 climatological baseline
-          (pre-COVID, pre-2022 heatwaves -- the ISGlobal / Ballester 2023 reference
-          window). The signal is striking: the EU-27 recorded an estimated 342,008
-          excess deaths in 2022 alone, with the largest single-country contributions
-          from Germany, Italy and France. 2023, 2024 and 2025 also recorded positive
-          excess in most member states.**
+          **Eurostat publishes weekly all-cause death counts at NUTS3 resolution for 722
+          of the 1,165 EU-27 NUTS3 (Germany, Croatia, Slovenia, Ireland and Malta are
+          national / NUTS1 reporters only). Excess weekly mortality is computed against
+          a 2015-2019 climatological baseline (pre-COVID, pre-2022 heatwaves -- the
+          ISGlobal / Ballester 2023 reference window). For the reporting subset, 2022
+          shows 342,008 excess deaths against the pre-COVID baseline; the largest
+          absolute country contributions come from France (~71,800), Italy (~67,800)
+          and Poland (~46,600). 2023, 2024 and 2025 also recorded positive excess in
+          most member states.**
 
   - widgets:
       - name: EU-27 annual excess deaths, all NUTS3 summed
@@ -260,11 +265,14 @@ rows:
         stacked: true
         description: |
           **Stacked annual excess deaths by country for the heatwave-heavy 2022-2025
-          window. Germany, Italy and France dominate the EU-27 total in absolute terms
-          (they also have the largest populations). Bulgaria and Romania show negative
-          excess in 2024-2025 -- a different signal that may reflect post-pandemic
-          recovery, baseline drift, or demographic effects (population is shrinking),
-          not lower environmental mortality.**
+          window. Of the EU-22 member states that report weekly mortality at NUTS3
+          level, France, Italy and Poland dominate the total in absolute terms (they
+          have the largest reporting populations). Germany, Croatia, Slovenia, Ireland
+          and Malta do not appear because Eurostat DEMO_R_MWK3_T does not cover their
+          NUTS3 regions. Bulgaria and Romania show negative excess in 2024-2025 -- a
+          different signal that may reflect post-pandemic recovery, baseline drift, or
+          demographic effects (population is shrinking), not lower environmental
+          mortality.**
 
   - widgets:
       - name: Country annual footnote
@@ -287,10 +295,13 @@ rows:
         x: region
         y: [excess_deaths]
         description: |
-          **NUTS3 regions ranked by 11-year cumulative excess deaths. Densely populated
-          urban NUTS3 (Madrid, Paris, Berlin, Hamburg, Bucuresti, Roma, Athens) dominate
-          in absolute terms because they have the largest baselines. Per-capita ranking
-          will surface different regions and is shown in the DEGURBA decomposition below.**
+          **NUTS3 regions ranked by 11-year cumulative excess deaths (2015-2025). Densely
+          populated urban NUTS3 (Madrid, Barcelona, Milano, Napoli, Torino, Área
+          Metropolitana do Porto, Roma) dominate in absolute terms because they have
+          the largest baselines. Berlin, Hamburg and other German NUTS3 do not appear
+          because Eurostat publishes weekly mortality for Germany at NUTS0 only. Per-
+          capita ranking will surface different regions and is shown in the DEGURBA
+          decomposition below.**
 
   - widgets:
       - name: Heat by DEGURBA
@@ -360,8 +371,8 @@ rows:
           standard deviation taken across the entire EU-27 panel). Arr. Antwerpen sits
           15 standard deviations above the EU mean -- a singularly extreme contamination
           context driven by the 3M Zwijndrecht plume. Vicenza and Verona (Veneto / Miteni
-          disaster) follow at 12-13 sigma. Six of the top 10 are Flemish arrondissements
-          downstream of the 3M plume.**
+          disaster) follow at 12-13 sigma. Seven of the top 10 are Flemish arrondissements
+          downstream of the 3M plume; the other three are Vicenza, Verona, and Soest (DE).**
 
   - widgets:
       - name: Top burden table

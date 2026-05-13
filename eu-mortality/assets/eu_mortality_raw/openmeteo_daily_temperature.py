@@ -18,10 +18,12 @@ description: |
     - temperature_2m_mean
     - temperature_2m_min
 
-  Rate-limit posture: 3 concurrent threads, each with a 0.5 s minimum spacing
-  between requests, well within Open-Meteo's free-tier limits (10,000 calls/day,
-  ~10 req/s burst). Failed NUTS3 are reported but not retried beyond the per-
-  request backoff -- the staging layer tolerates missing rows.
+  Rate-limit posture: single worker with 6 s minimum spacing between requests
+  (~0.17 req/s) and 6-retry exponential backoff. A faster posture was tried
+  (3 workers / 0.6 s spacing) and was throttled by Open-Meteo's archive endpoint
+  within seconds; the current settings trade ~2-3 hours of runtime for a high
+  per-NUTS3 success rate. Failed NUTS3 are reported but not retried beyond the
+  per-request backoff -- the staging layer tolerates missing rows.
 connection: bruin-playground-arsalan
 
 materialization:
@@ -92,10 +94,10 @@ logger = logging.getLogger(__name__)
 API_URL = "https://archive-api.open-meteo.com/v1/archive"
 DAILY_VARS = ["temperature_2m_max", "temperature_2m_mean", "temperature_2m_min"]
 NUTS_TABLE = "bruin-playground-arsalan.eu_mortality_raw.nuts3_reference"
-MAX_WORKERS = 3
-PER_REQUEST_SPACING_SEC = 0.6
-PER_REQUEST_TIMEOUT_SEC = 120
-MAX_RETRIES = 4
+MAX_WORKERS = 1
+PER_REQUEST_SPACING_SEC = 6.0
+PER_REQUEST_TIMEOUT_SEC = 180
+MAX_RETRIES = 6
 
 _pace_lock = threading.Lock()
 _last_request_t = [0.0]

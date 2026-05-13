@@ -2,7 +2,9 @@
 
 Utilize Bruin MCP and use Bruin CLI to run assets and query the tables. Reference Bruin docs.
 
-This repository contains data pipelines built with **Bruin**, warehoused in **BigQuery**, with **Streamlit** dashboards visualized using **Altair**. Raw data ingestion is done in **Python**.
+This repository contains data pipelines built with **Bruin**, warehoused in **BigQuery**, with dashboards built using **Bruin DAC** (Dashboard-as-Code). Raw data ingestion is done in **Python**.
+
+**Dashboard rule:** All new dashboards in this repo MUST be built with Bruin DAC. Streamlit is the legacy pattern — do not start new Streamlit dashboards. When modifying an existing Streamlit dashboard, consider migrating it to DAC if the change is non-trivial. See `DAC.md` for the working reference on DAC conventions, quirks, and our local fork features.
 
 ## Repository Structure
 
@@ -17,16 +19,21 @@ data_playground/
 ├── <pipeline-name>/        # Each pipeline is a top-level directory
 │   ├── pipeline.yml        # Pipeline config (schedule, connections)
 │   ├── README.md           # Pipeline-specific docs (data sources, assets, run commands)
-│   └── assets/
-│       ├── raw/            # Ingestion layer (Python or SQL)
-│       ├── staging/        # Transformation layer (SQL)
-│       └── reports/        # Dashboards & analytical queries
+│   ├── assets/
+│   │   ├── raw/            # Ingestion layer (Python or SQL)
+│   │   ├── staging/        # Transformation layer (SQL)
+│   │   └── report/         # Analytical/aggregation SQL consumed by DAC
+│   └── dashboard-dac/      # Bruin DAC dashboard project
+│       ├── dashboards/
+│       │   ├── <name>.yml
+│       │   └── queries/    # SQL files referenced by dashboard widgets
+│       └── semantic/       # Optional semantic models
 └── ...
 ```
 
 ## Pipeline Structure
 
-Every pipeline follows the same three-layer pattern. Use `berlin-weather/` as the reference implementation, `stackoverflow-trends/` for advanced patterns (multiple data sources, API ingestion, append + dedup), and `baby-bust/` for a complete example with comprehensive data validation, `bruin ai enhance`, and a 4-chart Streamlit dashboard.
+Every pipeline follows the same three-layer pattern plus a DAC dashboard. Use `polymarket-weather/` as the reference implementation for DAC dashboards (`polymarket-weather/dashboard-dac/`). Use `berlin-weather/` for the simplest end-to-end pipeline shape, `stackoverflow-trends/` for advanced ingestion patterns (multiple data sources, API ingestion, append + dedup), and `baby-bust/` for comprehensive data validation and `bruin ai enhance`.
 
 ### 1. `pipeline.yml`
 
@@ -243,84 +250,122 @@ When the same entity comes from multiple sources (e.g. BigQuery public data + AP
 - **Window functions**: Moving averages (`AVG ... ROWS BETWEEN N PRECEDING`), rolling highs/lows, daily returns, period-over-period growth.
 - **Ratio derivation**: Margins, ROE, debt-to-equity, share percentages — compute in staging, not in reports.
 
-### 5. `assets/reports/` — Reports Layer (Streamlit + Altair)
+### 5. `dashboard-dac/` — Reports Layer (Bruin DAC)
 
-This layer contains Streamlit dashboards and their supporting SQL queries.
+**All dashboards in this repo are built with Bruin DAC.** DAC is "Dashboard-as-Code" — you write a YAML (or `.dashboard.tsx`) file plus `.sql` files, and DAC validates them and serves a React/Recharts frontend. Queries run through `bruin query` against whatever Bruin connection you specify (BigQuery for us).
 
-**Files**:
-- `streamlit_app.py` — the main dashboard application.
-- `<analysis_name>.sql` — standalone analytical queries loaded at runtime by the Streamlit app. These are plain SQL files (no Bruin header) that query the BigQuery staging tables directly using fully-qualified table names (`project.schema.table`).
-- `requirements.txt` — dependencies for the dashboard.
+See `DAC.md` at the repo root for the living working reference: install steps, CLI cheat sheet, quirks, fork-only features (`yLabel`, `yRight`, `yRightLabel`, `seriesNames`, `hideName`), and conventions. Read `DAC.md` *first* before re-fetching upstream docs — it captures every wall we've already hit.
 
-**Dependencies** (`assets/reports/requirements.txt`):
+**The `create-dashboard` skill** (located at `.claude/skills/create-dashboard/`) is the authoritative guide for DAC YAML/TSX syntax: project layout, widget types, filters, semantic models, and SQL conventions. Invoke it (or read its `SKILL.md`) whenever you build or modify a dashboard.
+
+#### Project layout
+
+Each pipeline gets its own DAC project at `<pipeline>/dashboard-dac/`:
 
 ```
-streamlit
-google-cloud-bigquery
-db-dtypes
-altair
-pandas
+<pipeline>/dashboard-dac/
+├── dashboards/
+│   ├── <dashboard-name>.yml        # one file per dashboard
+│   └── queries/
+│       ├── <widget_name>.sql       # SQL referenced by `file:` widgets
+│       └── ...
+└── semantic/                       # optional, only if using semantic models
 ```
 
-**Streamlit App Conventions**:
+DAC discovers `.bruin.yml` by walking *up* the directory tree from `--dir`, so the repo-root `.bruin.yml` is picked up automatically. Do not duplicate it per project.
 
-```python
-from pathlib import Path
+Reference implementation: `polymarket-weather/dashboard-dac/`.
 
-import altair as alt
-import pandas as pd
-import streamlit as st
-from google.cloud import bigquery
-from google.oauth2 import service_account
+#### Required CLI workflow
 
-st.set_page_config(page_title="<Dashboard Title>", layout="wide")
+```bash
+# Validate schema and references (run after every edit to YAML)
+dac validate --dir <pipeline>/dashboard-dac
 
-PROJECT_ID = "bruin-playground-arsalan"
-base_path = Path(__file__).parent
+# Validate + execute every query end-to-end (run before declaring a dashboard done)
+dac check --dir <pipeline>/dashboard-dac
 
+# Live-reload dev server with SSE
+dac serve --dir <pipeline>/dashboard-dac --port 8321
+# → open http://localhost:8321
 
-@st.cache_resource
-def get_client():
-    credentials = service_account.Credentials.from_service_account_info(
-        dict(st.secrets["gcp_service_account"]),
-        scopes=["https://www.googleapis.com/auth/bigquery"],
-    )
-    return bigquery.Client(project=PROJECT_ID, credentials=credentials)
+# Debug a single widget's query
+dac query --dir <pipeline>/dashboard-dac --dashboard "<Dashboard Name>" --widget "<Widget Name>"
 
-
-def run_raw(sql: str) -> pd.DataFrame:
-    return get_client().query(sql).to_dataframe()
-
-
-def run_query(filename: str) -> pd.DataFrame:
-    sql = (base_path / filename).read_text()
-    return get_client().query(sql).to_dataframe()
+# List discovered dashboards
+dac ls --dir <pipeline>/dashboard-dac
 ```
 
-- Use `st.secrets["gcp_service_account"]` for credentials (stored in `.streamlit/secrets.toml`, gitignored).
-- Load main data with `run_raw()` for inline SQL, `run_query()` for SQL files in the same directory.
-- Use `@st.cache_resource` for the BigQuery client.
+When starting `dac serve`, always tell the user the localhost URL. Default port we use in this repo is `8321`. `--debug` enables verbose logs; `--environment NAME` switches `.bruin.yml` environments.
 
-**Data Visualization Standards (Altair + Streamlit)**:
+#### Dashboard YAML — minimum viable example
+
+```yaml
+name: My Dashboard                           # required
+description: One-sentence intent.
+connection: bruin-playground-arsalan         # matches .bruin.yml
+theme: ibm-cb-dark                           # see DAC.md for themes
+refresh: { interval: "5m" }                  # optional
+
+filters:                                     # optional
+  - name: date_range
+    type: date-range
+    default: last_30_days
+
+rows:                                        # 12-column grid; sum of `col` per row ≤ 12
+  - widgets:
+      - name: Revenue                        # required, minLength: 1
+        type: metric
+        sql: |
+          SELECT SUM(amount) AS value
+          FROM `project.staging.sales`
+        column: value
+        prefix: "$"
+        format: number
+        col: 3
+```
+
+Widget query sources (mutually exclusive): `query:` (named in top-level `queries:`), `sql:` (inline), `file:` (relative path to a `.sql` file), `metric:` (semantic), or direct semantic fields (`dimension`, `metrics`, ...).
+
+Widget types: `metric, chart, table, text, divider, image`.
+
+Chart types: `line, bar, area, pie, scatter, bubble, combo, histogram, boxplot, funnel, sankey, heatmap, calendar, sparkline, waterfall, xmr, dumbbell`.
+
+#### Hard-won quirks (read these before debugging)
+
+The full list lives in `DAC.md` under "Hard-won quirks". The high-impact ones:
+
+- **Legends only render on some chart types.** `line`, `bar` (unstacked), `area`, scatter, bubble, heatmap render **no legend**. `pie`, `funnel`, `combo`, `calendar` do. To get a legend on a multi-series chart, either use `chart: combo` or rely on the local fork's `line` legend (see below).
+- **No native dual y-axis.** Upstream DAC instantiates one `<YAxis />` per chart. For `chart: line` we maintain a local fork at `.context/dac-fork/` that adds `yLabel`, `yRight`, `yRightLabel`, `seriesNames`, and `hideName` — see `DAC.md` § 10. For non-line charts, scale one series in SQL onto the other's range and explain it in the footnote text widget.
+- **Column names must be plain identifiers.** `bruin query` rejects spaces, parens, dashes, accents. Use `snake_case` in SQL output, then map to display names via `seriesNames:` on the widget (line-chart fork only).
+- **ISO-timestamp x-axes get auto-stripped to `Apr 6`-style labels.** To preserve hour-of-day, emit a non-ISO STRING in SQL: `FORMAT_TIMESTAMP('%H:%M', ts_local_paris) AS time_label`.
+- **Themes are color-only.** Font sizes, paddings, widget-title strip ("name" rendered above the chart) are hardcoded in Tailwind. The fork's `hideName: true` suppresses the title strip; otherwise it's always there.
+- **Text widget Markdown is plain `react-markdown`.** No raw HTML, no GFM. Maximum heading size from YAML is `# h1` (~19.5px).
+
+#### Data Visualization Standards
 
 These rules are **mandatory** for every chart in every dashboard. They encode best practices from Tufte, Cleveland, Few, Munzner, and the ethical data visualization principles from the Data Visualization Society. Violations should be treated like bugs.
 
 #### Per-Chart Structure (mandatory)
 
-Every chart in every dashboard MUST be wrapped in the same five-part structure, in this exact order. A chart that skips any part is incomplete.
+Every chart in every dashboard MUST be wrapped in the same three-row DAC structure, in this exact order. A chart that skips any part is incomplete. The pattern is: **header text widget → chart widget → footnote text widget**, each on its own row at `col: 12`. Use `hideName: true` on the chart widget so the WidgetFrame name strip doesn't compete with the header text.
 
-1. **Insight title** (`st.subheader`). The title states the *finding*, not the data. Bad: "Wage by Task". Good: "AI autonomy weakly correlates with US wage (r = +0.21, n = 580 tasks)". If you cannot fit the finding, drop the chart number into the title (`1 · …`) and keep the title actionable. Numbers in the title are encouraged.
-2. **Description** (`st.caption` immediately under the subheader). Plain English in 1–3 sentences: what the reader is looking at, what each visual encoding means, and what the sample size is. Define every encoding the reader needs to interpret (axes, color, size, shape).
-3. **Chart** (`st.altair_chart(..., use_container_width=True)` or `st.pydeck_chart`). Tall enough to be readable (`height` ≥ 480 for scatter/dense; ≥ 640 for stacked-bar / dumbbell with > 15 categories). Every encoding has a visible legend or direct on-chart label. Tooltips show every encoded field plus context fields with format strings. Axis titles include units. Reference lines are labeled.
-4. **Quantified insight blockquote** (`st.markdown("> ...")`). State the magnitude in numbers — correlation coefficient, slope, ratio, top-N. Tie it back to the hypothesis the chart was meant to test ("supports", "rejects", "no signal"). Never just describe the picture in words; the picture already does that.
-5. **Footnote** (`st.caption(..., unsafe_allow_html=True)`). Three components, comma-separated or on three lines:
-   - **Source(s)** — every dataset used by *this* chart, with the publisher and license (e.g. "Anthropic Economic Index, CC BY 4.0").
-   - **Tools** — pipeline stack (e.g. "Bruin · BigQuery · Altair").
-   - **Limitations / caveats** — sample-size warnings, geographic scope (e.g. "BLS wages are US-only"), time-window caveats, model-version notes.
+1. **Header text widget** — `type: text`, contains:
+   - **Title** as a Markdown `#` heading that names what the chart *is* (not the finding). Example: `# Hourly temperature, six Paris stations, 2026-04-06`. Be unambiguous about entities, units, and time range.
+   - **Description** in bold paragraph form — 1–3 sentences stating the *insight*: what the reader should take away, with magnitudes (correlation, slope, ratio, top-N). This is where you say "supports", "rejects", "no signal" relative to the hypothesis.
+   - **Encoding key** as a final line listing what each visual channel means (e.g. `**Left axis:** temperature (°C). **Right axis:** Polymarket Yes-price (0–1, dashed).`).
+2. **Chart widget** — `type: chart`, `hideName: true`, `col: 12`. Height bumps are not reachable from YAML (fork heights apply); make charts span the full row when in doubt. Use `seriesNames:` to map snake_case columns to readable legend labels (line-chart fork). For non-line charts where DAC renders no legend, ensure the encoding key in the header text widget covers every series — or switch the chart type to `combo`.
+3. **Footnote text widget** — `type: text`, three bolded sections separated by blank lines:
+   - **Sources:** every dataset used by *this* chart, with publisher and license. Bold the proper-noun source names and link them. Example: `**Sources:** **[Meteostat](https://meteostat.net)**, **[Open-Meteo](https://archive-api.open-meteo.com/v1/archive)**.`
+   - **Tools:** `**Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).` — use "Bruin cli" for the pipeline (ingestion/staging/report) and "Bruin dac" for the visualization layer (capital `B`).
+   - **Limitations:** sample-size warnings, geographic scope, time-window caveats, data-source quirks, methodology notes. Be specific. The footnote is per-chart, not per-dashboard, because each chart's caveats differ.
 
-Define the source/tools/limits strings once at the top of the file as constants and reuse them. The footnote is per-chart, not just per-dashboard, because each chart's caveats differ.
+Title vs. description vs. footnote roles:
+- **Title** = what the chart shows (entities, metric, units, time range).
+- **Description** = the insight (finding with magnitude).
+- **Footnote** = sources, tools, limitations.
 
-End the dashboard with a top-level **Methodology** section (`st.subheader("Methodology")`) that consolidates joins, normalizations, definitions, and threshold choices.
+End every dashboard with a **Methodology** section (a final `type: text` widget) that consolidates joins, normalizations, definitions, and threshold choices that apply across charts.
 
 #### Before You Build Any Chart
 
@@ -329,61 +374,53 @@ End the dashboard with a top-level **Methodology** section (`st.subheader("Metho
 - **Follow the narrative arc.** Every dashboard tells a story structured as: (1) hypothesis/question, (2) evidence that the phenomenon exists, (3) evidence that it is systematic or repeatable, (4) quantification of the magnitude, (5) implications and limitations. If a chart doesn't advance this arc, cut it.
 - **Fewer charts, more narrative.** 2–4 well-chosen charts with clear explanatory text beats 8 charts that overwhelm the viewer. Every chart must earn its place by answering a specific question. If you can say it in a sentence, don't make a chart.
 - **Enrich aggressively.** Before building the dashboard, check what other datasets exist in BigQuery that could be joined. Cross-domain correlations (pricing + stock prices, quality rankings + prediction markets) are what make analysis interesting.
-- **Be honest about sample sizes.** If a data point is based on 3 observations, say so. Annotate sample sizes directly on charts. Small-n medians are noise, not signal.
-- **Explain the data.** Every dashboard must include: where the data comes from (with links), how it was collected and transformed, what the key metrics mean (with units), and what the limitations are. Put this in a dedicated methodology section, not hidden in tooltips. State explicitly what the data cannot tell you.
+- **Be honest about sample sizes.** If a data point is based on 3 observations, say so. Surface sample sizes in the chart's header text widget. Small-n medians are noise, not signal.
+- **Explain the data.** Every dashboard must include: where the data comes from (with links), how it was collected and transformed, what the key metrics mean (with units), and what the limitations are. Use the per-chart footnote text widget for source/tools/limitations, and a final Methodology text widget for cross-chart context. State explicitly what the data cannot tell you.
 - **Don't make claims the data doesn't support.** If only 18 of 348 models have quality rankings, don't title a chart "Every Arena-Ranked Model" — say "The 18 models we can actually rank." If early time periods have tiny samples, caveat the trend explicitly.
-- **Tables can be better than charts.** A 10-row dataset does not need a chart. Use `st.dataframe()` and let the reader scan the numbers. Charts are for patterns in data too large to read as a table.
-- **Interactive legends.** Use `alt.selection_point(fields=[...], bind="legend")` so viewers can click legend entries to isolate series. This replaces overcrowded charts with focused exploration.
-- **Quantify inline.** After every chart, include a `st.markdown("> ...")` blockquote that states the specific finding with numbers (e.g. "r = 0.23", "18x price difference for 5% quality gap"). The chart shows the pattern; the text states the magnitude.
+- **Tables can be better than charts.** A 10-row dataset does not need a chart. Use `type: table` (with `columns:` to control display) and let the reader scan the numbers. Charts are for patterns in data too large to read as a table.
+- **Quantify the insight.** The chart's header description must state the specific finding with numbers (e.g. "r = 0.23, n = 580", "18x price difference for 5% quality gap"). The chart shows the pattern; the text states the magnitude.
 
 #### Color and Accessibility
 
-- **Colorblind-safe palette only.** Use the Wong (2011) palette from *Nature Methods*: `#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey. These 8 colors are the **maximum** for categorical encoding. If you need more categories, aggregate or facet — do not invent new colors.
-- **Never rely on color alone.** Every color-encoded dimension must also be conveyed through a second channel: shape (`alt.Shape`), stroke dash pattern (`strokeDash`), direct text labels, or spatial position (faceting). A viewer who cannot distinguish any two colors in the palette must still be able to read the chart.
-- **Highlight vs default.** For binary emphasis (e.g. "this item" vs "everything else"), use `HIGHLIGHT = "#D55E00"` and `DEFAULT = "#56B4E9"` with `alt.condition`. Never use red/green for binary states — use vermillion/sky-blue or vermillion/grey.
-- **Sequential and diverging scales.** For continuous color scales use `blues` or `viridis` (sequential) and `blueorange` (diverging). Never use `redgreen`, `redblue`, or `rainbow`/`jet` — all are colorblind-hostile or perceptually non-uniform.
-- **Overlaid series must have a legend.** If two series share the same positional axes and are distinguished only by color, a legend is required on the chart — not just in a `st.caption()`. Captions supplement; they do not replace legends.
+- **Colorblind-safe palette only.** Use the Wong (2011) palette from *Nature Methods*: `#D55E00` vermillion, `#56B4E9` sky blue, `#E69F00` orange, `#009E73` bluish green, `#CC79A7` reddish purple, `#0072B2` blue, `#F0E442` yellow, `#999999` grey. These 8 colors are the **maximum** for categorical encoding. If you need more categories, aggregate or facet — do not invent new colors. The DAC `ibm-cb-dark` theme provides a colorblind-safe `chart-1..chart-8` palette via CSS custom properties; prefer it for any new dashboard.
+- **Never rely on color alone.** DAC currently has no per-series shape or stroke-dash channel exposed in the widget schema (except `yRight` lines render dashed via the local fork). So every series must also be **directly labeled in the encoding-key line** of the header text widget, or in the legend label via `seriesNames:`. A viewer who cannot distinguish any two colors must still be able to read the chart from the surrounding text.
+- **No red/green for binary states.** Use vermillion (`#D55E00`) and sky blue (`#56B4E9`) or vermillion and grey instead.
+- **Sequential and diverging scales.** For continuous color scales prefer `blues` or `viridis` (sequential) and `blueorange` (diverging). Never use `redgreen`, `redblue`, or `rainbow`/`jet` — all are colorblind-hostile or perceptually non-uniform.
+- **Legends must accompany multi-series charts.** Where DAC's chart type does not render a native legend (line, area, bar-unstacked, scatter, bubble, heatmap), the encoding-key line in the header text widget IS the legend — make it explicit and exhaustive. For line charts, the local fork adds a bottom legend automatically; rely on `seriesNames:` to give it readable labels.
 
 #### Truthful Representation
 
-- **Y-axis baseline.** Bar charts and area charts must start the quantitative axis at zero. A truncated axis exaggerates differences and misleads the viewer. Use `alt.Scale(zero=True)` (default for bars). If zero-baseline makes the data unreadable (e.g. ELO scores clustered in 1300–1500), switch to a dot plot or line chart — do not truncate a bar chart.
-- **Log scales must be labeled.** If you use `scale=alt.Scale(type="log")`, the axis title must include "(Log Scale)" and the chart title or a caption must explain *why* the log scale is used (e.g. "Log scale used because values span 3+ orders of magnitude"). Never use a log scale to make a trend look more dramatic.
-- **No dual Y-axes.** They are virtually always misleading — the viewer cannot compare magnitudes across two unrelated scales. Use faceted charts (side-by-side or vertically stacked) instead.
-- **No 3D, no pie charts.** 3D adds no information and distorts area/length perception. Pie charts are inferior to bar charts for comparing quantities (Cleveland & McGill 1984). Use horizontal bar charts sorted by value instead.
-- **No gradient fills for quantitative data.** Gradient fills (e.g. fading from color to white) obscure the data boundary, create phantom visual weight, and serve no analytical purpose. Use solid fills with reduced opacity (0.3–0.4 for area charts behind a line) or solid line charts.
-- **Aspect ratio matters.** Time-series should use a wide aspect ratio (~3:1). Use the banking-to-45-degrees heuristic: slopes of ~45 degrees maximize readability.
+- **Y-axis baseline.** Bar charts and area charts must start the quantitative axis at zero. A truncated axis exaggerates differences and misleads the viewer. DAC's `yMin`/`yMax` exist — do not use them to truncate a bar chart. If zero-baseline makes the data unreadable (e.g. ELO scores clustered in 1300–1500), switch to a line/scatter chart with `yMin`/`yMax`, never a truncated bar.
+- **Log scales must be labeled.** When using log scales, the chart's header title or encoding-key line MUST include "(Log Scale)" and the description must explain *why* (e.g. "Log scale used because values span 3+ orders of magnitude"). Never use a log scale to make a trend look more dramatic.
+- **No dual Y-axes by default.** They are virtually always misleading — the viewer cannot compare magnitudes across two unrelated scales. Use vertically stacked widgets for related metrics with different scales. The only sanctioned exception is the local fork's `yRight` on `chart: line` for cases where co-temporal alignment matters more than independent reading (e.g. temperature °C vs Polymarket Yes-price 0–1) — and in that case the description MUST call out the dual axis explicitly.
+- **No pie charts, no 3D.** 3D adds no information and distorts area/length perception. Pie charts are inferior to bar charts for comparing quantities (Cleveland & McGill 1984). Use horizontal bar charts sorted by value instead.
 
 #### Encoding Discipline
 
-- **Every visual encoding must be explained.** If a chart uses size, color, shape, opacity, or stroke as a data channel, each must have either a visible legend or a direct label on the chart. `legend=None` is only acceptable when the channel is redundant with another fully-explained encoding (e.g. color matching x-axis categories that are already labeled).
-- **Limit encodings to 3 channels max per chart.** Position (x, y) + one of {color, size, shape}. Adding a fourth channel (e.g. color + size + shape simultaneously) overloads working memory. If you need more dimensions, use faceting or a table.
-- **Dual-encode color with shape or text.** Whenever a categorical color encoding carries semantic meaning (e.g. `exposure_pattern`, `channel`), also encode it via `alt.Shape` or via direct text labels — colorblind users must still be able to read the chart. The shape legend can be hidden if the color legend already labels the categories.
-- **Tooltips are mandatory.** Every chart must include `alt.Tooltip` entries for all encoded fields plus any context fields the viewer would want on hover. Numeric tooltips must have format strings (e.g. `format=",.0f"` for integers, `format="$.3f"` for prices).
-- **Consistent chart heights.** Standard: `height=380`. Taller (scatter, dense): `height=480`. Bar/dumbbell charts with > 15 categories: `height=620+`. Never vary heights arbitrarily within a dashboard.
-- **Sort bars by value.** Categorical bar charts must be sorted by the quantitative axis (largest to smallest or vice versa) unless there is a natural order (e.g. time, tiers). Alphabetical sort is almost never useful.
+- **Every visual encoding must be explained** in the header text widget's encoding-key line or via a native legend. If a chart uses size, color, or shape as a data channel, name what each channel encodes.
+- **Limit encodings to 3 channels max per chart.** Position (x, y) + one of {color, size}. Adding more channels overloads working memory. If you need more dimensions, use a second widget or a `type: table`.
+- **Tooltips are mandatory** and on by default in DAC. Ensure every encoded field has a sensible column name and a `format:` where numeric formatting is needed. Numeric values in tooltips and metrics should use format strings (`,.0f` for integers, `$.3f` for prices, `,.1%` for percentages).
+- **Sort bars by value.** Categorical bar charts must be sorted by the quantitative axis (largest to smallest or vice versa) unless there is a natural order (e.g. time, tiers). Do the sort in SQL (`ORDER BY` in the widget's query).
+- **Consistent widget sizing.** Within a row, sum of `col:` values should be ≤ 12. Use `col: 12` for full-width hero charts; `col: 6` + `col: 6` for paired comparisons; `col: 3` × 4 for KPI rows. Never put unrelated charts side-by-side.
 
 #### Label Readability
 
-- **Long category labels — render with `mark_text`, not the native axis.** Altair's `axis.labelLimit` truncates without wrapping. For dumbbell, stacked-bar, or any chart whose y-axis carries multi-word task / occupation / city names, hide the axis labels (`axis=alt.Axis(labels=False)`) and add a separate `mark_text` layer that renders the full string left-justified. This avoids both the truncation ellipsis and the unreadable rotated-text fallback.
-- **Set `labelLimit` generously when you do use native axis labels.** `labelLimit=420` is the floor for any task / occupation label; `labelLimit=600` is preferred. Default `labelLimit=180` is unreadable for analytical content.
-- **Font sizes follow a scale, not whim.** Title/subheader 16–18pt, axis title 13pt, axis label 12pt, legend label 14–15pt, tooltip 12pt. Never go below 11pt for any visible text.
 - **Don't pre-truncate string fields.** Pass the full string into the chart and let the rendering layer handle width — pre-slicing the data ("…") strips information from the tooltip and prevents readers from seeing the full text on hover.
+- **Column names are visible.** DAC's legend (where rendered) and tooltips show the SQL column name verbatim unless you provide `seriesNames:` (line-chart fork only). Pick column names that look OK unmangled (`yes_price`, not `yp_x25_raw`).
+- **Axis titles include units.** Use `yLabel:` / `yRightLabel:` (line-chart fork) to set axis titles, or include units in the encoding-key line of the header text widget.
 
 #### Annotation and Context
 
-- **Reference lines must be labeled on the chart.** Use `mark_rule` + `mark_text` layered with `+`. The label text should state *what* the line represents (e.g. "GPT-4 Launch Price") and be positioned to avoid overlapping data points.
-- **Chart titles state the insight, not the data.** Prefer "Median AI prices fell 98% in 3 years" over "Median Price by Quarter". The title tells the reader what to see; the axis labels tell them what is plotted.
-- **Axis titles are required** on both axes unless the meaning is unambiguous from context (e.g. a single-series time chart where the x-axis is clearly dates). Include units in axis titles (e.g. "Price ($/MTok)", not just "Price").
-- **Captions explain methodology.** Use `st.caption()` below the chart to explain filtering choices, what outliers were excluded and why, or caveats about the data. Never use captions as a substitute for a missing legend.
+- **Reference lines.** DAC does not currently expose a generic reference-line API on chart widgets. If you need a reference threshold, emit it as an additional series in SQL (e.g. a constant column) and include it in the chart, then call it out in the description.
+- **Chart titles state what is shown** (entities, metric, units, time range). The *finding* belongs in the description. Per repo memory: **title = what the chart is, description = insight, footnote = sources + tools + limitations.**
+- **Axis titles are required** on both axes unless the meaning is unambiguous from context. For `chart: line`, use the fork's `yLabel:` / `yRightLabel:`. For other chart types, name the units in the encoding-key line of the header text widget.
 
-#### Streamlit Layout
+#### DAC Layout
 
-- Use `st.altair_chart(..., use_container_width=True)` to render all charts.
-- Use `cornerRadiusTopLeft=4, cornerRadiusTopRight=4` on `mark_bar()` for rounded bar tops.
-- Place KPI metrics above the first chart. Use `st.metric()` with explicit delta values when comparing periods.
-- Use `st.columns(2)` for side-by-side comparisons of related charts. Never put unrelated charts side-by-side.
-- Use `st.divider()` between story sections, not between every chart.
-- **Data tables complement charts.** Show the underlying data (top N, summary) below the chart so the viewer can verify what they see. Use `st.dataframe(..., hide_index=True)`.
+- Use a 3-row pattern per chart (header text → chart → footnote text), each at `col: 12`, with `hideName: true` on the chart widget.
+- Place KPI rows above the first chart story. Use `type: metric` widgets at `col: 3` × 4 (or `col: 4` × 3) with `prefix:`, `suffix:`, and `format:` for numeric formatting.
+- Use `type: divider` between major story sections, not between every chart.
+- Data tables complement charts. Show the underlying data (top N, summary) as a `type: table` widget below a complex chart so the viewer can verify what they see.
 
 ## Bruin Asset Metadata Reference
 
@@ -427,6 +464,25 @@ bruin connections ping <name>                                # Test a connection
 - Use `--start-date` / `--end-date` for backfilling specific date ranges without re-ingesting everything.
 - Use `--downstream` when you want to run a raw asset and automatically rebuild its staging dependents.
 
+## DAC CLI Quick Reference
+
+The `dac` binary should already be on `$PATH` at `~/.local/bin/dac` (installed once per machine via the installer in `DAC.md`).
+
+```bash
+dac validate --dir <pipeline>/dashboard-dac              # Schema + reference checks (fast)
+dac check    --dir <pipeline>/dashboard-dac              # Validate + execute every query
+dac query    --dir <pipeline>/dashboard-dac \
+             --dashboard "<Name>" --widget "<Widget>"    # Debug one widget's SQL
+dac serve    --dir <pipeline>/dashboard-dac --port 8321  # Dev server → http://localhost:8321
+dac ls       --dir <pipeline>/dashboard-dac              # List discovered dashboards
+dac connections                                          # Ping every connection
+```
+
+- Always run `dac validate` after editing YAML; run `dac check` before declaring a dashboard done.
+- Use `--debug` for verbose logs, `--environment NAME` to switch environments.
+- When starting `dac serve`, surface the localhost URL to the user (default `http://localhost:8321`).
+- Cache invalidates on file change; query results are cached 5 minutes.
+
 ## Testing & Development Workflow
 
 Follow this order when building or modifying a pipeline:
@@ -436,7 +492,10 @@ Follow this order when building or modifying a pipeline:
 3. **Verify data in BigQuery** after each raw asset — check row counts, date ranges, column types.
 4. **Test staging SQL** once raw tables exist — run individually, then check output row counts and derived metrics.
 5. **Test full pipeline** with a slightly larger window (e.g. 1 week) using `bruin run <pipeline-dir>/`.
-6. **Run Streamlit** locally to verify the dashboard renders: `streamlit run <pipeline>/assets/reports/streamlit_app.py`.
+6. **Build the DAC dashboard**:
+   - `dac validate --dir <pipeline>/dashboard-dac` after every YAML edit.
+   - `dac check --dir <pipeline>/dashboard-dac` once you think the dashboard is complete (runs every widget query end-to-end).
+   - `dac serve --dir <pipeline>/dashboard-dac --port 8321` and verify in browser at `http://localhost:8321`. Hand the user the URL when you start the server — they review rendered output themselves.
 
 For financial or quarterly data: the source API may only return recent quarters regardless of date range. Test with whatever the API actually provides rather than forcing specific dates.
 
@@ -444,18 +503,20 @@ For financial or quarterly data: the source API may only return recent quarters 
 
 1. Create a new top-level directory named after the pipeline.
 2. Add `pipeline.yml` with name, schedule, start_date, and default_connections.
-3. Add a `README.md` documenting data sources, all assets, and run commands.
+3. Add a `README.md` documenting data sources, all assets, and run commands (including the `dac serve` command and localhost URL).
 4. Create `assets/raw/` with Python ingestion scripts and a `requirements.txt`.
 5. Create `assets/staging/` with SQL transformations that `depends` on the raw assets. Always deduplicate.
-6. Create `assets/reports/` with a Streamlit app, supporting SQL files, and `requirements.txt`.
-7. Validate with `bruin validate <pipeline-dir>/`.
-8. Test each raw asset individually with a small subset of data.
-9. Test staging assets once raw data exists.
-10. Test the full pipeline end-to-end.
+6. Create `assets/report/` SQL aggregations consumed by the dashboard (optional — many dashboards can read directly from staging).
+7. Create `dashboard-dac/dashboards/<name>.yml` plus any `dashboard-dac/dashboards/queries/*.sql`. Reference the `create-dashboard` skill (in `.claude/skills/create-dashboard/SKILL.md`) for widget syntax. Reference `DAC.md` for repo-specific conventions and quirks.
+8. Validate with `bruin validate <pipeline-dir>/` and `dac validate --dir <pipeline>/dashboard-dac`.
+9. Test each raw asset individually with a small subset of data.
+10. Test staging assets once raw data exists.
+11. Test the full pipeline end-to-end.
+12. Run `dac check` and then `dac serve` to verify the dashboard renders correctly.
 
 ## Dependency Resolution
 
-Bruin resolves Python dependencies by walking up the file tree from the asset to find the nearest `requirements.txt`. Keep a separate `requirements.txt` per layer (`raw/`, `reports/`) so dependencies stay isolated.
+Bruin resolves Python dependencies by walking up the file tree from the asset to find the nearest `requirements.txt`. Keep a separate `requirements.txt` for the `raw/` layer so dependencies stay isolated. DAC dashboards have no Python dependencies — they run entirely through `dac` + `bruin query`.
 
 ## Secrets Management
 
@@ -465,7 +526,7 @@ Bruin resolves Python dependencies by walking up the file tree from the asset to
 
 The following are excluded via `.gitignore` and must never be committed:
 - `.bruin.yml` — contains connection credentials (API keys, passwords, service account paths)
-- `**/secrets.toml` — Streamlit secrets files in any directory
+- `**/secrets.toml` — legacy Streamlit secrets files (DAC dashboards do not use this — see below)
 - `credentials/` — service account JSON files
 - `*.pem`, `*.key`, `*.p12`, `*.pfx` — private key files
 - `.env`, `.env.*` — environment variable files
@@ -473,23 +534,17 @@ The following are excluded via `.gitignore` and must never be committed:
 ### Rules
 
 - **Never hardcode secrets in Python or SQL.** Use `os.environ["KEY_NAME"]` in Python and Bruin `secrets:` declarations in the asset YAML header.
-- **Never commit `.streamlit/secrets.toml`** — generate it locally from the service account JSON in `credentials/`. See the Streamlit section below.
 - **Never commit `.bruin.yml`** — this file contains all connection credentials. It stays local.
 - **Never create service account JSON files outside `credentials/`** — that directory is gitignored.
 - **If you accidentally commit a secret, the credential must be rotated immediately.** Removing the file from git tracking does not remove it from history. Use `git-filter-repo` to rewrite history and force-push.
 
-### Streamlit secrets setup
+### DAC credentials
 
-Each dashboard that queries BigQuery needs a `.streamlit/secrets.toml` in its reports directory. Create it from the GCP service account JSON:
+DAC dashboards do NOT need their own secrets file. They query through `bruin query`, which uses the connection defined in the repo-root `.bruin.yml`. For BigQuery, that connection uses Application Default Credentials (`gcloud auth application-default login`) — there is nothing to copy or template per dashboard. If `dac connections` shows the `google_cloud_platform` row as healthy, the dashboard can query BigQuery.
 
-```bash
-# From the pipeline's reports directory:
-mkdir -p .streamlit
-# Then manually create secrets.toml with the service account fields
-# DO NOT copy the JSON file directly — use the TOML format shown in AGENTS.md
-```
+### Legacy: Streamlit secrets (existing dashboards only)
 
-The `.streamlit/secrets.toml` file is gitignored globally via `**/secrets.toml`. Verify before committing: `git status` should never show a `secrets.toml` file.
+Pre-DAC pipelines have a `.streamlit/secrets.toml` in their reports directory. That file is gitignored globally via `**/secrets.toml`. Do not create new ones — all new dashboards use DAC. When migrating an existing Streamlit dashboard to DAC, you can delete the `.streamlit/` directory in the same PR.
 
 ## Things to Avoid
 
@@ -507,8 +562,11 @@ The `.streamlit/secrets.toml` file is gitignored globally via `**/secrets.toml`.
 - For flaky APIs (e.g., World Bank), use chunked requests (10-year windows) with high `per_page` values and retry logic with exponential backoff. Single large requests are more likely to timeout.
 - When pivoting long-to-wide in staging (e.g., indicator rows → columns), validate every pivoted column against raw by joining on natural key and checking for zero diff. This catches silent data loss from incorrect indicator codes or join fanout.
 - After running `bruin ai enhance`, always re-run `bruin validate` and `bruin run` on the affected assets to verify the enhanced metadata doesn't break anything. The enhance command adds quality checks (not_null, accepted_values, min/max) that may fail if the data has edge cases. **Never do bulk regex edits on YAML column definitions** — if `bruin ai enhance` corrupts the YAML, rewrite the section manually.
-- For Streamlit secrets: create `.streamlit/secrets.toml` in the reports directory (not root). Generate it from the GCP service account JSON in `credentials/`. This file is gitignored.
-- Use `python3 -m streamlit run` instead of bare `streamlit run` if the streamlit binary isn't on PATH.
+- **Do not start a new Streamlit dashboard.** All new dashboards must be built with Bruin DAC. If a request seems to imply Streamlit (e.g. "add an interactive widget that takes user input and runs Python"), check whether DAC's `filters:` system covers the use case before reaching for Streamlit. Streamlit dashboards already in the repo are legacy — leave them be unless you're migrating.
+- **Do not run Streamlit alongside DAC for the same pipeline.** Pick one. New work → DAC.
+- **Do not invent DAC features that don't exist.** The widget schema is in `DAC.md`; if a property isn't in the "All widget properties" list there or in the fork-only fields, it will be ignored or fail validation. When in doubt, check `DAC.md` first and only then re-fetch upstream.
+- **Do not use SQL column names with spaces, parens, dashes, or accents in DAC widgets.** `bruin query` rejects them. Use `snake_case` in SQL output; map to display labels via `seriesNames:` (line-chart fork) or via the encoding-key line in the header text widget.
+- **Do not push ISO timestamps into a DAC chart x-axis if you want sub-day labels.** The formatter strips the time. Emit a STRING column (e.g. `FORMAT_TIMESTAMP('%H:%M', ts)`) and order rows in SQL.
 
 ## Geospatial Data Rules
 

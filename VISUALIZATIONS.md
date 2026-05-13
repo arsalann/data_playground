@@ -11,9 +11,10 @@ This document covers:
 6. Label readability
 7. Annotation and context
 8. Layout
-9. DAC-specific rules (Bruin DAC quirks and fork-only fields)
-10. Altair-specific rules (legacy dashboards only)
-11. Matplotlib polar-plot rules (raw-asset analysis)
+9. Visual review after build
+10. DAC-specific rules (Bruin DAC quirks and fork-only fields)
+11. Altair-specific rules (legacy dashboards only)
+12. Matplotlib polar-plot rules (raw-asset analysis)
 
 DAC-specific quirks that affect *how* a rule is implemented live in `DAC.md`. This file owns the *what* and *why*.
 
@@ -48,7 +49,7 @@ Contains, in order:
 
 1. **Title** as a Markdown `#` heading that names what the chart *is* (not the finding). Example: `# Hourly temperature, six Paris stations, 2026-04-06`. Be unambiguous about entities, units, and time range.
 2. **Description** in bold paragraph form — 1–3 sentences stating the *insight*: what the reader should take away, with magnitudes (correlation, slope, ratio, top-N). State whether the data "supports", "rejects", or shows "no signal" relative to the hypothesis.
-3. **Encoding key** as a final line listing what each visual channel means. Example: `**Left axis:** temperature (°C). **Right axis:** Polymarket Yes-price (0–1, dashed).` This line IS the legend for chart types that don't render one natively (see § 9.1).
+3. **Encoding key** as a final line listing what each visual channel means. Example: `**Left axis:** temperature (°C). **Right axis:** Polymarket Yes-price (0–1, dashed).` This line IS the legend for chart types that don't render one natively (see § 10.1).
 
 ### 2.2 Chart widget (`type: chart`, `hideName: true`, `col: 12`)
 
@@ -98,7 +99,7 @@ End every dashboard with a final `type: text` Methodology widget that consolidat
 
 - **Sequential and diverging scales.** Sequential: `blues` or `viridis`. Diverging: `blueorange`. Never `redgreen`, `redblue`, `rainbow`, or `jet` — all are colorblind-hostile or perceptually non-uniform.
 
-- **Legends are mandatory on multi-series charts.** Where the chart type does not render a native legend (see § 9.1), the encoding-key line in the header text widget IS the legend — make it explicit and exhaustive. For line charts in DAC, the local fork renders a bottom legend automatically; use `seriesNames:` to give it readable labels.
+- **Legends are mandatory on multi-series charts.** Where the chart type does not render a native legend (see § 10.1), the encoding-key line in the header text widget IS the legend — make it explicit and exhaustive. For line charts in DAC, the local fork renders a bottom legend automatically; use `seriesNames:` to give it readable labels.
 
 ---
 
@@ -149,14 +150,33 @@ End every dashboard with a final `type: text` Methodology widget that consolidat
 - **`type: divider`** between major story sections, not between every chart.
 - **12-column grid.** Sum of `col:` per row ≤ 12. Full-width hero: `col: 12`. Paired comparisons: `col: 6` × 2. KPI rows: `col: 3` × 4. Never put unrelated charts side-by-side.
 - **Data tables complement charts.** Show the underlying data (top-N, summary) as a `type: table` widget below a complex chart so the viewer can verify what they see.
+- **Chart height must fit the data.** Size each chart so that (a) every axis tick label is fully rendered without truncation or overlap, (b) bars/points are not squished into illegible slivers, and (c) adjacent data points are visually distinguishable. Bar charts with many categories need more vertical space; scatter plots with dense clusters need more area to separate points; line charts with multiple series need enough height for legend + plot area without the plot collapsing. If the chart is squished, increase height — do not drop labels or shrink fonts. In DAC, chart height is fork-controlled; if a chart is too cramped, file it as a fork fix rather than papering over it with truncated labels.
 
 ---
 
-## 9. DAC-Specific Rules
+## 9. Visual Review After Build
+
+Code-level validation (`dac validate`, `dac check`, type-checks) confirms the dashboard *runs*. It does not confirm that the dashboard *reads*. Before declaring a dashboard done, open each chart in a browser and verify it is legible.
+
+- **Screenshot every chart in the dashboard** using Playwright (or an equivalent headless-browser tool) and inspect each one. The pipeline is: start the dev server, navigate to the dashboard, capture each chart widget's bounding box, and visually review the output.
+- **Check for, and fix, any of the following:**
+  - Overlapping axis tick labels (rotate, truncate-with-tooltip, or increase chart width/height).
+  - Overlapping data labels or annotations.
+  - Truncated axis titles, legend entries, or footnote text.
+  - Data points sitting on top of each other to the point that they cannot be distinguished (add jitter, switch to a binned/heatmap encoding, or resize).
+  - Legends colliding with the plot area.
+  - Tooltips that show raw column names instead of human-readable labels.
+  - Colors that are indistinguishable when adjacent (see § 3).
+- **Every text element and data point must be readable and distinct.** If two labels overlap, or two points cannot be told apart, the chart fails review and must be fixed before merge.
+- **The visual review is per-chart, not per-dashboard.** A dashboard with eight charts requires eight screenshots reviewed, not one.
+
+---
+
+## 10. DAC-Specific Rules
 
 All new dashboards in this repo are built with Bruin DAC. See `DAC.md` for the full set of CLI commands, install steps, and quirks. The rules below are the ones that affect *visualization correctness*.
 
-### 9.1 Legends only render on some chart types
+### 10.1 Legends only render on some chart types
 
 | Chart type | Native legend? |
 |---|---|
@@ -169,7 +189,7 @@ All new dashboards in this repo are built with Bruin DAC. See `DAC.md` for the f
 
 To get a legend on a multi-series chart that doesn't render one natively, either use `chart: combo` or rely on the local fork's `line` legend, and ALWAYS include an explicit encoding-key line in the header text widget.
 
-### 9.2 Local-fork fields (line charts only)
+### 10.2 Local-fork fields (line charts only)
 
 The repo maintains a DAC fork at `.context/dac-fork/` that adds these widget fields on `chart: line`:
 
@@ -183,27 +203,27 @@ The repo maintains a DAC fork at `.context/dac-fork/` that adds these widget fie
 
 The `line` case unconditionally renders `<Legend iconType="line" verticalAlign="bottom" />`.
 
-### 9.3 SQL → widget plumbing
+### 10.3 SQL → widget plumbing
 
 - **Column names must be plain identifiers.** `bruin query` rejects spaces, parens, dashes, accents. Use `snake_case` in SQL output, then map to display names via `seriesNames:` (line-chart fork only) or via the encoding-key line.
 - **ISO-timestamp x-axes get auto-stripped to date-only labels** (`Apr 6`). To preserve hour-of-day or sub-day labels, emit a non-ISO STRING in SQL: `FORMAT_TIMESTAMP('%H:%M', ts_local_paris) AS time_label`. Order rows in SQL.
 - **Tooltips on by default.** Use `format:` for numeric formatting.
 
-### 9.4 Themes are color-only
+### 10.4 Themes are color-only
 
 Themes change colors only. Font sizes, paddings, and the widget-title strip ("name") are hardcoded Tailwind classes. The fork's `hideName: true` suppresses the title strip; otherwise it's always there. Maximum reachable heading size from a text widget's Markdown is `# h1` (~19.5 px).
 
-### 9.5 Text widget Markdown is plain `react-markdown`
+### 10.5 Text widget Markdown is plain `react-markdown`
 
 No raw HTML, no GFM extensions, no `rehype-raw`.
 
-### 9.6 Do not invent DAC features that don't exist
+### 10.6 Do not invent DAC features that don't exist
 
 The widget schema is in `DAC.md` § "All widget properties". Anything not on that list (or in the fork-only fields above) will be ignored or fail validation.
 
 ---
 
-## 10. Altair-Specific Rules (Legacy Only)
+## 11. Altair-Specific Rules (Legacy Only)
 
 These apply only when modifying pre-DAC Streamlit dashboards. New work uses DAC.
 
@@ -216,7 +236,7 @@ These apply only when modifying pre-DAC Streamlit dashboards. New work uses DAC.
 
 ---
 
-## 11. Matplotlib Polar-Plot Rules (Raw-Asset Analysis)
+## 12. Matplotlib Polar-Plot Rules (Raw-Asset Analysis)
 
 Only relevant for raw-asset notebooks or one-off Python analyses producing polar plots (e.g. street-orientation rose diagrams). Do not use Matplotlib for DAC dashboards.
 

@@ -1,0 +1,636 @@
+name: Wikipedia AI Trends
+description: |
+  How widely do English Wikipedia's Vital Articles (Level 4, ~9,907 articles
+  across 11 top-level subjects) reference AI-topic articles, and how has that
+  changed across semiannual snapshots from December 2019 through May 2026?
+  An "AI reference" is a wikilink in the article body pointing to one of
+  ~47 curated AI-topic articles (or any of their redirect aliases). Source
+  tables in `bruin-playground-arsalan.report.wat_*`, populated by the
+  `wikipedia-ai-trends` Bruin pipeline.
+connection: bruin-playground-arsalan
+
+rows:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Header
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: About
+        type: text
+        col: 12
+        content: |
+          # Wikipedia AI references — trends across subject areas, 2019–2026
+
+          This dashboard tracks how often Wikipedia's Vital Articles (Level 4) —
+          ~9,907 articles editorially curated as the most important topics
+          across all of human knowledge — link to AI-topic articles such as
+          *Artificial intelligence*, *Machine learning*, *Large language model*,
+          *GPT-4*, and *Transformer (deep learning architecture)*. Each tracked
+          article is snapshotted twice a year (May 1 and December 1) from
+          December 2019 through May 2026, and the wikilinks present at each
+          revision are joined against a curated list of 47 AI-topic seed
+          articles plus their redirect aliases.
+
+          The three analytical questions are:
+          (1) which subject areas reference AI most, and least;
+          (2) where the increase since 2019 has been fastest, slowest, or
+          absent; and
+          (3) which sub-subjects show unexpectedly high or low AI presence
+          relative to their parent subject.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Headline metrics
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Articles tracked
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT article_title) AS value
+          FROM `bruin-playground-arsalan.staging.wat_universe`
+
+      - name: AI seed articles
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT canonical_title) AS value
+          FROM `bruin-playground-arsalan.staging.wat_ai_articles`
+
+      - name: Snapshot dates
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT snapshot_date) AS value
+          FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+
+      - name: Latest cross-subject AI share
+        type: metric
+        col: 3
+        column: value
+        suffix: "%"
+        format: number
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+          )
+          SELECT ROUND(100 * SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)), 2) AS value
+          FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`, latest
+          WHERE snapshot_date = latest.d
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Prevalence by top-level subject (latest snapshot)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Prevalence by subject header
+        type: text
+        col: 12
+        content: |
+          ## Share of articles that reference any AI-topic article, by top-level subject (latest snapshot)
+
+          **Description.** Each bar shows the share of Vital-Articles-L4
+          articles within a top-level subject that include at least one wikilink
+          to an AI-topic article (canonical or redirect alias) at the latest
+          snapshot. Subjects are sorted by AI-reference share, largest to
+          smallest. The bar height directly answers "where on the Wikipedia
+          knowledge map is AI most embedded?"
+
+          **Encoding key.** **X axis:** top-level subject. **Y axis:** share of
+          articles with ≥1 AI reference (%, 0–100). Subjects sorted descending
+          by share.
+
+  - widgets:
+      - name: AI-reference prevalence by subject (% of articles with ≥1 AI ref, latest snapshot)
+        type: chart
+        chart: bar
+        col: 12
+        hideName: true
+        x: subject
+        y: [share_with_ai_pct]
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          )
+          SELECT
+            c.subject,
+            ROUND(c.share_with_ai * 100, 2) AS share_with_ai_pct,
+            c.n_articles,
+            c.articles_with_ai,
+            ROUND(c.mean_ai_refs_per_article, 2) AS mean_ai_refs_per_article
+          FROM `bruin-playground-arsalan.report.wat_category_metrics` c, latest
+          WHERE c.snapshot_date = latest.d
+          ORDER BY share_with_ai_pct DESC
+
+  - widgets:
+      - name: Prevalence by subject footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          (universe; subject + sub-subject tags). Article wikilinks from the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          (`action=query&prop=revisions&rvprop=content`), parsed for `[[…]]`
+          links and joined against the curated AI seed list.
+
+          **Tools.** **Bruin cli** (ingestion, staging, report), **BigQuery**
+          (storage and joins), **Bruin dac** (visualization).
+
+          **Limitations.** "AI reference" here is a structural wikilink to an
+          AI-topic article — it is a proxy for editorial association, not a
+          semantic or sentiment measure. The universe is the curated
+          Vital-Articles-L4 list, not all of Wikipedia. Subjects vary in
+          article count (~360 to ~2,000); share is normalized per subject but
+          smaller subjects are noisier.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Sub-subject breakdown
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Sub-subject breakdown header
+        type: text
+        col: 12
+        content: |
+          ## Top 20 sub-subjects by AI-reference share (latest snapshot)
+
+          **Description.** Sub-subjects are the second tier of the
+          Vital-Articles-L4 taxonomy (each top-level subject is divided into
+          ~5–15 themes). The bars below show the 20 sub-subjects with the
+          highest share of articles linking to any AI-topic article at the
+          latest snapshot, filtered to sub-subjects with at least 5 articles to
+          suppress noise. This view answers "within the subjects with high AI
+          presence, which specific themes drive it?"
+
+          **Encoding key.** **X axis:** sub-subject (formatted as
+          `subject › sub-subject`). **Y axis:** share of articles with ≥1 AI
+          reference (%, 0–100). Sorted descending.
+
+  - widgets:
+      - name: Top 20 sub-subjects by AI-reference share (% of articles with ≥1 AI ref, latest snapshot)
+        type: chart
+        chart: bar
+        col: 12
+        hideName: true
+        x: sub_subject_label
+        y: [share_with_ai_pct]
+        sql: |
+          SELECT
+            CONCAT(subject, ' › ', sub_subject) AS sub_subject_label,
+            ROUND(share_with_ai * 100, 2) AS share_with_ai_pct,
+            n_articles,
+            articles_with_ai,
+            ROUND(mean_ai_refs_per_article, 2) AS mean_ai_refs_per_article
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics`
+          ORDER BY share_with_ai_pct DESC
+          LIMIT 20
+
+  - widgets:
+      - name: Sub-subject breakdown footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Sub-subject labels parsed from level-3 headings within
+          each **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          subject subpage. AI-reference counts derived from the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Sub-subjects with fewer than 5 articles are
+          excluded — small denominators produce extreme shares that are not
+          meaningful. The exact sub-subject names depend on Wikipedia editors'
+          heading choices and may shift over time as the Vital Articles
+          taxonomy is revised; the snapshot here uses the structure observed
+          when the universe was scraped.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Trend over time
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Trend over time header
+        type: text
+        col: 12
+        content: |
+          ## AI-reference share over time, by top-level subject (Dec 2019 – May 2026)
+
+          **Description.** Each line tracks one top-level subject's share of
+          articles with ≥1 AI reference across 14 semiannual snapshots. A line
+          rising steeply indicates a subject where AI has become more embedded
+          in editorial cross-referencing; a flat line indicates editorial
+          stasis. The vertical landmark to keep in mind is the public release
+          of ChatGPT (November 2022) — the May-2023 snapshot is the first that
+          fully reflects post-ChatGPT editing activity.
+
+          **Encoding key.** **X axis:** snapshot date (month + year). **Y axis:** share of
+          articles with ≥1 AI reference (%, 0–100). One line per top-level
+          subject. Hover for exact values.
+
+  - widgets:
+      - name: AI-reference share over time, by subject (%, 0-100)
+        type: chart
+        chart: line
+        col: 12
+        hideName: true
+        x: snapshot_label
+        y: [technology, mathematics, physical_sciences, biology_health, society, philosophy_religion, arts, everyday_life]
+        yLabel: "Share of articles with ≥1 AI reference (%)"
+        seriesNames:
+          technology: "Technology"
+          mathematics: "Mathematics"
+          physical_sciences: "Physical sciences"
+          biology_health: "Biology & health"
+          society: "Society & social sciences"
+          philosophy_religion: "Philosophy & religion"
+          arts: "Arts"
+          everyday_life: "Everyday life"
+        sql: |
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                     THEN share_with_ai END) * 100, 2) AS technology,
+            ROUND(MAX(CASE WHEN subject = 'Mathematics'                    THEN share_with_ai END) * 100, 2) AS mathematics,
+            ROUND(MAX(CASE WHEN subject = 'Physical sciences'              THEN share_with_ai END) * 100, 2) AS physical_sciences,
+            ROUND(MAX(CASE WHEN subject = 'Biology and health sciences'    THEN share_with_ai END) * 100, 2) AS biology_health,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences'    THEN share_with_ai END) * 100, 2) AS society,
+            ROUND(MAX(CASE WHEN subject = 'Philosophy and religion'        THEN share_with_ai END) * 100, 2) AS philosophy_religion,
+            ROUND(MAX(CASE WHEN subject = 'Arts'                           THEN share_with_ai END) * 100, 2) AS arts,
+            ROUND(MAX(CASE WHEN subject = 'Everyday life'                  THEN share_with_ai END) * 100, 2) AS everyday_life
+          FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  - widgets:
+      - name: Subjects omitted from line chart (low-share series, shown here for completeness)
+        type: chart
+        chart: line
+        col: 12
+        hideName: true
+        x: snapshot_label
+        y: [people, history, geography]
+        yLabel: "Share of articles with ≥1 AI reference (%)"
+        seriesNames:
+          people: "People"
+          history: "History"
+          geography: "Geography"
+        sql: |
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN subject = 'People'    THEN share_with_ai END) * 100, 2) AS people,
+            ROUND(MAX(CASE WHEN subject = 'History'   THEN share_with_ai END) * 100, 2) AS history,
+            ROUND(MAX(CASE WHEN subject = 'Geography' THEN share_with_ai END) * 100, 2) AS geography
+          FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  - widgets:
+      - name: Trend over time footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** AI-reference counts derived from semiannual revision
+          snapshots fetched via the **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          (`prop=revisions`, closest revision at or before each target date).
+          Subject classification from **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** The earliest snapshot (Dec 2019) only covers
+          articles that already existed at that date — some AI seed articles
+          (e.g. *GPT-4*) had not been created yet, so apparent "growth" partly
+          reflects the AI vocabulary expanding within Wikipedia itself, not
+          only outside articles adopting new links. The snapshot interval
+          (~6 months) is coarse: short-lived spikes between snapshots are
+          invisible. The subjects line chart is split into two panels because
+          the Wong colorblind-safe palette caps at 8 distinct colors.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Growth comparison: earliest vs latest snapshot
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Growth comparison header
+        type: text
+        col: 12
+        content: |
+          ## Subject-level change in AI-reference share, 2019 → 2026
+
+          **Description.** For each top-level subject, the table compares the
+          share of articles with ≥1 AI reference at the December-2019 snapshot
+          to the most recent snapshot, and reports the percentage-point
+          change. Subjects are sorted by the absolute pp change.
+
+          **Encoding key.** Columns: subject, share in Dec 2019 (%), share at
+          latest snapshot (%), pp change, and article-count context.
+
+  - widgets:
+      - name: Subject-level change in AI-reference share, Dec 2019 → latest snapshot
+        type: table
+        col: 12
+        sql: |
+          WITH first_snap AS (
+            SELECT
+              subject,
+              share_with_ai AS share_first,
+              n_articles    AS n_articles_first
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+            WHERE snapshot_date = '2019-12-01'
+          ),
+          latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          ),
+          last_snap AS (
+            SELECT
+              c.subject,
+              c.share_with_ai AS share_last,
+              c.n_articles    AS n_articles_last,
+              c.snapshot_date AS latest_snapshot
+            FROM `bruin-playground-arsalan.report.wat_category_metrics` c, latest
+            WHERE c.snapshot_date = latest.d
+          )
+          SELECT
+            l.subject                                                       AS subject,
+            ROUND(f.share_first * 100, 2)                                   AS share_dec_2019_pct,
+            ROUND(l.share_last  * 100, 2)                                   AS share_latest_pct,
+            ROUND((l.share_last - f.share_first) * 100, 2)                  AS change_pp,
+            f.n_articles_first                                              AS n_articles_dec_2019,
+            l.n_articles_last                                               AS n_articles_latest,
+            l.latest_snapshot                                               AS latest_snapshot
+          FROM last_snap l
+          LEFT JOIN first_snap f USING (subject)
+          ORDER BY ABS(l.share_last - COALESCE(f.share_first, 0)) DESC
+        columns:
+          - { name: "subject", label: "Subject" }
+          - { name: "share_dec_2019_pct", label: "Share Dec-2019 (%)", format: number }
+          - { name: "share_latest_pct", label: "Share latest (%)", format: number }
+          - { name: "change_pp", label: "Change (pp)", format: number }
+          - { name: "n_articles_dec_2019", label: "N articles Dec-2019", format: number }
+          - { name: "n_articles_latest", label: "N articles latest", format: number }
+          - { name: "latest_snapshot", label: "Latest snapshot" }
+
+  - widgets:
+      - name: Growth comparison footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Per-snapshot subject aggregates from
+          `bruin-playground-arsalan.report.wat_category_metrics`, built from
+          semiannual **[MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          snapshots over the **[Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          universe.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Sharing the same denominator across two distant
+          snapshots assumes the underlying Vital-Articles-L4 universe is
+          stable; in practice editors add and remove articles from the list
+          over years, and the article count column makes that drift visible.
+          A subject whose article count grew substantially may show a falling
+          share simply because new articles arrived without AI references.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Surprises
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Surprises header
+        type: text
+        col: 12
+        content: |
+          ## Sub-subjects with surprising AI presence (above or below their parent subject)
+
+          **Description.** Two tables surface sub-subjects whose AI-reference
+          share deviates most from their parent subject's mean. The "higher"
+          table shows sub-subjects with notably more AI presence than the
+          rest of their subject; the "lower" table shows the inverse. Both
+          tables exclude sub-subjects with fewer than 5 articles (signal-only)
+          and are computed at the latest snapshot.
+
+          **Encoding key.** Columns: subject, sub-subject, sub-subject AI
+          share, parent-subject mean share, deviation (sub-subject − subject
+          mean) in percentage points, and article-count context.
+
+  - widgets:
+      - name: Sub-subjects with HIGHER AI presence than their subject's mean (top 12)
+        type: table
+        col: 6
+        sql: |
+          WITH parents AS (
+            SELECT subject, share_with_ai AS subject_share
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+            WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.report.wat_category_metrics`)
+          )
+          SELECT
+            s.subject                                                  AS subject,
+            s.sub_subject                                              AS sub_subject,
+            ROUND(s.share_with_ai * 100, 2)                            AS sub_subject_ai_share_pct,
+            ROUND(p.subject_share  * 100, 2)                           AS subject_mean_pct,
+            ROUND((s.share_with_ai - p.subject_share) * 100, 2)        AS deviation_pp,
+            s.n_articles                                               AS n_articles,
+            s.articles_with_ai                                         AS articles_with_ai
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics` s
+          JOIN parents p USING (subject)
+          ORDER BY (s.share_with_ai - p.subject_share) DESC
+          LIMIT 12
+        columns:
+          - { name: "subject", label: "Subject" }
+          - { name: "sub_subject", label: "Sub-subject" }
+          - { name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number }
+          - { name: "subject_mean_pct", label: "Subject mean (%)", format: number }
+          - { name: "deviation_pp", label: "Deviation (pp)", format: number }
+          - { name: "n_articles", label: "N articles", format: number }
+          - { name: "articles_with_ai", label: "Articles with AI", format: number }
+
+      - name: Sub-subjects with LOWER AI presence than their subject's mean (bottom 12)
+        type: table
+        col: 6
+        sql: |
+          WITH parents AS (
+            SELECT subject, share_with_ai AS subject_share
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+            WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.report.wat_category_metrics`)
+          )
+          SELECT
+            s.subject                                                  AS subject,
+            s.sub_subject                                              AS sub_subject,
+            ROUND(s.share_with_ai * 100, 2)                            AS sub_subject_ai_share_pct,
+            ROUND(p.subject_share  * 100, 2)                           AS subject_mean_pct,
+            ROUND((s.share_with_ai - p.subject_share) * 100, 2)        AS deviation_pp,
+            s.n_articles                                               AS n_articles,
+            s.articles_with_ai                                         AS articles_with_ai
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics` s
+          JOIN parents p USING (subject)
+          ORDER BY (s.share_with_ai - p.subject_share) ASC
+          LIMIT 12
+        columns:
+          - { name: "subject", label: "Subject" }
+          - { name: "sub_subject", label: "Sub-subject" }
+          - { name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number }
+          - { name: "subject_mean_pct", label: "Subject mean (%)", format: number }
+          - { name: "deviation_pp", label: "Deviation (pp)", format: number }
+          - { name: "n_articles", label: "N articles", format: number }
+          - { name: "articles_with_ai", label: "Articles with AI", format: number }
+
+  - widgets:
+      - name: Surprises footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Sub-subject and subject aggregates from
+          `bruin-playground-arsalan.report.wat_subcategory_metrics` and
+          `…wat_category_metrics`, both built from snapshots collected via the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          over the **[Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          universe.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** "Deviation from parent subject mean" is one of
+          many possible surprise metrics; an alternative would be deviation
+          from the cross-subject grand median. The choice here favours
+          interpretability ("this sub-subject is unusual relative to its own
+          siblings") over absolute-rank comparability. Sub-subjects with
+          fewer than 5 articles are excluded for the same noise-suppression
+          reason as the sub-subject breakdown above.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Top growing articles
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Top growing articles header
+        type: text
+        col: 12
+        content: |
+          ## Articles with the largest absolute growth in AI references
+
+          **Description.** Per-article view: each row is a Vital-Articles-L4
+          article that has at least one AI reference at the latest snapshot,
+          ranked by how many additional AI references it has accumulated
+          since the earliest snapshot in which it existed. Use this table to
+          drill into specific articles that drove the subject-level trends
+          shown above.
+
+          **Encoding key.** Columns: article, subject, sub-subject, AI
+          references at earliest snapshot, AI references at latest snapshot,
+          absolute growth, latest total wikilinks, and the latest AI-link
+          share.
+
+  - widgets:
+      - name: Top 25 Vital Articles by absolute growth in AI references (earliest → latest snapshot)
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            article_title                                       AS article,
+            subject                                             AS subject,
+            sub_subject                                         AS sub_subject,
+            earliest_snapshot                                   AS earliest_snapshot,
+            COALESCE(earliest_ai_refs, 0)                       AS ai_refs_earliest,
+            latest_snapshot                                     AS latest_snapshot,
+            latest_ai_refs                                      AS ai_refs_latest,
+            ai_refs_added                                       AS growth_refs,
+            latest_total_refs                                   AS total_wikilinks_latest,
+            ROUND(latest_ai_ref_share * 100, 2)                 AS ai_link_share_pct
+          FROM `bruin-playground-arsalan.report.wat_article_growth`
+          ORDER BY ai_refs_added DESC
+          LIMIT 25
+        columns:
+          - { name: "article", label: "Article" }
+          - { name: "subject", label: "Subject" }
+          - { name: "sub_subject", label: "Sub-subject" }
+          - { name: "earliest_snapshot", label: "Earliest snapshot" }
+          - { name: "ai_refs_earliest", label: "AI refs (earliest)", format: number }
+          - { name: "latest_snapshot", label: "Latest snapshot" }
+          - { name: "ai_refs_latest", label: "AI refs (latest)", format: number }
+          - { name: "growth_refs", label: "Growth (Δ refs)", format: number }
+          - { name: "total_wikilinks_latest", label: "Total wikilinks (latest)", format: number }
+          - { name: "ai_link_share_pct", label: "AI-link share (%)", format: number }
+
+  - widgets:
+      - name: Top growing articles footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Per-article growth metrics from
+          `bruin-playground-arsalan.report.wat_article_growth`. Earliest
+          snapshot is the first semiannual snapshot in which the article had
+          a usable revision; latest snapshot is the most recent. Raw revision
+          content fetched via the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Articles created after December 2019 use their
+          creation snapshot as the baseline, so their "growth" is measured
+          over a shorter window than older articles — a recently created
+          article with many AI links will rank high even though its growth
+          rate over a longer window is unknown. The table excludes articles
+          with zero AI references at the latest snapshot.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Methodology
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          ## Methodology, data vintages, and limitations
+
+          **Universe.** **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          — ~9,907 articles editorially curated as the most important topics
+          across all of human knowledge, organized into 11 top-level subjects
+          (People, History, Geography, Arts, Philosophy and religion,
+          Everyday life, Society and social sciences, Biology and health
+          sciences, Physical sciences, Technology, Mathematics) and ~120
+          sub-subjects. Each article is tagged with its subject and
+          sub-subject directly from the Vital Articles list structure.
+
+          **AI seed list.** ~47 curated AI-topic articles spanning
+          foundations (Artificial intelligence, Machine learning, Neural
+          network, Deep learning), architectures (Transformer, Recurrent
+          neural network, Convolutional neural network), modern systems
+          (Large language model, GPT-4, ChatGPT, BERT, Claude, Gemini),
+          companies (OpenAI, Anthropic, DeepMind), sub-fields (Natural
+          language processing, Computer vision, Reinforcement learning), and
+          cultural/policy topics (AI safety, AI ethics, AI alignment). Each
+          canonical title is expanded to include its current redirect
+          aliases (fetched via the MediaWiki API), so that historical
+          revisions linking via an older redirect spelling are still counted.
+
+          **Snapshots.** 14 semiannual snapshots at fixed calendar dates:
+          December 1 and May 1, starting Dec-2019 through May-2026. For each
+          (article × date), the **[MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          returns the closest revision at or before the target date (small
+          temporal drift expected, generally <1 day). The full revision
+          content is parsed for `[[wikilink]]` syntax; every distinct
+          wikilink target is counted, and intersections with the AI alias
+          list are tallied as "AI references".
+
+          **Pipeline.** `raw.wat_vital_articles` and `raw.wat_ai_seed_articles`
+          are one-shot scrapes; `raw.wat_article_snapshots` is the
+          long-running ingestion job. The `staging.wat_*` layer dedupes,
+          normalizes, and joins. The `report.wat_*` layer aggregates to
+          subject/sub-subject/article level. All assets run via **Bruin cli**
+          on **BigQuery**; this dashboard renders from those tables via
+          **Bruin dac**.
+
+          **General limitations.**
+          (a) "AI reference" is a structural wikilink to one of 47 curated
+          AI-topic articles — it is a proxy for editorial association, not
+          for sentiment, prominence, or semantic meaning. An article that
+          mentions AI in body text without linking will not be counted.
+          (b) The universe is curated (Vital Articles L4); the results do not
+          generalize to the ~6.8M-article English Wikipedia at large.
+          (c) Some AI seed articles did not exist in 2019 (e.g. *GPT-4* page
+          was created in 2023); apparent growth partly reflects new AI
+          concepts entering Wikipedia, not only outside articles adopting
+          them.
+          (d) English Wikipedia only.
+          (e) Snapshot cadence is ~6 months — short-term spikes between
+          snapshots are not visible.
+          (f) The AI seed list is curated and finite; topics outside it
+          (e.g. *Symbolic AI*, *Expert system*) are not counted unless
+          explicitly added to the seed.

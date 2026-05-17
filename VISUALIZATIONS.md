@@ -47,7 +47,7 @@ Each widget on its own row at `col: 12`. The chart widget uses `hideName: true` 
 
 Contains, in order:
 
-1. **Title** as a Markdown `#` heading that names what the chart *is* (not the finding). Example: `# Hourly temperature, six Paris stations, 2026-04-06`. Be unambiguous about entities, units, and time range.
+1. **Title** as a Markdown `#` heading that names what the chart *is* (not the finding). Example: `# Hourly temperature, six Paris stations, 2026-04-06`. Be unambiguous about entities, units, and time range. **Do not prefix titles with "Chart N —" or any numbering.** Numbering rots when charts are reordered, adds visual noise, and conveys no information; the position in the dashboard already orders them.
 2. **Description** in bold paragraph form — 1–3 sentences stating the *insight*: what the reader should take away, with magnitudes (correlation, slope, ratio, top-N). State whether the data "supports", "rejects", or shows "no signal" relative to the hypothesis.
 3. **Encoding key** as a final line listing what each visual channel means. Example: `**Left axis:** temperature (°C). **Right axis:** Polymarket Yes-price (0–1, dashed).` This line IS the legend for chart types that don't render one natively (see § 10.1).
 

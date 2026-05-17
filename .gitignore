@@ -234,6 +234,7 @@ service_account*.json
 # Logs and data
 logs/
 *.db
+*.duckdb
 *.DS_Store
 *.pyc
 __pycache__/
@@ -243,3 +244,6 @@ cache/*
 logs/runs
 logs/*.log
 logs/queries
+
+# Node
+node_modules/

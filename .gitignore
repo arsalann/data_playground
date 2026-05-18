@@ -247,3 +247,9 @@ logs/queries
 
 # Node
 node_modules/
+
+# Screenshots used for dashboard / front-end visual verification.
+# These are working artifacts produced by Playwright during development
+# and should be deleted after the changes they verified are merged.
+# See AGENTS.md "Things to Avoid" for the cleanup rule.
+**/screenshots/

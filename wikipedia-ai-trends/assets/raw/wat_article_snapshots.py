@@ -7,13 +7,13 @@ description: |
   containing the full list of `[[wikilinks]]` from that article's wikitext
   as of (or just before) that date.
 
-  Snapshot dates: May 1 and December 1 of each year from 2019 through May 2026
-  (14 snapshots). ~10K articles × 14 snapshots = up to ~140K rows.
+  Snapshot dates: May 1 and December 1 of each year from 2016 through May 2026
+  (21 snapshots). ~10K articles × 21 snapshots = up to ~210K rows.
 
   Method: two-pass against the MediaWiki Action API.
 
     Pass 1 (per article, parallel across articles): fetch revision metadata
-    (`prop=revisions&rvprop=ids|timestamp&rvstart=2026-05-15&rvend=2019-11-30
+    (`prop=revisions&rvprop=ids|timestamp&rvstart=2026-05-15&rvend=2016-04-30
     &rvdir=older&rvlimit=500`), paginating via `rvcontinue` until the window
     is exhausted. Locally select the rev_id closest at-or-before each snapshot
     date. Articles created after a snapshot date get a null rev_id (correctly
@@ -50,6 +50,7 @@ image: python:3.11
 
 depends:
   - raw.wat_vital_articles
+  - raw.wat_wikiproject_articles
 
 columns:
   - name: article_title
@@ -101,10 +102,14 @@ API_URL = "https://en.wikipedia.org/w/api.php"
 USER_AGENT = "wikipedia-ai-trends/0.1 (arsalan.noorafkan@getbruin.com)"
 PROJECT = "bruin-playground-arsalan"
 UNIVERSE_TABLE = f"{PROJECT}.raw.wat_vital_articles"
+EXTENDED_UNIVERSE_TABLE = f"{PROJECT}.raw.wat_wikiproject_articles"
 DEST_TABLE = f"{PROJECT}.raw.wat_article_snapshots"
 
 SNAPSHOT_DATES = [
-    "2019-12-01",
+    "2016-05-01", "2016-12-01",
+    "2017-05-01", "2017-12-01",
+    "2018-05-01", "2018-12-01",
+    "2019-05-01", "2019-12-01",
     "2020-05-01", "2020-12-01",
     "2021-05-01", "2021-12-01",
     "2022-05-01", "2022-12-01",
@@ -288,7 +293,14 @@ def fetch_content_batch(rev_ids: list[int]) -> dict[int, tuple[str, str, str]]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_universe(bq: bigquery.Client) -> list[str]:
-    q = f"SELECT article_title FROM `{UNIVERSE_TABLE}` ORDER BY article_title"
+    q = f"""
+        SELECT DISTINCT article_title FROM (
+            SELECT article_title FROM `{UNIVERSE_TABLE}`
+            UNION ALL
+            SELECT article_title FROM `{EXTENDED_UNIVERSE_TABLE}`
+        )
+        ORDER BY article_title
+    """
     return [r.article_title for r in bq.query(q).result()]
 
 

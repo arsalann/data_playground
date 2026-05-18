@@ -34,6 +34,8 @@ columns:
     type: STRING
   - name: sub_subject
     type: STRING
+  - name: universe_tier
+    type: STRING
   - name: revision_id
     type: INT64
   - name: revision_timestamp
@@ -84,6 +86,7 @@ SELECT
     s.snapshot_date,
     u.subject,
     u.sub_subject,
+    u.universe_tier,
     s.revision_id,
     s.revision_timestamp,
     s.wikilinks_count AS total_refs,

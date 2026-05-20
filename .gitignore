@@ -253,3 +253,4 @@ node_modules/
 # and should be deleted after the changes they verified are merged.
 # See AGENTS.md "Things to Avoid" for the cleanup rule.
 **/screenshots/
+

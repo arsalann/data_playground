@@ -14,21 +14,93 @@ rows:
         type: text
         col: 12
         content: |
-          # Biggest gainers in AI-reference share since Dec 2019, by sub-subject
+          # Biggest gainers in AI-reference share since Dec 2019
 
-          **Description.** All 8 lines start at zero on the December 2019 baseline. Each line is one sub-subject and shows the cumulative percentage-point change in its AI-reference share at every snapshot. The further a line ends above the baseline, the larger the gain. Lines are the eight sub-subjects (with at least 30 articles) that gained the most pp from Dec 2019 to the latest snapshot.
+          **Description.** Both charts start at zero on the December 2019 baseline and show the cumulative percentage-point change in AI-reference share at every snapshot.
 
-          **Sources.** **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)** (article wikilinks per snapshot). **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)** (universe + subject/sub-subject taxonomy).
+          **Sources.** **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**, **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**.
 
           **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
 
-          **Limitations.** Ranked by absolute percentage-point increase, not relative growth. Sub-subjects with fewer than 30 articles are excluded (small denominators produce noisy pp moves). Some AI seed articles (e.g. *GPT-4*, *ChatGPT*) did not exist in 2019, so growth partly reflects new AI vocabulary entering Wikipedia rather than only existing articles adopting new links.
+  - widgets:
+      - { name: t-gain-cat,    type: text, col: 6, content: "# By top-level subjects" }
+      - { name: t-gain-subsub, type: text, col: 6, content: "# By sub-subjects (top 8 gainers)" }
 
   - widgets:
-      - name: Gainers chart
+      - name: Gainers by category
         type: chart
         chart: line
-        col: 12
+        col: 6
+        height: 587
+        yMin: "0"
+        hideName: true
+        x: snapshot_label
+        y: [cat_technology, cat_society, cat_arts, cat_mathematics, cat_people, cat_philosophy, cat_everyday, cat_geography, cat_biology, cat_physical, cat_history]
+        yLabel: "Change in AI-reference share since Dec 2019 (pp)"
+        seriesNames:
+          cat_technology: "Technology"
+          cat_society: "Society & social sciences"
+          cat_arts: "Arts"
+          cat_mathematics: "Mathematics"
+          cat_people: "People"
+          cat_philosophy: "Philosophy & religion"
+          cat_everyday: "Everyday life"
+          cat_geography: "Geography"
+          cat_biology: "Biology & health"
+          cat_physical: "Physical sciences"
+          cat_history: "History"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share,
+              COUNT(*) AS n_articles,
+              COUNTIF(ai_ref_count > 0) AS n_ai
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            GROUP BY snapshot_date, subject
+          ),
+          latest AS (SELECT MAX(snapshot_date) AS d FROM per_snap),
+          eligible AS (
+            SELECT p.subject
+            FROM per_snap p, latest l
+            WHERE p.snapshot_date = l.d AND p.n_articles >= 20 AND p.n_ai >= 1
+          ),
+          baseline AS (
+            SELECT subject, share AS share_first
+            FROM per_snap
+            WHERE snapshot_date = '2019-12-01'
+          ),
+          delta AS (
+            SELECT
+              p.snapshot_date,
+              p.subject,
+              (p.share - COALESCE(b.share_first, p.share)) AS d_share
+            FROM per_snap p
+            JOIN eligible e USING (subject)
+            LEFT JOIN baseline b USING (subject)
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  THEN d_share END) * 100, 2) AS cat_technology,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' THEN d_share END) * 100, 2) AS cat_society,
+            ROUND(MAX(CASE WHEN subject = 'Arts'                        THEN d_share END) * 100, 2) AS cat_arts,
+            ROUND(MAX(CASE WHEN subject = 'Mathematics'                 THEN d_share END) * 100, 2) AS cat_mathematics,
+            ROUND(MAX(CASE WHEN subject = 'People'                      THEN d_share END) * 100, 2) AS cat_people,
+            ROUND(MAX(CASE WHEN subject = 'Philosophy and religion'     THEN d_share END) * 100, 2) AS cat_philosophy,
+            ROUND(MAX(CASE WHEN subject = 'Everyday life'               THEN d_share END) * 100, 2) AS cat_everyday,
+            ROUND(MAX(CASE WHEN subject = 'Geography'                   THEN d_share END) * 100, 2) AS cat_geography,
+            ROUND(MAX(CASE WHEN subject = 'Biology and health sciences' THEN d_share END) * 100, 2) AS cat_biology,
+            ROUND(MAX(CASE WHEN subject = 'Physical sciences'           THEN d_share END) * 100, 2) AS cat_physical,
+            ROUND(MAX(CASE WHEN subject = 'History'                     THEN d_share END) * 100, 2) AS cat_history
+          FROM delta
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Gainers by sub-subject
+        type: chart
+        chart: line
+        col: 6
+        height: 587
+        yMin: "0"
         hideName: true
         x: snapshot_label
         y: [soc_mass_media, soc_education, tech_internet, soc_busecon, tech_it, tech_electronics, arts_film, math_statistics]
@@ -45,9 +117,17 @@ rows:
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, subject, sub_subject,
-              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share,
+              COUNT(*) AS n_articles,
+              COUNTIF(ai_ref_count > 0) AS n_ai
             FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
             GROUP BY snapshot_date, subject, sub_subject
+          ),
+          latest AS (SELECT MAX(snapshot_date) AS d FROM per_snap),
+          eligible AS (
+            SELECT p.subject, p.sub_subject
+            FROM per_snap p, latest l
+            WHERE p.snapshot_date = l.d AND p.n_articles >= 20 AND p.n_ai >= 1
           ),
           baseline AS (
             SELECT subject, sub_subject, share AS share_first
@@ -61,6 +141,7 @@ rows:
               p.sub_subject,
               (p.share - COALESCE(b.share_first, p.share)) AS d_share
             FROM per_snap p
+            JOIN eligible e USING (subject, sub_subject)
             LEFT JOIN baseline b USING (subject, sub_subject)
           )
           SELECT
@@ -89,11 +170,9 @@ rows:
 
           **Description.** Each panel shows one top-level subject; lines inside are its top sub-subjects, plotting the share of articles with ≥1 AI reference at each semiannual snapshot. Y-axis is per-panel, so vertical scale differs between panels - compare shapes, not heights.
 
-          **Sources.** **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)** (article wikilinks per snapshot). **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)** (universe + subject/sub-subject taxonomy).
+          **Sources.** **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**, **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**.
 
           **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
-
-          **Limitations.** Per-panel y-ranges are independent, so vertical position is NOT comparable across panels. Each panel shows up to 7 sub-subjects, picked as the 7 largest (by article count) among those with at least 20 articles AND at least one AI-referencing article at the latest snapshot. The 20-article floor avoids small-denominator noise (e.g. a 2-article sub-subject swinging to 50% on a single edit). Panels for subjects with sparse AI uptake end up with fewer than 7 lines (History 2; Everyday life and Geography 3 each; Mathematics 4; Arts and Physical sciences 5 each; Biology & health 6).
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 6 × 2 small-multiples grid - ordered per user request
@@ -496,21 +575,35 @@ rows:
           ORDER BY snapshot_date
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Methodology
+  # Methodology + Limitations (paired)
   # ─────────────────────────────────────────────────────────────────────────────
   - widgets:
       - name: Methodology
         type: text
-        col: 12
+        col: 6
         content: |
           ## Methodology
 
-          **Universe.** **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)** - ~9,907 articles curated as the most important topics across human knowledge, organised into 11 top-level subjects and ~120 sub-subjects.
+          **Universe.** Two tiers (14,004 articles total, 11 top-level subjects, 110 sub-subjects). Tier 1: **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)** - 9,907 curated articles across all 11 subjects. Tier 2: 4,097 WikiProject Top/High-importance articles from Companies, Brands, Computing, Internet culture, and Business - added only to **Society and social sciences** (+2,735) and **Technology** (+1,362) to compensate for those areas being under-represented in Vital L4. Vital takes priority on collision.
 
-          **AI seed list.** ~47 curated AI-topic articles spanning foundations (Artificial intelligence, Machine learning, Neural network, Deep learning), architectures (Transformer, RNN, CNN), modern systems (Large language model, GPT-4, ChatGPT, Claude, Gemini), companies (OpenAI, Anthropic, DeepMind), sub-fields (NLP, Computer vision, Reinforcement learning), and cultural/policy topics. Each canonical title is expanded with its current redirect aliases.
+          **AI seed list.** 48 curated AI-topic articles spanning foundations (Artificial intelligence, Machine learning, Neural network, Deep learning, Supervised/Unsupervised/Self-supervised learning), architectures (Transformer, CNN, RNN, GAN, Diffusion model, Attention, LSTM), modern systems (LLM, GPT-3, GPT-4, ChatGPT, Claude, Gemini, LLaMA, BERT, Stable Diffusion, DALL-E, Midjourney, Generative AI, Foundation model), companies (OpenAI, Anthropic, DeepMind, Hugging Face), sub-fields (NLP, Computer vision, RL, Speech recognition, Symbolic AI, Machine translation, Robotics, Expert system), and cultural/policy (AI alignment, safety, ethics, AGI, existential risk, technological singularity, regulation, AI winter). Each canonical title is expanded with its current redirect aliases.
 
-          **Snapshots.** 14 semiannual snapshots at fixed dates (December 1 and May 1, Dec-2019 through May-2026). For each (article × date), the **[MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)** returns the closest revision at or before the target date; body wikilinks are intersected with the AI alias list to count "AI references".
+          **Snapshots.** 14 semiannual snapshots at fixed dates (December 1 and May 1, Dec-2019 through May-2026). For each (article × date), the **[MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)** returns the closest revision at or before the target date; body wikilinks (regex-extracted from wikitext, excluding namespace, self, and anchor links) are intersected with the AI alias list to count "AI references".
 
-          **Pipeline.** Raw scrapes (`raw.wat_*`) → staging joins (`staging.wat_*`) → subject/sub-subject/article aggregates (`report.wat_*`). All assets run via **Bruin cli** on **BigQuery**; this dashboard renders via **Bruin dac**.
+          **Pipeline.** Raw scrapes (`raw.wat_vital_articles`, `raw.wat_wikiproject_articles`, `raw.wat_ai_seed_articles`, `raw.wat_article_snapshots`) → staging joins (`staging.wat_universe`, `staging.wat_ai_articles`, `staging.wat_ai_reference_counts`) → subject/sub-subject/article aggregates (`report.wat_*`). This dashboard queries `staging.wat_ai_reference_counts` directly. All assets run via **Bruin cli** on **BigQuery**; the dashboard renders via **Bruin dac**.
 
-          **General limitations.** AI reference is a structural wikilink, not a semantic measure. Universe is curated Vital Articles L4, not all of Wikipedia. Some AI seed articles did not exist in 2019 (e.g. *GPT-4* page created in 2023); apparent growth partly reflects new AI vocabulary entering Wikipedia. English Wikipedia only. ~6-month snapshot cadence - short-lived spikes are not visible.
+      - name: Limitations
+        type: text
+        col: 6
+        content: |
+          ## Limitations & caveats
+
+          **Slicing & filtering.** Gainer charts rank by absolute percentage-point gain since Dec 2019, not relative growth; the sub-subject chart shows the top 8 only. Both gainer charts and every small-multiples panel apply the same eligibility filter: n>=20 articles AND >=1 AI-referencing article at the latest snapshot. The 20-article floor avoids small-denominator noise (e.g. a 2-article sub-subject swinging to 50% on a single edit). Small-multiples panels show up to 7 sub-subjects (top by article count); panels with sparse AI uptake show fewer (History 2; Everyday life and Geography 3; Mathematics 4; Arts and Physical sciences 5; Biology & health 6).
+
+          **Comparability.** In the small-multiples grid, per-panel y-ranges are independent - compare shapes, not heights. The universe is not uniform across subjects: only **Society and social sciences** and **Technology** receive the WikiProject Top/High extension; the other 9 subjects are Vital L4 only. Cross-subject magnitudes therefore reflect both AI uptake AND uneven corpus composition.
+
+          **What "AI reference" means.** A structural body wikilink to one of 48 curated AI articles (plus current redirect aliases), not a semantic measure of AI content. Template-generated and navbox links are excluded; only editor-chosen body links count.
+
+          **Scope.** Universe is curated (Vital L4 + WikiProject Top/High in 5 categories = 14,004 articles), not a random or exhaustive sample of Wikipedia. English Wikipedia only. Results generalise to "important, well-edited articles", not to long-tail content.
+
+          **Time.** Some AI seed pages did not exist in 2019 (e.g. *ChatGPT*, *GPT-4*, *Claude*, *Gemini*, *LLaMA*, *Stable Diffusion*, *Midjourney*), so apparent growth partly reflects new AI vocabulary entering Wikipedia rather than only existing articles adopting new links. Snapshots are semiannual (Dec 1 / May 1), so spikes shorter than ~6 months and revisions reverted between snapshots are invisible. The MediaWiki API returns the closest revision *at or before* each snapshot date, so an article's state can be up to ~6 months stale relative to the next snapshot.

@@ -1,0 +1,6 @@
+name: wikipedia-ai-trends
+schedule: monthly
+start_date: "2019-12-01"
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"

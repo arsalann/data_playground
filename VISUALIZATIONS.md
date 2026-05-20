@@ -47,7 +47,7 @@ Each widget on its own row at `col: 12`. The chart widget uses `hideName: true` 
 
 Contains, in order:
 
-1. **Title** as a Markdown `#` heading that names what the chart *is* (not the finding). Example: `# Hourly temperature, six Paris stations, 2026-04-06`. Be unambiguous about entities, units, and time range.
+1. **Title** as a Markdown `#` heading that names what the chart *is* (not the finding). Example: `# Hourly temperature, six Paris stations, 2026-04-06`. Be unambiguous about entities, units, and time range. **Do not prefix titles with "Chart N —" or any numbering.** Numbering rots when charts are reordered, adds visual noise, and conveys no information; the position in the dashboard already orders them.
 2. **Description** in bold paragraph form — 1–3 sentences stating the *insight*: what the reader should take away, with magnitudes (correlation, slope, ratio, top-N). State whether the data "supports", "rejects", or shows "no signal" relative to the hypothesis.
 3. **Encoding key** as a final line listing what each visual channel means. Example: `**Left axis:** temperature (°C). **Right axis:** Polymarket Yes-price (0–1, dashed).` This line IS the legend for chart types that don't render one natively (see § 10.1).
 
@@ -123,6 +123,12 @@ End every dashboard with a final `type: text` Methodology widget that consolidat
 - **Limit encodings to 3 channels max per chart.** Position (x, y) plus one of {color, size}. Adding more channels overloads working memory. If you need more dimensions, use a second widget or a `type: table`.
 - **Tooltips are mandatory.** They are on by default in DAC. Ensure every encoded field has a sensible column name and a `format:` where numeric formatting is needed (`,.0f` integers, `$.3f` prices, `,.1%` percentages).
 - **Sort bars by value.** Categorical bar charts must be sorted by the quantitative axis (largest to smallest or vice versa) unless there is a natural order (e.g. time, tiers). Do the sort in SQL (`ORDER BY` in the widget's query).
+- **Every point in a categorical chart MUST be identifiable.** If a chart plots N discrete named entities (subjects, countries, articles, sub-subjects, products, …), the viewer must be able to map each rendered mark back to its name — via a native legend, a direct text label on the mark, the x-axis tick label, or a tooltip that names the entity. "Hover for the (x, y) coordinates and look it up in a table" is NOT acceptable. Charts whose points are anonymous blobs fail review.
+
+  **DAC consequence:** `chart: scatter` renders no legend, no point labels, and no entity-name tooltip; the tooltip shows only the numeric x and y columns from the SQL. **Therefore: do not use `chart: scatter` for categorical data where each point is a named entity.** Use a labeled chart instead:
+  - **2-D pair with a category axis** → `chart: bar` (`x: category`, `y: [metric_a, metric_b]`, `stacked: true` for a legend; or `chart: combo` for non-stacked grouped bars with a legend).
+  - **2-D pair with a continuous x and N named points** → not yet first-class in DAC; emit the data as a `type: table` alongside, or aggregate to a binned view.
+  - **Genuine scatter** (continuous x, continuous y, the *cluster shape* matters more than individual point identity, e.g. tens of thousands of observations) → `chart: scatter` is fine.
 
 ---
 
@@ -185,7 +191,7 @@ All new dashboards in this repo are built with Bruin DAC. See `DAC.md` for the f
 | `bar` (stacked) | Yes |
 | `area` | No |
 | `pie`, `funnel`, `combo`, `calendar` | Yes |
-| `scatter`, `bubble`, `heatmap` | No |
+| `scatter`, `bubble`, `heatmap` | No — and `scatter` also has no point labels and no entity-name tooltip, only raw x/y. See § 5 "Every point in a categorical chart MUST be identifiable" — do not use `chart: scatter` for named-entity data. |
 
 To get a legend on a multi-series chart that doesn't render one natively, either use `chart: combo` or rely on the local fork's `line` legend, and ALWAYS include an explicit encoding-key line in the header text widget.
 

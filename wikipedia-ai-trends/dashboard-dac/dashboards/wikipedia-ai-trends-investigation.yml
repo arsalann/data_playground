@@ -1,0 +1,371 @@
+name: Wikipedia AI Trends — investigation
+description: |
+  Companion dashboard for `Wikipedia AI Trends`. Audits whether the
+  AI-reference shares reported by the main dashboard are plausible by
+  exposing the raw per-article data: how many Vital-Articles-L4 articles
+  exist in each subject, how many of them link to any AI-topic article at
+  the latest snapshot, and which specific article titles fall into each
+  bucket. Use this tab to spot-check whether the "X% of subject S has AI
+  references" claim agrees with intuition.
+connection: bruin-playground-arsalan
+
+rows:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Header
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Investigation intro
+        type: text
+        col: 12
+        content: |
+          # Investigation: do the AI-reference counts pass a sanity check?
+
+          The headline number on the main dashboard — *"6.79% of Technology
+          articles link to AI"* — can feel low for a subject where AI is a
+          dominant theme today. This tab unpacks that share into its raw
+          ingredients so you can audit it directly:
+
+          - **Scatter charts** plot, per subject and per sub-subject, the
+            denominator (total articles in the Vital-Articles-L4 universe)
+            against the numerator (articles with ≥1 AI reference at the
+            May-2026 snapshot). A point sitting on the diagonal would mean
+            100% AI-referenced; a point flat against the x-axis would mean
+            ~0% AI-referenced.
+          - **Per-subject sample tables** list specific article titles that
+            *do* and *do not* currently link to any AI-topic article, so you
+            can decide whether the classification matches your expectation
+            for that subject.
+          - **Distribution table** breaks down each subject by the number of
+            AI references per article (0, 1, 2–3, 4+), so you can see how
+            many articles barely touch AI vs. how many link multiple AI
+            topics.
+
+          **Reference table:**
+          `bruin-playground-arsalan.staging.wat_ai_reference_counts` (one row
+          per article × snapshot, with `ai_ref_count`, `total_refs`, and the
+          pipe-separated list of `ai_targets` actually linked).
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Numerator vs denominator — stacked bar by subject
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Numerator vs denominator header
+        type: text
+        col: 12
+        content: |
+          ## Articles AI-referenced vs. articles total — by top-level subject (latest snapshot)
+
+          **Description.** For each of the 11 top-level subjects, the bar
+          shows the total number of Vital-Articles-L4 articles in that
+          subject, split into two segments: the count of articles that link
+          to at least one AI-topic article at the May-2026 snapshot
+          (`with_ai_refs`), and the count that do not (`no_ai_refs`). The
+          height of the `with_ai_refs` segment directly answers "how many
+          AI-referenced articles are there in this subject?"; the share is
+          that segment divided by the total bar height.
+
+          **Encoding key.** **X axis:** top-level subject (sorted descending
+          by total article count). **Y axis:** article count. **Bar
+          segments:** `with_ai_refs` = articles with ≥1 AI reference,
+          `no_ai_refs` = articles with 0 AI references. The legend below
+          the chart names each segment; hover any segment for its exact
+          count.
+
+  - widgets:
+      - name: Articles with vs. without AI references, by subject (latest snapshot)
+        type: chart
+        chart: bar
+        col: 12
+        hideName: false
+        stacked: true
+        x: subject
+        y: [with_ai_refs, no_ai_refs]
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          )
+          SELECT
+            c.subject                                                AS subject,
+            c.articles_with_ai                                       AS with_ai_refs,
+            (c.n_articles - c.articles_with_ai)                      AS no_ai_refs,
+            c.n_articles                                             AS n_articles,
+            ROUND(c.share_with_ai * 100, 2)                          AS share_with_ai_pct
+          FROM `bruin-playground-arsalan.report.wat_category_metrics` c, latest
+          WHERE c.snapshot_date = latest.d
+          ORDER BY c.n_articles DESC
+
+  - widgets:
+      - name: Reference — subjects, both raw counts and implied share
+        type: table
+        col: 12
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          )
+          SELECT
+            c.subject                                                AS subject,
+            c.n_articles                                             AS n_articles,
+            c.articles_with_ai                                       AS articles_with_ai,
+            (c.n_articles - c.articles_with_ai)                      AS articles_without_ai,
+            ROUND(c.share_with_ai * 100, 2)                          AS share_with_ai_pct
+          FROM `bruin-playground-arsalan.report.wat_category_metrics` c, latest
+          WHERE c.snapshot_date = latest.d
+          ORDER BY c.n_articles DESC
+        columns:
+          - { name: "subject",             label: "Subject" }
+          - { name: "n_articles",          label: "Total articles",      format: number }
+          - { name: "articles_with_ai",    label: "Articles with AI",    format: number }
+          - { name: "articles_without_ai", label: "Articles without AI", format: number }
+          - { name: "share_with_ai_pct",   label: "Implied share (%)",   format: number }
+
+  - widgets:
+      - name: Top sub-subjects header
+        type: text
+        col: 12
+        content: |
+          ## Top 25 sub-subjects by absolute count of AI-referenced articles (latest snapshot)
+
+          **Description.** Sub-subjects ranked by the *absolute* number of
+          articles linking to an AI-topic article — complementing the main
+          dashboard's "Top 20 by *share*" view. Each bar splits into a
+          `with_ai_refs` segment (articles linking to AI) and a `no_ai_refs`
+          segment (articles that do not). Sub-subjects like *Society and
+          social sciences › Business and economics* surface high here
+          because the sub-subject is large (123 articles) even though its
+          share is modest (15.45%); the share view, by contrast, surfaces
+          tiny sub-subjects like *Mathematics › Other* (7 of 13).
+
+          **Encoding key.** **X axis:** sub-subject (`subject › sub-subject`,
+          sorted descending by `with_ai_refs`). **Y axis:** article count.
+          Bar segments labeled in the legend below the chart.
+
+  - widgets:
+      - name: Sub-subjects ranked by absolute AI-referenced article count (top 25)
+        type: chart
+        chart: bar
+        col: 12
+        hideName: false
+        stacked: true
+        x: sub_subject_label
+        y: [with_ai_refs, no_ai_refs]
+        sql: |
+          SELECT
+            CONCAT(subject, ' › ', sub_subject)                        AS sub_subject_label,
+            articles_with_ai                                           AS with_ai_refs,
+            (n_articles - articles_with_ai)                            AS no_ai_refs,
+            n_articles                                                 AS n_articles,
+            ROUND(share_with_ai * 100, 2)                              AS share_with_ai_pct
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics`
+          ORDER BY articles_with_ai DESC, n_articles DESC
+          LIMIT 25
+
+  - widgets:
+      - name: Full sub-subject table header
+        type: text
+        col: 12
+        content: |
+          ## Full sub-subject reference table — articles and AI-referenced articles (latest snapshot)
+
+          **Description.** Every sub-subject in the Vital-Articles-L4 taxonomy
+          (with ≥5 articles) listed alongside its parent subject, the total
+          number of articles in that sub-subject, and the number of those
+          articles that link to at least one AI-topic article at the May-2026
+          snapshot. Use this as the lookup table when the bar chart above
+          truncates at the top 25.
+
+          **Encoding key.** Columns: subject (top-level), sub-subject,
+          total article count, AI-referenced article count. Sorted by
+          subject, then by AI-referenced count descending.
+
+  - widgets:
+      - name: Sub-subjects — articles and AI-referenced articles (latest snapshot)
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            subject                                                  AS subject,
+            sub_subject                                              AS sub_subject,
+            n_articles                                               AS n_articles,
+            articles_with_ai                                         AS articles_with_ai
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics`
+          WHERE cohort = 'all'
+          ORDER BY subject, n_articles DESC
+        columns:
+          - { name: "subject",          label: "Category" }
+          - { name: "sub_subject",      label: "Sub-category" }
+          - { name: "n_articles",       label: "Number of articles",              format: number }
+          - { name: "articles_with_ai", label: "Number of AI-referenced articles", format: number }
+
+  - widgets:
+      - name: Numerator vs denominator footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Subject and sub-subject denominators from
+          `bruin-playground-arsalan.report.wat_category_metrics` and
+          `…wat_subcategory_metrics`; AI-reference numerators rolled up from
+          `…staging.wat_ai_reference_counts` (filtered to `ai_ref_count > 0`).
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Sub-subjects with fewer than 5 articles are
+          filtered out of `wat_subcategory_metrics`, so the sub-subject
+          chart only ranks 100 of the ~120 sub-subjects in the taxonomy.
+          The top-25 cut is for legibility — the underlying table has 100
+          rows; query `wat_subcategory_metrics` directly to inspect the
+          tail.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Distribution of articles by AI reference count
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Distribution header
+        type: text
+        col: 12
+        content: |
+          ## Distribution of articles within each subject by AI reference count (latest snapshot)
+
+          **Description.** For each top-level subject, the table reports how
+          many articles fall into each AI-reference-count bucket. A subject
+          with a long tail of "many AI refs per article" looks different
+          from a subject where AI-referencing is shallow (every flagged
+          article links exactly one AI topic). The `articles_4_plus` column
+          is the strongest indicator that AI is a *recurring* theme inside
+          the subject, not just a single passing mention.
+
+          **Encoding key.** Columns: subject, total articles, articles with
+          0 / 1 / 2–3 / 4+ AI references, the subject's overall share, and
+          the maximum AI-reference count observed in that subject.
+
+  - widgets:
+      - name: Article distribution by AI-ref bucket, per subject (latest snapshot)
+        type: table
+        col: 12
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+          )
+          SELECT
+            r.subject                                                AS subject,
+            COUNT(*)                                                 AS n_articles,
+            COUNTIF(r.ai_ref_count = 0)                              AS articles_0_ai,
+            COUNTIF(r.ai_ref_count = 1)                              AS articles_1_ai,
+            COUNTIF(r.ai_ref_count BETWEEN 2 AND 3)                  AS articles_2_3_ai,
+            COUNTIF(r.ai_ref_count >= 4)                             AS articles_4_plus_ai,
+            ROUND(100 * SAFE_DIVIDE(COUNTIF(r.ai_ref_count > 0), COUNT(*)), 2) AS share_with_ai_pct,
+            MAX(r.ai_ref_count)                                      AS max_ai_refs_in_subject
+          FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts` r, latest
+          WHERE r.snapshot_date = latest.d
+          GROUP BY r.subject
+          ORDER BY share_with_ai_pct DESC
+        columns:
+          - { name: "subject",                label: "Subject" }
+          - { name: "n_articles",             label: "Total articles",       format: number }
+          - { name: "articles_0_ai",          label: "0 AI refs",            format: number }
+          - { name: "articles_1_ai",          label: "1 AI ref",             format: number }
+          - { name: "articles_2_3_ai",        label: "2–3 AI refs",          format: number }
+          - { name: "articles_4_plus_ai",     label: "4+ AI refs",           format: number }
+          - { name: "share_with_ai_pct",      label: "Share with AI (%)",    format: number }
+          - { name: "max_ai_refs_in_subject", label: "Max AI refs in any article", format: number }
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Sample article titles per subject
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Sample articles header
+        type: text
+        col: 12
+        content: |
+          ## Sample article titles per subject — with and without AI references (latest snapshot)
+
+          **Description.** For each top-level subject, the table lists up to
+          8 article titles that *do* link to an AI-topic article (sorted by
+          AI-reference count, descending; the count is shown in parentheses
+          after each title) and up to 8 article titles that *do not* link to
+          any AI-topic article (sorted by total-wikilink count, descending,
+          so the most prominent non-AI-linked articles are shown first).
+          Use this view to spot-check whether the AI-reference classification
+          matches your expectation for the subject.
+
+          **Encoding key.** Columns: subject, count of articles with AI
+          refs, count without, comma-separated samples of each.
+
+  - widgets:
+      - name: Sample article titles with / without AI refs, per subject (latest snapshot)
+        type: table
+        col: 12
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+          ),
+          ranked AS (
+            SELECT
+              r.subject,
+              r.article_title,
+              r.ai_ref_count,
+              r.total_refs,
+              ROW_NUMBER() OVER (
+                PARTITION BY r.subject, r.ai_ref_count > 0
+                ORDER BY r.ai_ref_count DESC, r.total_refs DESC, r.article_title
+              ) AS rn_with,
+              ROW_NUMBER() OVER (
+                PARTITION BY r.subject, r.ai_ref_count > 0
+                ORDER BY r.total_refs DESC, r.article_title
+              ) AS rn_without
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts` r, latest
+            WHERE r.snapshot_date = latest.d
+          )
+          SELECT
+            subject,
+            COUNTIF(ai_ref_count > 0)                               AS n_with_ai,
+            COUNTIF(ai_ref_count = 0)                               AS n_without_ai,
+            STRING_AGG(
+              CASE WHEN ai_ref_count > 0 AND rn_with <= 8
+                   THEN CONCAT(article_title, ' (', CAST(ai_ref_count AS STRING), ')')
+              END,
+              ', '
+              ORDER BY ai_ref_count DESC, total_refs DESC
+              LIMIT 8
+            )                                                        AS sample_with_ai,
+            STRING_AGG(
+              CASE WHEN ai_ref_count = 0 AND rn_without <= 8
+                   THEN article_title
+              END,
+              ', '
+              ORDER BY total_refs DESC
+              LIMIT 8
+            )                                                        AS sample_without_ai
+          FROM ranked
+          GROUP BY subject
+          ORDER BY subject
+        columns:
+          - { name: "subject",           label: "Subject" }
+          - { name: "n_with_ai",         label: "Articles with AI",    format: number }
+          - { name: "n_without_ai",      label: "Articles without AI", format: number }
+          - { name: "sample_with_ai",    label: "Sample titles WITH AI (top 8 by AI-ref count)" }
+          - { name: "sample_without_ai", label: "Sample titles WITHOUT AI (top 8 by total wikilinks)" }
+
+  - widgets:
+      - name: Sample articles footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Per-article AI-reference counts and wikilink totals
+          from `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+          (snapshot date filter = latest available, May 2026).
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** "Sample titles WITH AI" is biased toward articles
+          with the highest AI-reference counts — articles with just one AI
+          reference are under-represented in the sample column, even though
+          they form the majority of the AI-referenced set. "Sample titles
+          WITHOUT AI" is biased toward articles with the most total
+          wikilinks overall, so it preferentially surfaces large,
+          well-known articles. To explore arbitrary slices, query the
+          staging table directly with a filter like `subject = 'Technology'
+          AND ai_ref_count = 0 ORDER BY RAND() LIMIT 25`.

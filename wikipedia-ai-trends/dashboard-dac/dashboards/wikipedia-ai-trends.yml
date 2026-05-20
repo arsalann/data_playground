@@ -1,0 +1,1334 @@
+name: Wikipedia AI Trends
+description: |
+  How widely do English Wikipedia's Vital Articles (Level 4, ~9,907 articles
+  across 11 top-level subjects) reference AI-topic articles, and how has that
+  changed across semiannual snapshots from December 2019 through May 2026?
+  An "AI reference" is a wikilink in the article body pointing to one of
+  ~47 curated AI-topic articles (or any of their redirect aliases). Source
+  tables in `bruin-playground-arsalan.report.wat_*`, populated by the
+  `wikipedia-ai-trends` Bruin pipeline.
+connection: bruin-playground-arsalan
+
+rows:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Header
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: About
+        type: text
+        col: 12
+        content: |
+          # Wikipedia AI references — trends across subject areas, 2019–2026
+
+          This dashboard tracks how often Wikipedia's Vital Articles (Level 4) —
+          ~9,907 articles editorially curated as the most important topics
+          across all of human knowledge — link to AI-topic articles such as
+          *Artificial intelligence*, *Machine learning*, *Large language model*,
+          *GPT-4*, and *Transformer (deep learning architecture)*. Each tracked
+          article is snapshotted twice a year (May 1 and December 1) from
+          December 2019 through May 2026, and the wikilinks present at each
+          revision are joined against a curated list of 47 AI-topic seed
+          articles plus their redirect aliases.
+
+          The three analytical questions are:
+          (1) which subject areas reference AI most, and least;
+          (2) where the increase since 2019 has been fastest, slowest, or
+          absent; and
+          (3) which sub-subjects show unexpectedly high or low AI presence
+          relative to their parent subject.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Headline metrics
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Articles tracked
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT article_title) AS value
+          FROM `bruin-playground-arsalan.staging.wat_universe`
+
+      - name: AI seed articles
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT canonical_title) AS value
+          FROM `bruin-playground-arsalan.staging.wat_ai_articles`
+
+      - name: Snapshot dates
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(DISTINCT snapshot_date) AS value
+          FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+
+      - name: Latest cross-subject AI share
+        type: metric
+        col: 3
+        column: value
+        suffix: "%"
+        format: number
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+          )
+          SELECT ROUND(100 * SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)), 2) AS value
+          FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`, latest
+          WHERE snapshot_date = latest.d
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Prevalence by top-level subject (latest snapshot)
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Prevalence by subject header
+        type: text
+        col: 12
+        content: |
+          ## Share of articles that reference any AI-topic article, by top-level subject (latest snapshot)
+
+          **Description.** Each bar shows the share of Vital-Articles-L4
+          articles within a top-level subject that include at least one wikilink
+          to an AI-topic article (canonical or redirect alias) at the latest
+          snapshot. Subjects are sorted by AI-reference share, largest to
+          smallest. The bar height directly answers "where on the Wikipedia
+          knowledge map is AI most embedded?"
+
+          **Encoding key.** **X axis:** top-level subject. **Y axis:** share of
+          articles with ≥1 AI reference (%, 0–100). Subjects sorted descending
+          by share.
+
+  - widgets:
+      - name: AI-reference prevalence by subject (% of articles with ≥1 AI ref, latest snapshot)
+        type: chart
+        chart: bar
+        col: 12
+        hideName: true
+        x: subject
+        y: [share_with_ai_pct]
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          )
+          SELECT
+            c.subject,
+            ROUND(c.share_with_ai * 100, 2) AS share_with_ai_pct,
+            c.n_articles,
+            c.articles_with_ai,
+            ROUND(c.mean_ai_refs_per_article, 2) AS mean_ai_refs_per_article
+          FROM `bruin-playground-arsalan.report.wat_category_metrics` c, latest
+          WHERE c.snapshot_date = latest.d
+          ORDER BY share_with_ai_pct DESC
+
+  - widgets:
+      - name: Prevalence by subject footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          (universe; subject + sub-subject tags). Article wikilinks from the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          (`action=query&prop=revisions&rvprop=content`), parsed for `[[…]]`
+          links and joined against the curated AI seed list.
+
+          **Tools.** **Bruin cli** (ingestion, staging, report), **BigQuery**
+          (storage and joins), **Bruin dac** (visualization).
+
+          **Limitations.** "AI reference" here is a structural wikilink to an
+          AI-topic article — it is a proxy for editorial association, not a
+          semantic or sentiment measure. The universe is the curated
+          Vital-Articles-L4 list, not all of Wikipedia. Subjects vary in
+          article count (~360 to ~2,000); share is normalized per subject but
+          smaller subjects are noisier.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Trend over time
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Trend over time header
+        type: text
+        col: 12
+        content: |
+          ## AI-reference share over time, by top-level subject (Dec 2019 – May 2026)
+
+          **Description.** Each line tracks one top-level subject's share of
+          articles with ≥1 AI reference across 14 semiannual snapshots. A line
+          rising steeply indicates a subject where AI has become more embedded
+          in editorial cross-referencing; a flat line indicates editorial
+          stasis. The vertical landmark to keep in mind is the public release
+          of ChatGPT (November 2022) — the May-2023 snapshot is the first that
+          fully reflects post-ChatGPT editing activity.
+
+          The series are split into two panels by their share at the latest
+          snapshot (May 2026): the upper panel shows the four subjects above
+          5%, the lower panel shows the seven subjects below 5%. Splitting by
+          magnitude lets each panel use a tighter y-range so year-over-year
+          deltas are visible instead of compressed against the larger series.
+
+          **Encoding key.** **X axis:** snapshot date (month + year). **Y axis:** share of
+          articles with ≥1 AI reference (%). One line per top-level subject.
+          Hover for exact values.
+
+  - widgets:
+      - name: Higher-share subjects (≥5% in May 2026)
+        type: chart
+        chart: line
+        col: 12
+        hideName: false
+        x: snapshot_label
+        y: [mathematics, society, technology, philosophy_religion]
+        yLabel: "Share of articles with ≥1 AI reference (%)"
+        seriesNames:
+          mathematics: "Mathematics"
+          society: "Society & social sciences"
+          technology: "Technology"
+          philosophy_religion: "Philosophy & religion"
+        sql: |
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN subject = 'Mathematics'                    THEN share_with_ai END) * 100, 2) AS mathematics,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences'    THEN share_with_ai END) * 100, 2) AS society,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                     THEN share_with_ai END) * 100, 2) AS technology,
+            ROUND(MAX(CASE WHEN subject = 'Philosophy and religion'        THEN share_with_ai END) * 100, 2) AS philosophy_religion
+          FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  - widgets:
+      - name: Lower-share subjects (<5% in May 2026)
+        type: chart
+        chart: line
+        col: 12
+        hideName: false
+        x: snapshot_label
+        y: [arts, everyday_life, geography, biology_health, people, physical_sciences, history]
+        yLabel: "Share of articles with ≥1 AI reference (%)"
+        seriesNames:
+          arts: "Arts"
+          everyday_life: "Everyday life"
+          geography: "Geography"
+          biology_health: "Biology & health"
+          people: "People"
+          physical_sciences: "Physical sciences"
+          history: "History"
+        sql: |
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN subject = 'Arts'                           THEN share_with_ai END) * 100, 2) AS arts,
+            ROUND(MAX(CASE WHEN subject = 'Everyday life'                  THEN share_with_ai END) * 100, 2) AS everyday_life,
+            ROUND(MAX(CASE WHEN subject = 'Geography'                      THEN share_with_ai END) * 100, 2) AS geography,
+            ROUND(MAX(CASE WHEN subject = 'Biology and health sciences'    THEN share_with_ai END) * 100, 2) AS biology_health,
+            ROUND(MAX(CASE WHEN subject = 'People'                         THEN share_with_ai END) * 100, 2) AS people,
+            ROUND(MAX(CASE WHEN subject = 'Physical sciences'              THEN share_with_ai END) * 100, 2) AS physical_sciences,
+            ROUND(MAX(CASE WHEN subject = 'History'                        THEN share_with_ai END) * 100, 2) AS history
+          FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  - widgets:
+      - name: Trend over time footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** AI-reference counts derived from semiannual revision
+          snapshots fetched via the **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          (`prop=revisions`, closest revision at or before each target date).
+          Subject classification from **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** The earliest snapshot (Dec 2019) only covers
+          articles that already existed at that date — some AI seed articles
+          (e.g. *GPT-4*) had not been created yet, so apparent "growth" partly
+          reflects the AI vocabulary expanding within Wikipedia itself, not
+          only outside articles adopting new links. The snapshot interval
+          (~6 months) is coarse: short-lived spikes between snapshots are
+          invisible. The 5% threshold used to split the panels is the
+          latest-snapshot value — a subject that crosses the threshold in
+          future snapshots may want to be re-classified.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Growth comparison: earliest vs latest snapshot
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Growth comparison header
+        type: text
+        col: 12
+        content: |
+          ## Subject-level change in AI-reference share, 2019 → 2026
+
+          **Description.** For each top-level subject, the table compares the
+          share of articles with ≥1 AI reference at the December-2019 snapshot
+          to the most recent snapshot, and reports the percentage-point
+          change. Subjects are sorted by the absolute pp change.
+
+          **Encoding key.** Columns: subject, share in Dec 2019 (%), share at
+          latest snapshot (%), pp change, and article-count context.
+
+  - widgets:
+      - name: Subject-level change in AI-reference share, Dec 2019 → latest snapshot
+        type: table
+        col: 12
+        sql: |
+          WITH first_snap AS (
+            SELECT
+              subject,
+              share_with_ai AS share_first,
+              n_articles    AS n_articles_first
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+            WHERE snapshot_date = '2019-12-01'
+          ),
+          latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          ),
+          last_snap AS (
+            SELECT
+              c.subject,
+              c.share_with_ai AS share_last,
+              c.n_articles    AS n_articles_last,
+              c.snapshot_date AS latest_snapshot
+            FROM `bruin-playground-arsalan.report.wat_category_metrics` c, latest
+            WHERE c.snapshot_date = latest.d
+          )
+          SELECT
+            l.subject                                                       AS subject,
+            ROUND(f.share_first * 100, 2)                                   AS share_dec_2019_pct,
+            ROUND(l.share_last  * 100, 2)                                   AS share_latest_pct,
+            ROUND((l.share_last - f.share_first) * 100, 2)                  AS change_pp,
+            f.n_articles_first                                              AS n_articles_dec_2019,
+            l.n_articles_last                                               AS n_articles_latest,
+            l.latest_snapshot                                               AS latest_snapshot
+          FROM last_snap l
+          LEFT JOIN first_snap f USING (subject)
+          ORDER BY ABS(l.share_last - COALESCE(f.share_first, 0)) DESC
+        columns:
+          - { name: "subject", label: "Subject" }
+          - { name: "share_dec_2019_pct", label: "Share Dec-2019 (%)", format: number }
+          - { name: "share_latest_pct", label: "Share latest (%)", format: number }
+          - { name: "change_pp", label: "Change (pp)", format: number }
+          - { name: "n_articles_dec_2019", label: "N articles Dec-2019", format: number }
+          - { name: "n_articles_latest", label: "N articles latest", format: number }
+          - { name: "latest_snapshot", label: "Latest snapshot" }
+
+  - widgets:
+      - name: Growth comparison footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Per-snapshot subject aggregates from
+          `bruin-playground-arsalan.report.wat_category_metrics`, built from
+          semiannual **[MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          snapshots over the **[Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          universe.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Sharing the same denominator across two distant
+          snapshots assumes the underlying Vital-Articles-L4 universe is
+          stable; in practice editors add and remove articles from the list
+          over years, and the article count column makes that drift visible.
+          A subject whose article count grew substantially may show a falling
+          share simply because new articles arrived without AI references.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Sub-subject drill-down
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Sub-subject drill-down header
+        type: text
+        col: 12
+        content: |
+          # Drill-down: sub-subjects within each top-level subject
+
+          The charts above aggregate every Vital-Articles-L4 article up to its
+          top-level subject. The sections below break those subjects open into
+          their constituent sub-subjects (the second tier of the Vital Articles
+          taxonomy), so a subject mean of 9.56% (Mathematics) can be decomposed
+          into the specific themes that drive it.
+
+  - widgets:
+      - name: Sub-subject breakdown header
+        type: text
+        col: 12
+        content: |
+          ## Top 20 sub-subjects by AI-reference share (latest snapshot)
+
+          **Description.** Sub-subjects are the second tier of the
+          Vital-Articles-L4 taxonomy (each top-level subject is divided into
+          ~5–15 themes). The bars below show the 20 sub-subjects with the
+          highest share of articles linking to any AI-topic article at the
+          latest snapshot, filtered to sub-subjects with at least 5 articles to
+          suppress noise. This view answers "within the subjects with high AI
+          presence, which specific themes drive it?"
+
+          **Encoding key.** **X axis:** sub-subject (formatted as
+          `subject › sub-subject`). **Y axis:** share of articles within that
+          sub-subject with ≥1 AI reference (%, 0–100). Sorted descending. Note
+          that sub-subject shares can be much higher than the parent subject
+          mean — e.g. *Mathematics › Other* (7 of 13 articles, 53.85%) sits
+          inside *Mathematics* whose overall share is 9.56%.
+
+  - widgets:
+      - name: Top 20 sub-subjects by AI-reference share (% of articles with ≥1 AI ref, latest snapshot)
+        type: chart
+        chart: bar
+        col: 12
+        hideName: true
+        x: sub_subject_label
+        y: [share_with_ai_pct]
+        sql: |
+          SELECT
+            CONCAT(subject, ' › ', sub_subject) AS sub_subject_label,
+            ROUND(share_with_ai * 100, 2) AS share_with_ai_pct,
+            n_articles,
+            articles_with_ai,
+            ROUND(mean_ai_refs_per_article, 2) AS mean_ai_refs_per_article
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics`
+          ORDER BY share_with_ai_pct DESC
+          LIMIT 20
+
+  - widgets:
+      - name: Sub-subject breakdown footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Sub-subject labels parsed from level-3 headings within
+          each **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          subject subpage. AI-reference counts derived from the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Sub-subjects with fewer than 5 articles are
+          excluded — small denominators produce extreme shares that are not
+          meaningful. The exact sub-subject names depend on Wikipedia editors'
+          heading choices and may shift over time as the Vital Articles
+          taxonomy is revised; the snapshot here uses the structure observed
+          when the universe was scraped.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Sub-subject trend over time
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Sub-subject trend header
+        type: text
+        col: 12
+        content: |
+          ## AI-reference share over time, by sub-subject (Dec 2019 – May 2026)
+
+          **Description.** The same trend view as the top-level chart above,
+          but drilled down to the 16 sub-subjects with the highest
+          AI-reference share at the latest snapshot. Each line tracks one
+          sub-subject's share of articles with ≥1 AI reference across 14
+          semiannual snapshots, computed directly from
+          `staging.wat_ai_reference_counts` (sub-subject metrics were not
+          materialized historically in `wat_subcategory_metrics`). The
+          ChatGPT release landmark (Nov 2022 → May-2023 snapshot is the
+          first post-ChatGPT view) applies here too.
+
+          The series are split into two panels by their rank at the latest
+          snapshot: the upper panel covers the top 8 sub-subjects (≥15%
+          share at May 2026), the lower panel covers ranks 9–16 (≈10–15%
+          share). Splitting at rank-8 keeps each panel within the Wong
+          colorblind-safe palette of 8 distinct colors.
+
+          **Encoding key.** **X axis:** snapshot date (month + year). **Y axis:** share of
+          articles with ≥1 AI reference (%). One line per sub-subject;
+          hover for exact values.
+
+  - widgets:
+      - name: Top 8 sub-subjects by AI-reference share (≥15% at May 2026)
+        type: chart
+        chart: line
+        col: 12
+        hideName: false
+        x: snapshot_label
+        y: [math_other, tech_engineering, math_statistics, tech_computing, philosophy, society_media, society_psychology, history_aux]
+        yLabel: "Share of articles with ≥1 AI reference (%)"
+        seriesNames:
+          math_other: "Mathematics › Other"
+          tech_engineering: "Technology › Engineering"
+          math_statistics: "Mathematics › Statistics and probability"
+          tech_computing: "Technology › Computing and IT"
+          philosophy: "Philosophy & religion › Philosophy"
+          society_media: "Society › Mass media"
+          society_psychology: "Society › Psychology"
+          history_aux: "History › Auxiliary historical sciences"
+        sql: |
+          WITH per_snap AS (
+            SELECT
+              snapshot_date,
+              subject,
+              sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            GROUP BY snapshot_date, subject, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN subject = 'Mathematics'                 AND sub_subject = 'Other'                                  THEN share END) * 100, 2) AS math_other,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Engineering'                            THEN share END) * 100, 2) AS tech_engineering,
+            ROUND(MAX(CASE WHEN subject = 'Mathematics'                 AND sub_subject = 'Statistics and probability'             THEN share END) * 100, 2) AS math_statistics,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Computing and information technology'   THEN share END) * 100, 2) AS tech_computing,
+            ROUND(MAX(CASE WHEN subject = 'Philosophy and religion'     AND sub_subject = 'Philosophy'                             THEN share END) * 100, 2) AS philosophy,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Mass media'                             THEN share END) * 100, 2) AS society_media,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Psychology'                             THEN share END) * 100, 2) AS society_psychology,
+            ROUND(MAX(CASE WHEN subject = 'History'                     AND sub_subject = 'Auxiliary historical sciences'          THEN share END) * 100, 2) AS history_aux
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  - widgets:
+      - name: Next 8 sub-subjects by AI-reference share (≈10–15% at May 2026)
+        type: chart
+        chart: line
+        col: 12
+        hideName: false
+        x: snapshot_label
+        y: [society_business, society_education, physical_basics, tech_medical, tech_electronics, biology_ecology, tech_navigation, arts_film]
+        yLabel: "Share of articles with ≥1 AI reference (%)"
+        seriesNames:
+          society_business: "Society › Business and economics"
+          society_education: "Society › Education"
+          physical_basics: "Physical sciences › Science basics"
+          tech_medical: "Technology › Medical technology"
+          tech_electronics: "Technology › Electronics"
+          biology_ecology: "Biology & health › Ecology"
+          tech_navigation: "Technology › Navigation and timekeeping"
+          arts_film: "Arts › Film and television"
+        sql: |
+          WITH per_snap AS (
+            SELECT
+              snapshot_date,
+              subject,
+              sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            GROUP BY snapshot_date, subject, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Business and economics'                 THEN share END) * 100, 2) AS society_business,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Education'                              THEN share END) * 100, 2) AS society_education,
+            ROUND(MAX(CASE WHEN subject = 'Physical sciences'           AND sub_subject = 'Science basics'                         THEN share END) * 100, 2) AS physical_basics,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Medical technology'                     THEN share END) * 100, 2) AS tech_medical,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Electronics'                            THEN share END) * 100, 2) AS tech_electronics,
+            ROUND(MAX(CASE WHEN subject = 'Biology and health sciences' AND sub_subject = 'Ecology'                                THEN share END) * 100, 2) AS biology_ecology,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Navigation and timekeeping'             THEN share END) * 100, 2) AS tech_navigation,
+            ROUND(MAX(CASE WHEN subject = 'Arts'                        AND sub_subject = 'Film and television'                    THEN share END) * 100, 2) AS arts_film
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  - widgets:
+      - name: Sub-subject trend footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Per-article AI-reference counts from
+          `bruin-playground-arsalan.staging.wat_ai_reference_counts`, joined
+          back to the **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          sub-subject taxonomy. Article wikilinks from the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Sub-subjects are picked by their rank at the
+          latest snapshot — a sub-subject that was high earlier and faded
+          later won't appear. Small-denominator effects are stronger at the
+          sub-subject level: *Mathematics › Other* (7 of 13 articles) and
+          *Technology › Engineering* (4 of 13) have dramatic shares because
+          their denominators are tiny, and a single article changing its
+          links can move the line several percentage points between
+          snapshots. Cross-reference against the article count in the
+          earlier "Top 20 sub-subjects" bar chart for context.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Per-subject small multiples: one chart per top-level subject, lines per sub-subject
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Per-subject small multiples header
+        type: text
+        col: 12
+        content: |
+          ## AI-reference share over time, decomposed by sub-subject within each top-level subject
+
+          **Description.** Eleven small line charts — one per top-level subject —
+          each plotting the AI-reference share trend of that subject's top
+          sub-subjects (ranked by latest snapshot share, restricted to
+          sub-subjects with at least 5 articles, capped at 8 lines per panel
+          to stay within the colorblind-safe palette). Where the trend chart
+          earlier in the dashboard collapses each subject to a single line,
+          this small-multiples view decomposes that line into the sub-themes
+          driving it: e.g. *Mathematics* (overall ~9.56%) is carried by
+          *Mathematics › Other* (53.85%) and *Statistics and probability*
+          (23.08%). Panels are arranged left-to-right, top-to-bottom by
+          subject-level latest share, highest first.
+
+          **Encoding key.** **X axis (each panel):** snapshot date
+          (month + year). **Y axis (each panel):** share of articles within
+          that sub-subject with ≥1 AI reference (%). Each panel uses its own
+          y-range so within-subject structure remains visible; cross-panel
+          magnitudes are NOT directly comparable — refer to the summary
+          table below for absolute levels.
+
+  - widgets:
+      - name: Per-subject summary
+        type: table
+        col: 12
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+          ),
+          per_sub AS (
+            SELECT subject, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share,
+              COUNT(*) AS n
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`, latest
+            WHERE snapshot_date = latest.d
+            GROUP BY subject, sub_subject
+          ),
+          eligible AS (
+            SELECT * FROM per_sub WHERE n >= 5
+          ),
+          ranked AS (
+            SELECT subject, sub_subject, share, n,
+              ROW_NUMBER() OVER (PARTITION BY subject ORDER BY share DESC) AS rk_top,
+              ROW_NUMBER() OVER (PARTITION BY subject ORDER BY share ASC)  AS rk_bot
+            FROM eligible
+          ),
+          top1 AS (SELECT subject, sub_subject AS top_sub, share AS top_share FROM ranked WHERE rk_top = 1),
+          bot1 AS (SELECT subject, sub_subject AS bot_sub, share AS bot_share FROM ranked WHERE rk_bot = 1),
+          counts AS (
+            SELECT subject, COUNT(*) AS n_sub_subjects, SUM(n) AS n_articles_eligible
+            FROM eligible GROUP BY subject
+          ),
+          subj_share AS (
+            SELECT subject, share_with_ai AS subj_share
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+            WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.report.wat_category_metrics`)
+          )
+          SELECT
+            c.subject                                       AS subject,
+            ROUND(s.subj_share * 100, 2)                    AS subject_share_pct,
+            c.n_sub_subjects                                AS n_sub_subjects,
+            c.n_articles_eligible                           AS n_articles_eligible,
+            t.top_sub                                       AS leading_sub_subject,
+            ROUND(t.top_share * 100, 2)                     AS leading_share_pct,
+            b.bot_sub                                       AS trailing_sub_subject,
+            ROUND(b.bot_share * 100, 2)                     AS trailing_share_pct,
+            ROUND((t.top_share - b.bot_share) * 100, 2)     AS spread_pp
+          FROM counts c
+          JOIN top1 t USING (subject)
+          JOIN bot1 b USING (subject)
+          JOIN subj_share s USING (subject)
+          ORDER BY s.subj_share DESC
+        columns:
+          - { name: "subject", label: "Subject" }
+          - { name: "subject_share_pct", label: "Subject share (%)", format: number }
+          - { name: "n_sub_subjects", label: "Sub-subjects (≥5 articles)", format: number }
+          - { name: "n_articles_eligible", label: "N articles (eligible)", format: number }
+          - { name: "leading_sub_subject", label: "Leading sub-subject" }
+          - { name: "leading_share_pct", label: "Leading share (%)", format: number }
+          - { name: "trailing_sub_subject", label: "Trailing sub-subject" }
+          - { name: "trailing_share_pct", label: "Trailing share (%)", format: number }
+          - { name: "spread_pp", label: "Within-subject spread (pp)", format: number }
+
+  # Row 1 of 3 — highest-share subjects
+  - widgets:
+      - name: Mathematics — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [math_other, math_statistics, math_discrete, math_geometry, math_algebra, math_calculus, math_basics]
+        yLabel: "Share (%)"
+        seriesNames:
+          math_other: "Other"
+          math_statistics: "Statistics and probability"
+          math_discrete: "Discrete mathematics"
+          math_geometry: "Geometry"
+          math_algebra: "Algebra"
+          math_calculus: "Calculus and analysis"
+          math_basics: "Basics"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Mathematics'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Other'                      THEN share END) * 100, 2) AS math_other,
+            ROUND(MAX(CASE WHEN sub_subject = 'Statistics and probability' THEN share END) * 100, 2) AS math_statistics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Discrete mathematics'       THEN share END) * 100, 2) AS math_discrete,
+            ROUND(MAX(CASE WHEN sub_subject = 'Geometry'                   THEN share END) * 100, 2) AS math_geometry,
+            ROUND(MAX(CASE WHEN sub_subject = 'Algebra'                    THEN share END) * 100, 2) AS math_algebra,
+            ROUND(MAX(CASE WHEN sub_subject = 'Calculus and analysis'      THEN share END) * 100, 2) AS math_calculus,
+            ROUND(MAX(CASE WHEN sub_subject = 'Basics'                     THEN share END) * 100, 2) AS math_basics
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Society & social sciences — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [soc_media, soc_psych, soc_business, soc_education, soc_companies, soc_language, soc_sociology, soc_society]
+        yLabel: "Share (%)"
+        seriesNames:
+          soc_media: "Mass media"
+          soc_psych: "Psychology"
+          soc_business: "Business and economics"
+          soc_education: "Education"
+          soc_companies: "Companies (extended)"
+          soc_language: "Language"
+          soc_sociology: "Sociology"
+          soc_society: "Society"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Society and social sciences'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Mass media'              THEN share END) * 100, 2) AS soc_media,
+            ROUND(MAX(CASE WHEN sub_subject = 'Psychology'              THEN share END) * 100, 2) AS soc_psych,
+            ROUND(MAX(CASE WHEN sub_subject = 'Business and economics'  THEN share END) * 100, 2) AS soc_business,
+            ROUND(MAX(CASE WHEN sub_subject = 'Education'               THEN share END) * 100, 2) AS soc_education,
+            ROUND(MAX(CASE WHEN sub_subject = 'Companies (extended)'    THEN share END) * 100, 2) AS soc_companies,
+            ROUND(MAX(CASE WHEN sub_subject = 'Language'                THEN share END) * 100, 2) AS soc_language,
+            ROUND(MAX(CASE WHEN sub_subject = 'Sociology'               THEN share END) * 100, 2) AS soc_sociology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Society'                 THEN share END) * 100, 2) AS soc_society
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Technology — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [tech_engineering, tech_computing_it, tech_computing_ext, tech_internet, tech_medical, tech_electronics, tech_navigation, tech_media]
+        yLabel: "Share (%)"
+        seriesNames:
+          tech_engineering: "Engineering"
+          tech_computing_it: "Computing and IT"
+          tech_computing_ext: "Computing (extended)"
+          tech_internet: "Internet culture (extended)"
+          tech_medical: "Medical technology"
+          tech_electronics: "Electronics"
+          tech_navigation: "Navigation and timekeeping"
+          tech_media: "Media and communication"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Technology'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Engineering'                            THEN share END) * 100, 2) AS tech_engineering,
+            ROUND(MAX(CASE WHEN sub_subject = 'Computing and information technology'   THEN share END) * 100, 2) AS tech_computing_it,
+            ROUND(MAX(CASE WHEN sub_subject = 'Computing (extended)'                   THEN share END) * 100, 2) AS tech_computing_ext,
+            ROUND(MAX(CASE WHEN sub_subject = 'Internet culture (extended)'            THEN share END) * 100, 2) AS tech_internet,
+            ROUND(MAX(CASE WHEN sub_subject = 'Medical technology'                     THEN share END) * 100, 2) AS tech_medical,
+            ROUND(MAX(CASE WHEN sub_subject = 'Electronics'                            THEN share END) * 100, 2) AS tech_electronics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Navigation and timekeeping'             THEN share END) * 100, 2) AS tech_navigation,
+            ROUND(MAX(CASE WHEN sub_subject = 'Media and communication'                THEN share END) * 100, 2) AS tech_media
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Philosophy & religion — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [phil_philosophy, phil_religion]
+        yLabel: "Share (%)"
+        seriesNames:
+          phil_philosophy: "Philosophy"
+          phil_religion: "Religion and spirituality"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Philosophy and religion'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Philosophy'                THEN share END) * 100, 2) AS phil_philosophy,
+            ROUND(MAX(CASE WHEN sub_subject = 'Religion and spirituality' THEN share END) * 100, 2) AS phil_religion
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  # Row 2 of 3 — mid-share subjects
+  - widgets:
+      - name: Arts — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [arts_film, arts_performing, arts_visual, arts_literature, arts_music, arts_venues, arts_architecture]
+        yLabel: "Share (%)"
+        seriesNames:
+          arts_film: "Film and television"
+          arts_performing: "Performing arts"
+          arts_visual: "Visual arts"
+          arts_literature: "Literature"
+          arts_music: "Music"
+          arts_venues: "Cultural venues"
+          arts_architecture: "Architecture"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Arts'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Film and television' THEN share END) * 100, 2) AS arts_film,
+            ROUND(MAX(CASE WHEN sub_subject = 'Performing arts'     THEN share END) * 100, 2) AS arts_performing,
+            ROUND(MAX(CASE WHEN sub_subject = 'Visual arts'         THEN share END) * 100, 2) AS arts_visual,
+            ROUND(MAX(CASE WHEN sub_subject = 'Literature'          THEN share END) * 100, 2) AS arts_literature,
+            ROUND(MAX(CASE WHEN sub_subject = 'Music'               THEN share END) * 100, 2) AS arts_music,
+            ROUND(MAX(CASE WHEN sub_subject = 'Cultural venues'     THEN share END) * 100, 2) AS arts_venues,
+            ROUND(MAX(CASE WHEN sub_subject = 'Architecture'        THEN share END) * 100, 2) AS arts_architecture
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Everyday life — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [el_sports, el_sexuality, el_cooking, el_housing, el_household, el_clothing, el_family, el_stages]
+        yLabel: "Share (%)"
+        seriesNames:
+          el_sports: "Sports and recreation"
+          el_sexuality: "Sexuality and gender"
+          el_cooking: "Cooking, food and drink"
+          el_housing: "Housing"
+          el_household: "Household items"
+          el_clothing: "Clothing and fashion"
+          el_family: "Family, kinship, relationships"
+          el_stages: "Stages of life"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Everyday life'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Sports and recreation'                          THEN share END) * 100, 2) AS el_sports,
+            ROUND(MAX(CASE WHEN sub_subject = 'Sexuality and gender'                           THEN share END) * 100, 2) AS el_sexuality,
+            ROUND(MAX(CASE WHEN sub_subject = 'Cooking, food and drink'                        THEN share END) * 100, 2) AS el_cooking,
+            ROUND(MAX(CASE WHEN sub_subject = 'Housing'                                        THEN share END) * 100, 2) AS el_housing,
+            ROUND(MAX(CASE WHEN sub_subject = 'Household items'                                THEN share END) * 100, 2) AS el_household,
+            ROUND(MAX(CASE WHEN sub_subject = 'Clothing and fashion'                           THEN share END) * 100, 2) AS el_clothing,
+            ROUND(MAX(CASE WHEN sub_subject = 'Family, kinship and interpersonal relationships' THEN share END) * 100, 2) AS el_family,
+            ROUND(MAX(CASE WHEN sub_subject = 'Stages of life'                                 THEN share END) * 100, 2) AS el_stages
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Geography — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [geo_cities, geo_basics, geo_countries, geo_physical]
+        yLabel: "Share (%)"
+        seriesNames:
+          geo_cities: "Cities"
+          geo_basics: "Basics"
+          geo_countries: "Countries and other regions"
+          geo_physical: "Physical geography"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Geography'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Cities'                      THEN share END) * 100, 2) AS geo_cities,
+            ROUND(MAX(CASE WHEN sub_subject = 'Basics'                      THEN share END) * 100, 2) AS geo_basics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Countries and other regions' THEN share END) * 100, 2) AS geo_countries,
+            ROUND(MAX(CASE WHEN sub_subject = 'Physical geography'          THEN share END) * 100, 2) AS geo_physical
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Biology & health — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [bio_ecology, bio_zoology, bio_anatomy, bio_biochem, bio_health, bio_cell, bio_general, bio_organisms]
+        yLabel: "Share (%)"
+        seriesNames:
+          bio_ecology: "Ecology"
+          bio_zoology: "Zoology"
+          bio_anatomy: "Anatomy and morphology"
+          bio_biochem: "Biochemistry & molecular biology"
+          bio_health: "Health, medicine and disease"
+          bio_cell: "Cell biology"
+          bio_general: "Biology & health: General"
+          bio_organisms: "Organisms"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Biology and health sciences'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Ecology'                              THEN share END) * 100, 2) AS bio_ecology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Zoology'                              THEN share END) * 100, 2) AS bio_zoology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Anatomy and morphology'               THEN share END) * 100, 2) AS bio_anatomy,
+            ROUND(MAX(CASE WHEN sub_subject = 'Biochemistry and molecular biology'   THEN share END) * 100, 2) AS bio_biochem,
+            ROUND(MAX(CASE WHEN sub_subject = 'Health, medicine and disease'         THEN share END) * 100, 2) AS bio_health,
+            ROUND(MAX(CASE WHEN sub_subject = 'Cell biology'                         THEN share END) * 100, 2) AS bio_cell,
+            ROUND(MAX(CASE WHEN sub_subject = 'Biology and health sciences: General' THEN share END) * 100, 2) AS bio_general,
+            ROUND(MAX(CASE WHEN sub_subject = 'Organisms'                            THEN share END) * 100, 2) AS bio_organisms
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+  # Row 3 of 3 — lower-share subjects
+  - widgets:
+      - name: People — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [ppl_business, ppl_directors, ppl_sports, ppl_scientists, ppl_entertainers, ppl_philosophers, ppl_writers, ppl_musicians]
+        yLabel: "Share (%)"
+        seriesNames:
+          ppl_business: "Businesspeople"
+          ppl_directors: "Directors, producers, screenwriters"
+          ppl_sports: "Sports figures"
+          ppl_scientists: "Scientists, inventors, mathematicians"
+          ppl_entertainers: "Entertainers"
+          ppl_philosophers: "Philosophers, historians, etc."
+          ppl_writers: "Writers"
+          ppl_musicians: "Musicians and composers"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'People'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Businesspeople'                                              THEN share END) * 100, 2) AS ppl_business,
+            ROUND(MAX(CASE WHEN sub_subject = 'Directors, producers and screenwriters'                      THEN share END) * 100, 2) AS ppl_directors,
+            ROUND(MAX(CASE WHEN sub_subject = 'Sports figures'                                              THEN share END) * 100, 2) AS ppl_sports,
+            ROUND(MAX(CASE WHEN sub_subject = 'Scientists, inventors and mathematicians'                    THEN share END) * 100, 2) AS ppl_scientists,
+            ROUND(MAX(CASE WHEN sub_subject = 'Entertainers'                                                THEN share END) * 100, 2) AS ppl_entertainers,
+            ROUND(MAX(CASE WHEN sub_subject = 'Philosophers, historians, political and social scientists'   THEN share END) * 100, 2) AS ppl_philosophers,
+            ROUND(MAX(CASE WHEN sub_subject = 'Writers'                                                     THEN share END) * 100, 2) AS ppl_writers,
+            ROUND(MAX(CASE WHEN sub_subject = 'Musicians and composers'                                     THEN share END) * 100, 2) AS ppl_musicians
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Physical sciences — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [phys_basics, phys_earth, phys_physics, phys_measurement, phys_astronomy, phys_chemistry]
+        yLabel: "Share (%)"
+        seriesNames:
+          phys_basics: "Science basics"
+          phys_earth: "Earth science"
+          phys_physics: "Physics"
+          phys_measurement: "Measurement"
+          phys_astronomy: "Astronomy"
+          phys_chemistry: "Chemistry"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'Physical sciences'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Science basics' THEN share END) * 100, 2) AS phys_basics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Earth science'  THEN share END) * 100, 2) AS phys_earth,
+            ROUND(MAX(CASE WHEN sub_subject = 'Physics'        THEN share END) * 100, 2) AS phys_physics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Measurement'    THEN share END) * 100, 2) AS phys_measurement,
+            ROUND(MAX(CASE WHEN sub_subject = 'Astronomy'      THEN share END) * 100, 2) AS phys_astronomy,
+            ROUND(MAX(CASE WHEN sub_subject = 'Chemistry'      THEN share END) * 100, 2) AS phys_chemistry
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: History — sub-subject AI-reference share over time
+        type: chart
+        chart: line
+        col: 3
+        hideName: false
+        x: snapshot_label
+        y: [hist_aux, hist_subject, hist_modern, hist_continent, hist_earlymodern, hist_postclassical, hist_country, hist_prehistory]
+        yLabel: "Share (%)"
+        seriesNames:
+          hist_aux: "Auxiliary historical sciences"
+          hist_subject: "History by subject matter"
+          hist_modern: "Modern"
+          hist_continent: "History by continent and region"
+          hist_earlymodern: "Early modern"
+          hist_postclassical: "Post-classical"
+          hist_country: "History by country"
+          hist_prehistory: "Prehistory"
+        sql: |
+          WITH per_snap AS (
+            SELECT snapshot_date, sub_subject,
+              SAFE_DIVIDE(COUNTIF(ai_ref_count > 0), COUNT(*)) AS share
+            FROM `bruin-playground-arsalan.staging.wat_ai_reference_counts`
+            WHERE subject = 'History'
+            GROUP BY snapshot_date, sub_subject
+          )
+          SELECT
+            FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
+            ROUND(MAX(CASE WHEN sub_subject = 'Auxiliary historical sciences'   THEN share END) * 100, 2) AS hist_aux,
+            ROUND(MAX(CASE WHEN sub_subject = 'History by subject matter'       THEN share END) * 100, 2) AS hist_subject,
+            ROUND(MAX(CASE WHEN sub_subject = 'Modern'                          THEN share END) * 100, 2) AS hist_modern,
+            ROUND(MAX(CASE WHEN sub_subject = 'History by continent and region' THEN share END) * 100, 2) AS hist_continent,
+            ROUND(MAX(CASE WHEN sub_subject = 'Early modern'                    THEN share END) * 100, 2) AS hist_earlymodern,
+            ROUND(MAX(CASE WHEN sub_subject = 'Post-classical'                  THEN share END) * 100, 2) AS hist_postclassical,
+            ROUND(MAX(CASE WHEN sub_subject = 'History by country'              THEN share END) * 100, 2) AS hist_country,
+            ROUND(MAX(CASE WHEN sub_subject = 'Prehistory'                      THEN share END) * 100, 2) AS hist_prehistory
+          FROM per_snap
+          GROUP BY snapshot_date
+          ORDER BY snapshot_date
+
+      - name: Small-multiples legend
+        type: text
+        col: 3
+        content: |
+          ### Reading the grid
+
+          Each panel shows one top-level subject; lines inside are that
+          subject's top sub-subjects (≥5 articles, capped at 8 by latest
+          share). Y-axis is per-panel, so **vertical scale differs** between
+          panels — a steep line in *History* is at a much lower absolute
+          level than a steep line in *Mathematics*. Compare shapes, not
+          heights. For absolute levels, see the summary table directly
+          above.
+
+  - widgets:
+      - name: Per-subject small multiples footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Per-article AI-reference counts from
+          `bruin-playground-arsalan.staging.wat_ai_reference_counts`, joined
+          back to the **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          sub-subject taxonomy. Subject-level latest shares in the summary
+          table from `report.wat_category_metrics`. Article wikilinks fetched
+          via the **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Each panel's y-range is fit to its own data, so
+          vertical position is NOT comparable across panels — *Mathematics ›
+          Other* at 53.85% and *History › Auxiliary historical sciences* at
+          16.67% both appear as the top line of their respective panels.
+          Use the summary table for absolute comparisons. Each panel is
+          capped at 8 sub-subjects to stay within the colorblind-safe Wong
+          palette; subjects with more eligible sub-subjects (Technology has
+          19, Society 18, People 16) lose the long tail of low-share themes.
+          Sub-subjects with fewer than 5 articles are excluded
+          (small-denominator noise).
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Surprises
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Surprises header
+        type: text
+        col: 12
+        content: |
+          ## Sub-subjects with surprising AI presence (above or below their parent subject)
+
+          **Description.** Two tables surface sub-subjects whose AI-reference
+          share deviates most from their parent subject's mean. The "higher"
+          table shows sub-subjects with notably more AI presence than the
+          rest of their subject; the "lower" table shows the inverse. Both
+          tables exclude sub-subjects with fewer than 5 articles (signal-only)
+          and are computed at the latest snapshot.
+
+          **Encoding key.** Columns: subject, sub-subject, sub-subject AI
+          share, parent-subject mean share, deviation (sub-subject − subject
+          mean) in percentage points, and article-count context.
+
+  - widgets:
+      - name: Sub-subjects with HIGHER AI presence than their subject's mean (top 12)
+        type: table
+        col: 6
+        sql: |
+          WITH parents AS (
+            SELECT subject, share_with_ai AS subject_share
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+            WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.report.wat_category_metrics`)
+          )
+          SELECT
+            s.subject                                                  AS subject,
+            s.sub_subject                                              AS sub_subject,
+            ROUND(s.share_with_ai * 100, 2)                            AS sub_subject_ai_share_pct,
+            ROUND(p.subject_share  * 100, 2)                           AS subject_mean_pct,
+            ROUND((s.share_with_ai - p.subject_share) * 100, 2)        AS deviation_pp,
+            s.n_articles                                               AS n_articles,
+            s.articles_with_ai                                         AS articles_with_ai
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics` s
+          JOIN parents p USING (subject)
+          ORDER BY (s.share_with_ai - p.subject_share) DESC
+          LIMIT 12
+        columns:
+          - { name: "subject", label: "Subject" }
+          - { name: "sub_subject", label: "Sub-subject" }
+          - { name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number }
+          - { name: "subject_mean_pct", label: "Subject mean (%)", format: number }
+          - { name: "deviation_pp", label: "Deviation (pp)", format: number }
+          - { name: "n_articles", label: "N articles", format: number }
+          - { name: "articles_with_ai", label: "Articles with AI", format: number }
+
+      - name: Sub-subjects with LOWER AI presence than their subject's mean (bottom 12)
+        type: table
+        col: 6
+        sql: |
+          WITH parents AS (
+            SELECT subject, share_with_ai AS subject_share
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+            WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.report.wat_category_metrics`)
+          )
+          SELECT
+            s.subject                                                  AS subject,
+            s.sub_subject                                              AS sub_subject,
+            ROUND(s.share_with_ai * 100, 2)                            AS sub_subject_ai_share_pct,
+            ROUND(p.subject_share  * 100, 2)                           AS subject_mean_pct,
+            ROUND((s.share_with_ai - p.subject_share) * 100, 2)        AS deviation_pp,
+            s.n_articles                                               AS n_articles,
+            s.articles_with_ai                                         AS articles_with_ai
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics` s
+          JOIN parents p USING (subject)
+          ORDER BY (s.share_with_ai - p.subject_share) ASC
+          LIMIT 12
+        columns:
+          - { name: "subject", label: "Subject" }
+          - { name: "sub_subject", label: "Sub-subject" }
+          - { name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number }
+          - { name: "subject_mean_pct", label: "Subject mean (%)", format: number }
+          - { name: "deviation_pp", label: "Deviation (pp)", format: number }
+          - { name: "n_articles", label: "N articles", format: number }
+          - { name: "articles_with_ai", label: "Articles with AI", format: number }
+
+  - widgets:
+      - name: Surprises footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Sub-subject and subject aggregates from
+          `bruin-playground-arsalan.report.wat_subcategory_metrics` and
+          `…wat_category_metrics`, both built from snapshots collected via the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          over the **[Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          universe.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** "Deviation from parent subject mean" is one of
+          many possible surprise metrics; an alternative would be deviation
+          from the cross-subject grand median. The choice here favours
+          interpretability ("this sub-subject is unusual relative to its own
+          siblings") over absolute-rank comparability. Sub-subjects with
+          fewer than 5 articles are excluded for the same noise-suppression
+          reason as the sub-subject breakdown above.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Top growing articles
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Top growing articles header
+        type: text
+        col: 12
+        content: |
+          ## Articles with the largest absolute growth in AI references
+
+          **Description.** Per-article view: each row is a Vital-Articles-L4
+          article that has at least one AI reference at the latest snapshot,
+          ranked by how many additional AI references it has accumulated
+          since the earliest snapshot in which it existed. Use this table to
+          drill into specific articles that drove the subject-level trends
+          shown above.
+
+          **Encoding key.** Columns: article, subject, sub-subject, AI
+          references at earliest snapshot, AI references at latest snapshot,
+          absolute growth, latest total wikilinks, and the latest AI-link
+          share.
+
+  - widgets:
+      - name: Top 25 Vital Articles by absolute growth in AI references (earliest → latest snapshot)
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            article_title                                       AS article,
+            subject                                             AS subject,
+            sub_subject                                         AS sub_subject,
+            earliest_snapshot                                   AS earliest_snapshot,
+            COALESCE(earliest_ai_refs, 0)                       AS ai_refs_earliest,
+            latest_snapshot                                     AS latest_snapshot,
+            latest_ai_refs                                      AS ai_refs_latest,
+            ai_refs_added                                       AS growth_refs,
+            latest_total_refs                                   AS total_wikilinks_latest,
+            ROUND(latest_ai_ref_share * 100, 2)                 AS ai_link_share_pct
+          FROM `bruin-playground-arsalan.report.wat_article_growth`
+          ORDER BY ai_refs_added DESC
+          LIMIT 25
+        columns:
+          - { name: "article", label: "Article" }
+          - { name: "subject", label: "Subject" }
+          - { name: "sub_subject", label: "Sub-subject" }
+          - { name: "earliest_snapshot", label: "Earliest snapshot" }
+          - { name: "ai_refs_earliest", label: "AI refs (earliest)", format: number }
+          - { name: "latest_snapshot", label: "Latest snapshot" }
+          - { name: "ai_refs_latest", label: "AI refs (latest)", format: number }
+          - { name: "growth_refs", label: "Growth (Δ refs)", format: number }
+          - { name: "total_wikilinks_latest", label: "Total wikilinks (latest)", format: number }
+          - { name: "ai_link_share_pct", label: "AI-link share (%)", format: number }
+
+  - widgets:
+      - name: Top growing articles footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Per-article growth metrics from
+          `bruin-playground-arsalan.report.wat_article_growth`. Earliest
+          snapshot is the first semiannual snapshot in which the article had
+          a usable revision; latest snapshot is the most recent. Raw revision
+          content fetched via the
+          **[Wikipedia MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**.
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Articles created after December 2019 use their
+          creation snapshot as the baseline, so their "growth" is measured
+          over a shorter window than older articles — a recently created
+          article with many AI links will rank high even though its growth
+          rate over a longer window is unknown. The table excludes articles
+          with zero AI references at the latest snapshot.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Methodology
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          ## Methodology, data vintages, and limitations
+
+          **Universe.** **[Wikipedia Vital Articles / Level 4](https://en.wikipedia.org/wiki/Wikipedia:Vital_articles/Level/4)**
+          — ~9,907 articles editorially curated as the most important topics
+          across all of human knowledge, organized into 11 top-level subjects
+          (People, History, Geography, Arts, Philosophy and religion,
+          Everyday life, Society and social sciences, Biology and health
+          sciences, Physical sciences, Technology, Mathematics) and ~120
+          sub-subjects. Each article is tagged with its subject and
+          sub-subject directly from the Vital Articles list structure.
+
+          **AI seed list.** ~47 curated AI-topic articles spanning
+          foundations (Artificial intelligence, Machine learning, Neural
+          network, Deep learning), architectures (Transformer, Recurrent
+          neural network, Convolutional neural network), modern systems
+          (Large language model, GPT-4, ChatGPT, BERT, Claude, Gemini),
+          companies (OpenAI, Anthropic, DeepMind), sub-fields (Natural
+          language processing, Computer vision, Reinforcement learning), and
+          cultural/policy topics (AI safety, AI ethics, AI alignment). Each
+          canonical title is expanded to include its current redirect
+          aliases (fetched via the MediaWiki API), so that historical
+          revisions linking via an older redirect spelling are still counted.
+
+          **Snapshots.** 14 semiannual snapshots at fixed calendar dates:
+          December 1 and May 1, starting Dec-2019 through May-2026. For each
+          (article × date), the **[MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)**
+          returns the closest revision at or before the target date (small
+          temporal drift expected, generally <1 day). The full revision
+          content is parsed for `[[wikilink]]` syntax; every distinct
+          wikilink target is counted, and intersections with the AI alias
+          list are tallied as "AI references".
+
+          **Pipeline.** `raw.wat_vital_articles` and `raw.wat_ai_seed_articles`
+          are one-shot scrapes; `raw.wat_article_snapshots` is the
+          long-running ingestion job. The `staging.wat_*` layer dedupes,
+          normalizes, and joins. The `report.wat_*` layer aggregates to
+          subject/sub-subject/article level. All assets run via **Bruin cli**
+          on **BigQuery**; this dashboard renders from those tables via
+          **Bruin dac**.
+
+          **General limitations.**
+          (a) "AI reference" is a structural wikilink to one of 47 curated
+          AI-topic articles — it is a proxy for editorial association, not
+          for sentiment, prominence, or semantic meaning. An article that
+          mentions AI in body text without linking will not be counted.
+          (b) The universe is curated (Vital Articles L4); the results do not
+          generalize to the ~6.8M-article English Wikipedia at large.
+          (c) Some AI seed articles did not exist in 2019 (e.g. *GPT-4* page
+          was created in 2023); apparent growth partly reflects new AI
+          concepts entering Wikipedia, not only outside articles adopting
+          them.
+          (d) English Wikipedia only.
+          (e) Snapshot cadence is ~6 months — short-term spikes between
+          snapshots are not visible.
+          (f) The AI seed list is curated and finite; topics outside it
+          (e.g. *Symbolic AI*, *Expert system*) are not counted unless
+          explicitly added to the seed.

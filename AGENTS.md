@@ -500,6 +500,7 @@ Pre-DAC pipelines have a `.streamlit/secrets.toml` in their reports directory. T
 - **Do not invent DAC features that don't exist.** The widget schema is in `DAC.md`; if a property isn't in the "All widget properties" list there or in the fork-only fields, it will be ignored or fail validation. When in doubt, check `DAC.md` first and only then re-fetch upstream.
 - **Do not use SQL column names with spaces, parens, dashes, or accents in DAC widgets.** `bruin query` rejects them. Use `snake_case` in SQL output; map to display labels via `seriesNames:` (line-chart fork) or via the encoding-key line in the header text widget.
 - **Do not push ISO timestamps into a DAC chart x-axis if you want sub-day labels.** The formatter strips the time. Emit a STRING column (e.g. `FORMAT_TIMESTAMP('%H:%M', ts)`) and order rows in SQL.
+- **Do not hoard front-end test screenshots.** Screenshots produced by Playwright (or any other tool) for visually verifying dashboard / front-end changes are working artifacts, not deliverables. Clear the `screenshots/` directory once the changes they verified are landed — delete the `.png` files and any one-off `_*.mjs` capture scripts written for that session. Keep only screenshots explicitly requested by the user for documentation. `**/screenshots/` is gitignored repo-wide; if a stray screenshot folder is tracked, delete it. Never commit dozens of screenshots from a single review pass.
 
 ## Geospatial Data Rules
 

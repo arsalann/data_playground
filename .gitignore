@@ -234,6 +234,7 @@ service_account*.json
 # Logs and data
 logs/
 *.db
+*.duckdb
 *.DS_Store
 *.pyc
 __pycache__/
@@ -243,3 +244,13 @@ cache/*
 logs/runs
 logs/*.log
 logs/queries
+
+# Node
+node_modules/
+
+# Screenshots used for dashboard / front-end visual verification.
+# These are working artifacts produced by Playwright during development
+# and should be deleted after the changes they verified are merged.
+# See AGENTS.md "Things to Avoid" for the cleanup rule.
+**/screenshots/
+

@@ -1,0 +1,68 @@
+/* @bruin
+name: staging.hourly_sensor_stats
+type: duckdb.sql
+connection: duckdb-default
+description: |
+  One row per (sensor, hour) with reading and a quality-window flag.
+  Excludes physically-impossible temperature values via a WHERE clause so
+  this downstream view is robust even when the raw check fails; the raw
+  check still surfaces the issue for the agents to handle.
+
+depends:
+  - raw.sensor_readings
+
+materialization:
+  type: table
+  strategy: create+replace
+
+columns:
+  - name: sensor_id
+    type: VARCHAR
+    primary_key: true
+    nullable: false
+  - name: hour
+    type: TIMESTAMP
+    primary_key: true
+    nullable: false
+  - name: temperature_c
+    type: DOUBLE
+    nullable: false
+  - name: humidity_pct
+    type: DOUBLE
+    nullable: false
+  - name: battery_pct
+    type: DOUBLE
+    nullable: false
+  - name: ingest_lag_minutes
+    type: DOUBLE
+    description: Minutes between reading_time and created_at; > 60 = late.
+    nullable: false
+
+custom_checks:
+  - name: median_ingest_lag_under_60_min
+    description: |
+      Median ingest lag across all sensors should be under 60 minutes.
+      Failure on 2026-05-10 is expected (late-arriving injection).
+    query: |
+      SELECT
+        CASE
+          WHEN MEDIAN(ingest_lag_minutes) > 60 THEN 1 ELSE 0
+        END
+      FROM staging.hourly_sensor_stats
+      WHERE hour::DATE = (
+        SELECT MAX(hour::DATE) FROM staging.hourly_sensor_stats
+      )
+    value: 0
+
+@bruin */
+
+SELECT
+    sensor_id,
+    reading_time AS hour,
+    temperature_c,
+    humidity_pct,
+    battery_pct,
+    EXTRACT(EPOCH FROM (created_at - reading_time)) / 60.0 AS ingest_lag_minutes
+FROM raw.sensor_readings
+WHERE temperature_c BETWEEN -50 AND 70
+ORDER BY hour DESC, sensor_id

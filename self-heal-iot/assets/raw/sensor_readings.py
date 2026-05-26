@@ -11,20 +11,20 @@ description: |
   Injected issues:
 
   1. QUALITY-FAIL — impossible_values
-     On 2026-04-10, sensor S07 reports temperature_c = 999.0 for every hour.
+     On 2026-05-16, sensor S07 reports temperature_c = 999.0 for every hour.
      A range check (temp between -50 and 70) catches this. Routes to
      data-quality-investigate; mode = source-bug.
 
   2. SCHEMA-DRIFT — type_narrowed
-     Before 2026-03-01 temperature_c is float (e.g. 22.473).
-     From 2026-03-01 onward, the source rounds to int (e.g. 22.0) — declared
+     Before 2026-05-18 temperature_c is float (e.g. 22.473).
+     From 2026-05-18 onward, the source rounds to int (e.g. 22.0) — declared
      dtype is still DOUBLE, so the column technically validates, but a
      downstream "precision check" sees the distribution change. Routes to
      schema-drift-check; type-narrowed → escalate.
 
   3. LATE-ARRIVING — backdated_writes
-     Hourly readings for 2026-05-10 are emitted with a created_at timestamp
-     of 2026-05-11 (one full day late). A staleness check on `created_at`
+     Hourly readings for 2026-05-22 are emitted with a created_at timestamp
+     of 2026-05-23 (one full day late). A staleness check on `created_at`
      vs `reading_time` should flag this.
 
 materialization:
@@ -64,7 +64,7 @@ custom_checks:
   - name: temperature_in_physical_range
     description: |
       Temperature readings outside -50..70 degC are sensor malfunctions.
-      Failure on 2026-04-10 is expected (impossible_values injection).
+      Failure on 2026-05-16 is expected (impossible_values injection).
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_raw.sensor_readings
@@ -74,7 +74,7 @@ custom_checks:
   - name: readings_arrive_within_one_hour
     description: |
       created_at should be within 1 hour of reading_time. Larger gaps point
-      to late-arriving data. Failure on 2026-05-10 is expected (late-arriving
+      to late-arriving data. Failure on 2026-05-22 is expected (late-arriving
       injection).
     query: |
       SELECT COUNT(*)
@@ -92,9 +92,9 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 
 SENSOR_IDS = [f"S{i:02d}" for i in range(1, 13)]
-TYPE_NARROW_DATE = date(2026, 3, 1)
-IMPOSSIBLE_DATE = date(2026, 4, 10)
-LATE_DATE = date(2026, 5, 10)
+TYPE_NARROW_DATE = date(2026, 5, 18)
+IMPOSSIBLE_DATE = date(2026, 5, 16)
+LATE_DATE = date(2026, 5, 22)
 
 
 def seed_for(d: date, hour: int) -> int:
@@ -151,5 +151,5 @@ def materialize():
     df = pd.concat(frames, ignore_index=True)
     for column in ("reading_time", "created_at"):
         df[column] = pd.to_datetime(df[column]).astype("datetime64[us]")
-    print(f"[fake-iot] generated {len(df):,} readings across {df['reading_time'].dt.date.nunique()} days")
+    print(f"[self-heal-iot] generated {len(df):,} readings across {df['reading_time'].dt.date.nunique()} days")
     return df

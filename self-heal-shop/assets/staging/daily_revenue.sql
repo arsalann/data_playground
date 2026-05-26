@@ -5,7 +5,7 @@ connection: bruin-playground-arsalan
 description: |
   Aggregates orders to daily revenue by country and product category.
   This is the asset most affected by the injected schema drift on
-  self_heal_test_raw.products — it joins on `category`, which is renamed after 2026-04-01.
+  self_heal_test_raw.products — it joins on `category`, which is renamed after 2026-05-18.
 
 depends:
   - self_heal_test_raw.orders

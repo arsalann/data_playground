@@ -1,8 +1,10 @@
-# fake-iot
+# self-heal-iot
 
 BigQuery-backed fixture pipeline for testing self-healing pipeline skills against IoT sensor data. It generates deterministic hourly readings for 12 sensors and intentionally injects bad values, late-arriving writes, and a type-shape change.
 
 This pipeline is safe for local `bruin run` testing. It is not a production-pattern pipeline and does not exercise Bruin Cloud actions directly.
+
+For Bruin Cloud testing, schedule this pipeline daily and run a one-time daily backfill from `2026-03-01` through `2026-05-15` to create clean healthy history. Injected failures start on `2026-05-16`.
 
 ## Critical Agent Warning
 
@@ -17,9 +19,9 @@ This pipeline is safe for local `bruin run` testing. It is not a production-patt
 
 | Scenario | Date/window | Trigger asset/check | Expected skill path | Expected classification |
 |---|---:|---|---|---|
-| Impossible sensor values | `2026-04-10` | BigQuery table `self_heal_test_raw.sensor_readings`, check `temperature_in_physical_range` | `pipeline-triage` -> `data-quality-investigate` -> `pipeline-report` | `quality-fail`, mode `source-bug` |
-| Type-shape narrowing | Starts `2026-03-01` | BigQuery column `self_heal_test_raw.sensor_readings.temperature_c` distribution changes from decimal-like floats to whole-number floats | `pipeline-diagnose` or `schema-drift-check` -> `pipeline-report` | `observed-type-drift` / `type-narrowed`, escalation |
-| Late-arriving data | `2026-05-10` | BigQuery table `self_heal_test_raw.sensor_readings`, check `readings_arrive_within_one_hour`; staging check `ingest_lag_under_60_min` | `pipeline-triage` -> `data-quality-investigate` or `freshness-sla-check` -> `pipeline-report` | `late-arriving-data` / `table-frozen` style freshness signal |
+| Impossible sensor values | `2026-05-16` | BigQuery table `self_heal_test_raw.sensor_readings`, check `temperature_in_physical_range` | `pipeline-triage` -> `data-quality-investigate` -> `pipeline-report` | `quality-fail`, mode `source-bug` |
+| Type-shape narrowing | Starts `2026-05-18` | BigQuery column `self_heal_test_raw.sensor_readings.temperature_c` distribution changes from decimal-like floats to whole-number floats | `pipeline-diagnose` or `schema-drift-check` -> `pipeline-report` | `observed-type-drift` / `type-narrowed`, escalation |
+| Late-arriving data | `2026-05-22` | BigQuery table `self_heal_test_raw.sensor_readings`, check `readings_arrive_within_one_hour`; staging check `ingest_lag_under_60_min` | `pipeline-triage` -> `data-quality-investigate` or `freshness-sla-check` -> `pipeline-report` | `late-arriving-data` / `table-frozen` style freshness signal |
 | Backfill risk review | Any historical rerun over an already-loaded range | Warehouse asset `self_heal_test_raw.sensor_readings` has append materialization | `pipeline-backfill` dry run -> `pipeline-report` | Requires approval for append rerun where data already exists |
 
 ## What This Pipeline Covers
@@ -37,18 +39,19 @@ It does not directly test Slack posting, GitHub PR creation, Bruin Cloud rerun e
 ## Useful Commands
 
 ```bash
-bruin validate fake-iot --output json
-bruin run fake-iot/assets/raw/sensor_readings.py --start-date 2026-04-10 --end-date 2026-04-11
-bruin run --only checks fake-iot/assets/raw/sensor_readings.py
-bruin run fake-iot/assets/raw/sensor_readings.py --start-date 2026-05-10 --end-date 2026-05-11
-bruin run fake-iot/assets/staging/hourly_sensor_stats.sql
-bruin run --only checks fake-iot/assets/staging/hourly_sensor_stats.sql
-bruin lineage fake-iot/assets/staging/hourly_sensor_stats.sql --output json --full
+bruin validate self-heal-iot --output json
+bruin run self-heal-iot --start-date 2026-03-01 --end-date 2026-05-15
+bruin run self-heal-iot/assets/raw/sensor_readings.py --start-date 2026-05-16 --end-date 2026-05-17
+bruin run --only checks self-heal-iot/assets/raw/sensor_readings.py
+bruin run self-heal-iot/assets/raw/sensor_readings.py --start-date 2026-05-22 --end-date 2026-05-23
+bruin run self-heal-iot/assets/staging/hourly_sensor_stats.sql
+bruin run --only checks self-heal-iot/assets/staging/hourly_sensor_stats.sql
+bruin lineage self-heal-iot/assets/staging/hourly_sensor_stats.sql --output json --full
 ```
 
 ## Expected Notes for Agents
 
-- Treat local `bruin run` as allowed only because this is a fake-data test pipeline.
+- Treat local `bruin run` as allowed only because this is a self-heal test pipeline.
 - Exclude `assets/raw/sensor_readings.py` from self-healing task scope. It is fixture setup, not the thing to fix.
 - For production pipelines, the skills must use Bruin Cloud MCP or `bruin cloud ... --output json`.
 - A whole-pipeline run can leave failing checks by design. Use narrow date windows when exercising one scenario at a time.

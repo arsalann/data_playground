@@ -13,7 +13,7 @@ description: |
   Injected issues (the agents should detect these):
 
   1. QUALITY-FAIL — duplicate_order_id
-     Starting 2026-05-15, ~12 duplicate order_ids appear per day. The asset
+     Starting 2026-05-16, ~12 duplicate order_ids appear per day. The asset
      declares order_id as primary_key, so a `unique` check on order_id should
      catch this. Routes to data-quality-investigate.
 
@@ -23,8 +23,8 @@ description: |
      anomaly-investigate.
 
   3. FRESHNESS — stalled_source
-     For run dates within the last 2 days (today, today-1), returns an empty
-     DataFrame. Simulates a source connector that stopped publishing.
+     For run dates 2026-05-24 through 2026-05-25, returns an empty DataFrame.
+     Simulates a source connector that stopped publishing.
      Routes to freshness-sla-check.
 
 materialization:
@@ -110,7 +110,9 @@ PRODUCT_IDS = [f"P{i:03d}" for i in range(1, 31)]
 AMOUNT_BUCKETS = [(10, 30, 0.35), (30, 80, 0.40), (80, 200, 0.20), (200, 600, 0.05)]
 
 ANOMALY_DATE = date(2026, 5, 20)
-DUP_START_DATE = date(2026, 5, 15)
+DUP_START_DATE = date(2026, 5, 16)
+STALL_START_DATE = date(2026, 5, 24)
+STALL_END_DATE = date(2026, 5, 25)
 ORDER_COLUMNS = [
     "order_id", "user_id", "product_id", "country",
     "amount_usd", "created_at", "order_date",
@@ -188,14 +190,11 @@ def materialize():
     start = date.fromisoformat(start_str[:10])
     end = date.fromisoformat(end_str[:10])
 
-    today = date.today()
-    stale_window_start = today - timedelta(days=1)
-
     frames = []
     current = start
     while current <= end:
-        if current >= stale_window_start:
-            print(f"[fake-shop] {current}: simulated source stall — returning 0 rows")
+        if STALL_START_DATE <= current <= STALL_END_DATE:
+            print(f"[self-heal-shop] {current}: simulated source stall — returning 0 rows")
         else:
             frames.append(generate_day(current))
         current += timedelta(days=1)
@@ -207,5 +206,5 @@ def materialize():
     df["amount_usd"] = df["amount_usd"].astype("float64")
     df["created_at"] = pd.to_datetime(df["created_at"]).astype("datetime64[us]")
     df["order_date"] = pd.to_datetime(df["order_date"])
-    print(f"[fake-shop] generated {len(df):,} orders across {df['order_date'].nunique()} days")
+    print(f"[self-heal-shop] generated {len(df):,} orders across {df['order_date'].nunique()} days")
     return df

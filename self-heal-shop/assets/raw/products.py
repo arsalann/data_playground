@@ -11,10 +11,10 @@ description: |
   Injected issue:
 
   SCHEMA-DRIFT — column_rename
-    Before 2026-04-01 the catalog column is named `category`. From 2026-04-01
+    Before 2026-05-18 the catalog column is named `category`. From 2026-05-18
     onward, the same data is emitted under `product_category`. The downstream
     self_heal_test_staging.daily_revenue asset still references `category`, so any run with
-    BRUIN_END_DATE >= 2026-04-01 will surface a "column not found" error.
+    BRUIN_END_DATE >= 2026-05-18 will surface a "column not found" error.
     Routes to schema-drift-check → maintenance-pr.
 
 materialization:
@@ -48,7 +48,7 @@ custom_checks:
     description: |
       The live self_heal_test_raw.products table should not contain product_category while the
       declared source contract still expects category. Failure after
-      2026-04-01 is expected (schema drift injection).
+      2026-05-18 is expected (schema drift injection).
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_raw.INFORMATION_SCHEMA.COLUMNS
@@ -65,7 +65,7 @@ from datetime import date, datetime, timezone
 import pandas as pd
 
 CATEGORIES = ["apparel", "electronics", "home", "books", "outdoors", "beauty"]
-DRIFT_DATE = date(2026, 4, 1)
+DRIFT_DATE = date(2026, 5, 18)
 
 
 def materialize():
@@ -88,7 +88,7 @@ def materialize():
 
     if end >= DRIFT_DATE:
         df = df.rename(columns={"category": "product_category"})
-        print(f"[fake-shop] schema drift active: 'category' → 'product_category' (end_date={end})")
+        print(f"[self-heal-shop] schema drift active: 'category' → 'product_category' (end_date={end})")
 
-    print(f"[fake-shop] emitted {len(df)} products with columns {list(df.columns)}")
+    print(f"[self-heal-shop] emitted {len(df)} products with columns {list(df.columns)}")
     return df

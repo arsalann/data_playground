@@ -42,7 +42,7 @@ custom_checks:
   - name: ingest_lag_under_60_min
     description: |
       Every sensor reading should arrive within 60 minutes.
-      Failure on 2026-05-10 is expected (late-arriving injection).
+      Failure on 2026-05-22 is expected (late-arriving injection).
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_staging.hourly_sensor_stats

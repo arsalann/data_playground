@@ -326,12 +326,12 @@ A few invariants that hold across the whole system:
 
 ## Testing Locally
 
-Three fake-data pipelines exist for exercising the skills end-to-end without touching production:
+Three self-heal test pipelines exist for exercising the skills end-to-end without touching production. They are designed for a clean daily Bruin Cloud backfill from `2026-03-01` through `2026-05-15`; injected failures begin on `2026-05-16`.
 
-- `fake-shop/` — orders + products. Injects schema drift, duplicate keys, country-concentration anomaly, freshness gap.
-- `fake-iot/` — sensor readings. Injects impossible values, type narrowing, late-arriving data.
-- `fake-webevents/` — pageviews. Injects single-dimension anomaly, new browser segment, multi-day freshness gap.
+- `self-heal-shop/` — orders + products. Injects duplicate keys, schema drift, country-concentration anomaly, freshness gap.
+- `self-heal-iot/` — sensor readings. Injects impossible values, type narrowing, late-arriving data.
+- `self-heal-webevents/` — pageviews. Injects single-dimension anomaly, new browser segment, multi-day freshness gap.
 
-**FAKE PIPELINE WARNING — DO NOT TARGET THE PYTHON DATA GENERATORS.** In `fake-shop/`, `fake-iot/`, and `fake-webevents/`, every `assets/raw/*.py` file is test-fixture setup code that manufactures deterministic sample data and injected failures. These Python assets are deliberately outside the self-healing scenario scope. Do not diagnose, repair, open maintenance PRs against, backfill because of, or classify the Python generator logic itself. Use those files only to load fixture data. The self-healing skills must operate on the generated warehouse tables, SQL staging assets, Bruin checks, Cloud run/check state, and `.context/` findings.
+**SELF-HEAL TEST PIPELINE WARNING — DO NOT TARGET THE PYTHON DATA GENERATORS.** In `self-heal-shop/`, `self-heal-iot/`, and `self-heal-webevents/`, every `assets/raw/*.py` file is test-fixture setup code that manufactures deterministic sample data and injected failures. These Python assets are deliberately outside the self-healing scenario scope. Do not diagnose, repair, open maintenance PRs against, backfill because of, or classify the Python generator logic itself. Use those files only to load fixture data. The self-healing skills must operate on the generated warehouse tables, SQL staging assets, Bruin checks, Cloud run/check state, and `.context/` findings.
 
-Each pipeline's raw asset file documents the injected issues, their dates, and which skill should detect each one. Local `bruin run` is acceptable only for these fake-data test pipelines; it is not the operational path for the Bruin Cloud skills.
+Each pipeline's raw asset file documents the injected issues, their dates, and which skill should detect each one. Local `bruin run` is acceptable only for these self-heal test pipelines; it is not the operational path for the Bruin Cloud skills.

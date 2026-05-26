@@ -139,7 +139,7 @@ recent_commits_examined: 6
 recent_commits_relevant: 0
 attribution: single-dimension-driver + upstream-distribution-shift
 recommended_next:
-  skill: pipeline-report
+  action: human-review
   note: |
     Surface as a real-world traffic event concentrated in Turkey on news_politics.
     No pipeline action recommended. Update baseline if event is sustained > 7 days.

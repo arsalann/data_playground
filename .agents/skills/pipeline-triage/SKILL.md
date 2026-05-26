@@ -17,7 +17,7 @@ This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --o
 - A human asks "what is broken", "what needs attention", or "is the pipeline healthy".
 - Another skill needs a fresh state snapshot before acting.
 
-Do not use for: targeted single-asset work (use `pipeline-diagnose`), running fixes (use the specialist skills), or producing the human-facing summary (use `pipeline-report`).
+Do not use for: targeted single-asset work (use `pipeline-diagnose`) or running fixes (use the specialist skills).
 
 ## Inputs
 
@@ -59,13 +59,13 @@ Every issue gets exactly one primary class. Pick the first that matches:
 | Class | Signal | Route to |
 |---|---|---|
 | `transient` | Single failed run, error matches retry pattern (timeout, 5xx, deadlock, connection reset), no recent code change | retry once via `pipeline-backfill` using Bruin Cloud rerun/trigger only |
-| `source-down` | Multiple assets that share an upstream source connector all failing with auth/connectivity errors | `pipeline-report` only — do not retry until source is verified |
+| `source-down` | Multiple assets that share an upstream source connector all failing with auth/connectivity errors | human escalation — do not retry until source is verified |
 | `schema-drift` | Error mentions unknown column, type mismatch, missing field, or `bruin validate` flags drift | `schema-drift-check` |
 | `quality-fail` | Cloud run status is `success`, but custom checks or column checks failed on an asset instance | `data-quality-investigate` |
 | `stale` | Run did not fail but data is past its freshness SLA | `freshness-sla-check` |
 | `anomaly` | Cloud run status is `success`, asset instances are not `failed` or `checks_failed`, but a tracked metric is out of expected range | `anomaly-investigate` |
-| `code-regression` | Failure started immediately after a commit touching the failing asset | `pipeline-report` with link to commit; do not auto-revert |
-| `capacity` | OOM, quota exceeded, slot exhaustion, query timeout on a query that historically ran fine | `pipeline-report` — capacity changes need human approval |
+| `code-regression` | Failure started immediately after a commit touching the failing asset | human escalation with link to commit; do not auto-revert |
+| `capacity` | OOM, quota exceeded, slot exhaustion, query timeout on a query that historically ran fine | human escalation — capacity changes need approval |
 | `unknown` | None of the above match | `pipeline-diagnose` to gather more context |
 
 ## Decision Tree
@@ -89,8 +89,7 @@ batches = group_by_class(issues)
 for class, items in batches:
     route(class, items)
 
-# Always finish with a report, even if every issue was handed off.
-invoke pipeline-report with batches
+return result(snapshot='.context/triage-<timestamp>.json', batches=batches)
 ```
 
 ## Actions & Guardrails
@@ -101,15 +100,15 @@ This skill is read-only with one exception:
 - **Requires approval**: nothing — this skill never modifies pipelines or repo state directly.
 - **Never allowed**: local operational runs, skipping the classification step (every issue gets a class, even if the class is `unknown`), batching multiple unrelated issues into one specialist invocation.
 
-If the agent cannot reach Bruin Cloud, it must emit a `source-down` style report and stop. Do not assume "no failures" from missing data.
+If the agent cannot reach Bruin Cloud, it must write a `.context/triage-error-<timestamp>.yml` file and stop. Do not assume "no failures" from missing data.
 
 ## Verification
 
 After routing, re-read the triage snapshot 5 minutes after the last specialist skill finishes. Any class that did not move to `resolved` or `escalated` is a failure of the triage routing — log it and re-classify.
 
-## Reporting
+## Output
 
-Hand the batched issue list to `pipeline-report` with this shape:
+Write the batched issue list to `.context/triage-summary-<timestamp>.yml` and return that path:
 
 ```yaml
 pipeline: wikipedia-ai-trends

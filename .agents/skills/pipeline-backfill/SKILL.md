@@ -146,9 +146,9 @@ After the full range:
 1. Re-check the original failing condition to confirm the fix held.
 2. List downstream assets and Cloud runs that may still need reruns, but do not auto-cascade unless the approved Cloud plan explicitly included them.
 
-## Reporting
+## Output
 
-Write a backfill record to `.context/backfill-<asset>-<timestamp>.yml` and post a Slack message via `pipeline-report`:
+Write a backfill record to `.context/backfill-<asset>-<timestamp>.yml` and return that path:
 
 ```yaml
 asset: marts.daily_top_articles

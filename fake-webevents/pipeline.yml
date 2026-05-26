@@ -1,0 +1,6 @@
+name: fake-webevents
+schedule: daily
+start_date: "2026-01-01"
+
+default_connections:
+  google_cloud_platform: bruin-playground-arsalan

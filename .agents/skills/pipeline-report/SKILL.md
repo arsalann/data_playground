@@ -10,7 +10,7 @@ Every self-healing run ends here. If the agent did something — or decided to d
 
 Reports should link to Bruin Cloud runs/assets and source finding files. If the report needs Cloud context, use Bruin Cloud MCP first and docs/source-verified `bruin cloud ... --output json` commands as fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Never include API tokens, `.bruin.yml` connection values, `BRUIN_CLOUD_API_KEY`, command output containing `api_token`, full row dumps, or raw secrets in Slack.
 
-Slack posting is outside the Bruin CLI. Bruin Cloud owns the Slack notification destination. This skill must use the Slack channel or channel ID supplied by Bruin Cloud run/agent context, pipeline notification configuration, or an explicit caller input. It must not assume, invent, or hard-code a default channel.
+Slack posting is outside the Bruin CLI. Bruin Cloud owns the Slack notification destination. This skill must use the Slack channel or channel ID supplied by Bruin Cloud run/agent context, pipeline notification configuration, explicit caller input, or this repository's configured self-healing Slack channel ID: `C0B67QKKNK0`. It must not assume, invent, or use a channel name fallback.
 
 ## When to Use
 
@@ -25,7 +25,7 @@ Do not use for: ad-hoc human-to-human conversation, posting raw query results wi
 
 | Input | Required | Example | Notes |
 |---|---|---|---|
-| `channel` | no | `C0123456789` | Slack channel name or ID only when explicitly provided by Bruin Cloud/caller context. Do not default this in the skill. |
+| `channel` | no | `C0B67QKKNK0` | Slack channel ID when explicitly provided by Bruin Cloud/caller context. This repo's configured self-healing channel ID is `C0B67QKKNK0`. |
 | `severity` | yes | `info`, `warn`, `error`, `critical` | Drives formatting and mentions. |
 | `subject` | yes | `Schema drift: wikipedia_pageviews` | One-line summary, max 80 chars. |
 | `source_files` | no | `[.context/drift-...yml, .context/diag-...md]` | Finding/report files to summarize. |
@@ -39,8 +39,9 @@ Resolve the Slack destination in this order:
 1. Bruin Cloud agent/run context-provided Slack channel or channel ID.
 2. Bruin Cloud pipeline notification configuration, if exposed through MCP or Cloud context.
 3. Explicit `channel` input from the caller.
+4. This repository's configured self-healing Slack channel ID: `C0B67QKKNK0`.
 
-If no destination is available, do not post to Slack. Write the report record to `.context/`, state that Slack delivery was skipped because no configured destination was provided, and return an escalation for the Bruin Cloud configuration owner. Never use a repo-level fallback such as a shared alerts channel.
+If no destination is available, do not post to Slack. Write the report record to `.context/`, state that Slack delivery was skipped because no configured destination was provided, and return an escalation for the Bruin Cloud configuration owner. Never use a channel name fallback such as a shared alerts channel.
 
 ## Severity → Format
 
@@ -134,6 +135,7 @@ destination = resolve_slack_destination(
     cloud_context=inputs.cloud_context,
     pipeline_config=inputs.pipeline_config,
     explicit_channel=inputs.channel,
+    repo_configured_channel='C0B67QKKNK0',
 )
 if not destination:
     return write_context_only_report(reason='no Slack destination configured')
@@ -170,7 +172,7 @@ return result(message_url=posted.permalink, channel=destination.channel)
 
 - **Auto-allowed**: posting `info` and `warn` messages, replying in existing threads, annotating finding files with the message URL.
 - **Requires approval**: posting `critical` severity outside business hours when the pipeline being reported on is not on the on-call rotation list.
-- **Never allowed**: posting to channels not supplied by Bruin Cloud/caller context, inventing a fallback channel, paging individuals who are not on the current on-call rotation, posting message bodies that include secrets or full row dumps, suppressing a report because "the previous one looked similar" (always reply in thread instead — never drop).
+- **Never allowed**: posting to channels not supplied by Bruin Cloud/caller context or this repository's configured channel ID `C0B67QKKNK0`, inventing a fallback channel, paging individuals who are not on the current on-call rotation, posting message bodies that include secrets or full row dumps, suppressing a report because "the previous one looked similar" (always reply in thread instead — never drop).
 
 ## Verification
 
@@ -185,7 +187,7 @@ A report is complete when:
 Yes, even this skill writes a record. Append to `.context/reports-<YYYY-MM-DD>.jsonl`:
 
 ```json
-{"ts":"2026-05-22T14:31:00Z","channel":"<bruin-cloud-configured-channel>","severity":"warn","subject":"Schema drift: wikipedia_pageviews","permalink":"https://...","sources":[".context/drift-raw.wikipedia_pageviews-20260522.yml"]}
+{"ts":"2026-05-22T14:31:00Z","channel":"C0B67QKKNK0","severity":"warn","subject":"Schema drift: wikipedia_pageviews","permalink":"https://...","sources":[".context/drift-raw.wikipedia_pageviews-20260522.yml"]}
 ```
 
 This lets the agent answer "have we already told someone about this" without scanning Slack history every time.

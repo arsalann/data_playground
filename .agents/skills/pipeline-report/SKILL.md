@@ -8,7 +8,9 @@ argument-hint: "<channel> <severity> <subject>"
 
 Every self-healing run ends here. If the agent did something — or decided to do nothing — a human needs to be able to read one message and understand what happened, what was fixed, and what still needs attention.
 
-Reports should link to Bruin Cloud runs/assets and source finding files. If the report needs Cloud context, use Bruin Cloud MCP first and docs/source-verified `bruin cloud ... --output json` commands as fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Never include API tokens, connection values, full row dumps, or raw secrets in Slack.
+Reports should link to Bruin Cloud runs/assets and source finding files. If the report needs Cloud context, use Bruin Cloud MCP first and docs/source-verified `bruin cloud ... --output json` commands as fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Never include API tokens, `.bruin.yml` connection values, `BRUIN_CLOUD_API_KEY`, command output containing `api_token`, full row dumps, or raw secrets in Slack.
+
+Slack posting is outside the Bruin CLI. Bruin Cloud docs cover pipeline notification configuration, but this skill posts through the configured Slack integration or MCP connector.
 
 ## When to Use
 
@@ -76,6 +78,20 @@ Critical formatting rules:
 - Quote numbers, not vibes. "Row count dropped 47% (4.2M → 2.2M)" not "row count is way down".
 - Link, do not paste. Long error messages go in a thread reply, not the main message.
 - No emojis except the severity indicator.
+
+## Cloud Context Commands
+
+When source files do not already contain reliable Cloud IDs, source run IDs from `runs get/list` and asset names from `assets list/get` rather than free-form text:
+
+```shell
+bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 20 --output json
+bruin cloud runs get --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json
+bruin cloud assets list --project-id <project-id> --pipeline <pipeline> --output json
+bruin cloud assets get --project-id <project-id> --pipeline <pipeline> --asset <asset> --output json
+bruin cloud instances failed-logs --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json
+```
+
+Redact `.bruin.yml` values, `BRUIN_CLOUD_API_KEY`, any `api_token` fields, connection strings, credential file paths, and row-level samples before constructing Slack content.
 
 ## Digest Messages
 

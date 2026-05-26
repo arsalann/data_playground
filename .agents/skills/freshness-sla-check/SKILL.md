@@ -8,7 +8,7 @@ argument-hint: "[pipeline | 'all']"
 
 Late data is the most common pipeline failure mode and the easiest to miss because nothing actually _errors_ — runs just stop arriving. This skill makes the silence audible.
 
-Use Bruin Cloud MCP for freshness/run state and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Do not use local `bruin run` for operational retriggers.
+Use Bruin Cloud MCP for freshness/run state and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Do not use local `bruin run` for operational retriggers.
 
 ## When to Use
 
@@ -29,10 +29,10 @@ Do not use for: failed runs that produced errors (use `pipeline-diagnose`) or da
 
 ## Freshness Expectation Sources
 
-A freshness expectation can come from any of these. Use the strongest available evidence. Do not invent Bruin metadata fields; there is no `meta.freshness` tag in Bruin assets.
+A freshness expectation can come from any of these. Use the strongest available evidence. `meta.freshness`, if present, is a project convention and not a documented Bruin freshness SLA field; document the expected local format before relying on it. Do not invent Bruin metadata fields.
 
 1. **Asset description** - infer cadence or processing window from documented intent, e.g. "runs monthly and processes the previous month's financial performance".
-2. **Schedule cadence** - compare the pipeline schedule to table movement, e.g. an hourly pipeline whose table was last updated 3 days ago is suspicious.
+2. **Schedule cadence** - compare the pipeline schedule to table movement, e.g. an hourly pipeline whose table was last updated 3 days ago is suspicious. Official docs prefer `@daily`, `@hourly`, or cron; source validation also accepts `daily`, `hourly`, `weekly`, and `monthly`.
 3. **Warehouse table metadata** - table `last_updated_at`, partition metadata, row count, size, and other warehouse-native freshness indicators.
 4. **Freshness columns** - max values of timestamp/date columns such as `MAX(extracted_at)`, `MAX(inserted_at)`, `MAX(dt)`, partition max date, or equivalent columns present in the table.
 5. **Table growth pattern** - compare recent growth to historical growth, e.g. `SELECT extracted_at, COUNT(*) FROM table_xyz GROUP BY 1 ORDER BY 1 DESC`; slower-than-usual growth or a frozen table is a freshness signal.
@@ -42,16 +42,16 @@ If none of these are available, list the asset as `unmonitored` and skip freshne
 
 ## Context to Gather
 
-1. **Asset inventory** - every asset in scope, with its inferred freshness expectation. Use Bruin Cloud MCP or `bruin cloud assets list --project-id <project-id> --pipeline <pipeline> --output json`.
+1. **Asset inventory** - every asset in scope, with its inferred freshness expectation. Use Bruin Cloud MCP or `bruin cloud assets list --project-id <project-id> --pipeline <pipeline> --output json`. For `pipeline: all`, enumerate `bruin cloud projects list --output json`, then `bruin cloud pipelines list --project-id <project-id> --output json`, then run the per-pipeline commands; there is no single Cloud CLI `--pipeline all` flag.
 2. **Last successful run** - timestamp per asset/instance from Bruin Cloud.
-3. **Last attempted run** - from `bruin cloud runs list` / `bruin cloud instances list`, so we can distinguish "no attempt" from "attempt failed".
+3. **Last attempted run** - from `bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 20 --output json` and `bruin cloud instances list --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`, so we can distinguish "no attempt" from "attempt failed".
 4. **Now** - current UTC time. Always use UTC; mixing timezones here causes false alarms.
 5. **Upstream state** - for any stale asset, is the upstream also stale?
 6. **Scheduler state** - is the Bruin Cloud scheduler healthy? A scheduler outage will look like many simultaneous freshness misses.
 7. **Source-system status** - if a source publishes a status page or has a known maintenance window, factor it in.
-8. **Warehouse table metadata** - last updated timestamp, partition metadata, row count, table size, and any other warehouse-native freshness fields available.
-9. **Max freshness columns** - query `MAX(extracted_at)`, `MAX(inserted_at)`, `MAX(dt)`, partition max date, or similar date/timestamp columns when present.
-10. **Growth history** - query recent row growth by freshness column/partition and compare it to historical ranges. If recent growth is materially below historical growth, classify that as a table-state freshness signal even if Cloud runs succeeded.
+8. **Warehouse table metadata** - last updated timestamp, partition metadata, row count, table size, and any other warehouse-native freshness fields available. Use `bruin query --connection <connection> --query <sql> --description "freshness metadata probe for <asset>" --output json`; dry-run expensive scans first.
+9. **Max freshness columns** - query `MAX(extracted_at)`, `MAX(inserted_at)`, `MAX(dt)`, partition max date, or similar date/timestamp columns when present with `bruin query --asset <asset-file> --query <sql> --description "freshness max-column probe for <asset>" --output json`.
+10. **Growth history** - query recent row growth by freshness column/partition and compare it to historical ranges with `bruin query --connection <connection> --query <sql> --description "freshness growth-history probe for <asset>" --limit 1000 --output json`. If recent growth is materially below historical growth, classify that as a table-state freshness signal even if Cloud runs succeeded.
 11. **Repo context** - inspect asset descriptions and recent PRs/commits when freshness expectations or recent logic changes are relevant.
 
 ## Stale Asset Classification
@@ -60,7 +60,7 @@ If none of these are available, list the asset as `unmonitored` and skip freshne
 |---|---|---|
 | `upstream-stale` | Asset is stale, AND a declared upstream is also stale by an equal or greater amount | Re-run check on the upstream, not this asset |
 | `source-down` | Asset has no upstreams, source connector is failing health checks | `pipeline-report` — wait, do not retry |
-| `scheduler-missed` | Last attempt timestamp is older than expected; scheduler appears to have skipped | Retrigger through Bruin Cloud MCP or `bruin cloud runs trigger` only |
+| `scheduler-missed` | Last attempt timestamp is older than expected; scheduler appears to have skipped | Retrigger through Bruin Cloud MCP or `bruin cloud runs trigger --project-id <project-id> --pipeline <pipeline> --start-date <start> --end-date <end> --output json` only |
 | `run-stuck` | Last attempt is recent and still in progress past 3x median duration | Investigate or kill (requires approval); do not start another run |
 | `attempted-failed` | Last attempt failed — should have been caught by triage, but list it here too | Route to `pipeline-diagnose` |
 | `table-frozen` | Bruin Cloud runs may be succeeding, but warehouse table metadata or max freshness columns have not advanced | Investigate source/transform; propose metadata/check PR if the expected growth pattern can be documented |
@@ -109,7 +109,7 @@ return result(status='stale-detected', roots=roots, full=findings)
 
 - **Auto-allowed**: read Bruin Cloud run history, read source-system health endpoints, read warehouse table metadata/freshness columns/growth history, write findings to `.context/`, retrigger a single missed Cloud interval when class is `scheduler-missed`, the run is not source/raw destructive, and the interval has never succeeded.
 - **Requires approval**: killing a stuck run, retriggering more than 3 missed runs in one invocation, declaring a pause "expected" without historical evidence, or opening a maintenance PR to document inferred freshness/growth expectations and add/update custom checks.
-- **Never allowed**: local operational runs, marking an asset fresh without recent Cloud and table-level evidence, fabricating a Bruin freshness metadata field, treating "no metadata found" as fresh, or alerting on `weekend-or-holiday` cases that match historical pause patterns.
+- **Never allowed**: local operational runs, marking an asset fresh without recent Cloud and table-level evidence, fabricating a Bruin freshness metadata field, treating project-convention `meta.freshness` as official Bruin behavior, treating "no metadata found" as fresh, or alerting on `weekend-or-holiday` cases that match historical pause patterns.
 
 When a stable freshness or growth expectation is discovered, propose a `maintenance-pr` only with approval. The PR may update the asset description and add a custom check. Example:
 

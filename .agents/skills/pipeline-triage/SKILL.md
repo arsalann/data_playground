@@ -8,7 +8,7 @@ argument-hint: "[pipeline name | alert id | 'all']"
 
 The dispatcher skill. Every self-healing run starts here. The job is to look at pipeline state, decide what (if anything) is wrong, and hand off to a specialist skill. This skill must not perform repairs itself.
 
-This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Do not use local `bruin run` for operational execution.
+This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Do not use local `bruin run` for operational execution.
 
 ## When to Use
 
@@ -35,14 +35,20 @@ Run these in order. Do not skip steps — silence on one signal is itself a sign
 
 1. **Project resolution** - use Bruin Cloud MCP or `bruin cloud projects list --output json`; if more than one project is visible and no `project_id` was supplied, stop and ask the caller for a project.
 2. **Pipeline inventory** - use Bruin Cloud MCP or `bruin cloud pipelines list --project-id <project-id> --output json`; for one pipeline, also run `bruin cloud pipelines get --project-id <project-id> --name <pipeline> --output json`.
-3. **Pipeline validation errors** - use Bruin Cloud MCP or `bruin cloud pipelines errors --output json` and filter to the pipeline/project where the response allows it.
+3. **Pipeline validation errors** - use Bruin Cloud MCP or `bruin cloud pipelines errors --output json` and filter to the pipeline/project client-side. The verified CLI source exposes no `--project-id` flag for this command.
 4. **Recent runs** - use Bruin Cloud MCP or `bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 20 --output json`.
 5. **Latest run details** - use Bruin Cloud MCP or `bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --latest --output json`.
 6. **Latest run diagnosis** - use Bruin Cloud MCP or `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --latest --output json` to capture failed assets, failed checks, and log fingerprints.
-7. **Asset and instance state** - use Bruin Cloud MCP or `bruin cloud assets list`, `bruin cloud instances list`, and `bruin cloud instances failed-logs` for the relevant run.
+7. **Asset and instance state** - use Bruin Cloud MCP or these exact CLI forms for the relevant run:
+   - `bruin cloud assets list --project-id <project-id> --pipeline <pipeline> --output json`
+   - `bruin cloud instances list --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
+   - `bruin cloud instances failed-logs --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
 8. **Freshness** - compare last successful Cloud run/asset instance timestamps to declared SLA, schedule, or historical cadence.
-9. **Schema warnings** - use Cloud validation errors first. If repo files are available, inspect asset definitions and static `bruin lineage` output as supporting evidence only.
+9. **Schema warnings** - use Cloud validation errors first. If repo files are available, inspect asset definitions and static `bruin lineage <asset-file-path> --output json --full` output as supporting evidence only. If the pipeline uses variants, pass `--variant <variant>`.
 10. **Recent repo changes** - inspect `git log`, recent branches/PRs when available, and touched asset/upstream files so code changes are considered before assigning cause.
+11. **Warehouse probes if Cloud state is insufficient** - use read-only `bruin query --connection <connection> --query <sql> --description "triage freshness probe for <asset>" --limit 1000 --output json` or `bruin query --asset <asset-file> --query <sql> --description "triage row-count probe for <asset>" --limit 1000 --output json`; dry-run expensive BigQuery scans first.
+
+Use Cloud run statuses exactly as returned by the CLI/API: `success`, `failed`, and `running`. Asset instances may also show `checks_failed`.
 
 Cache the raw output in `.context/triage-<timestamp>.json` so downstream skills can read it without re-querying.
 
@@ -55,9 +61,9 @@ Every issue gets exactly one primary class. Pick the first that matches:
 | `transient` | Single failed run, error matches retry pattern (timeout, 5xx, deadlock, connection reset), no recent code change | retry once via `pipeline-backfill` using Bruin Cloud rerun/trigger only |
 | `source-down` | Multiple assets that share an upstream source connector all failing with auth/connectivity errors | `pipeline-report` only — do not retry until source is verified |
 | `schema-drift` | Error mentions unknown column, type mismatch, missing field, or `bruin validate` flags drift | `schema-drift-check` |
-| `quality-fail` | Run succeeded but custom checks or column checks failed | `data-quality-investigate` |
+| `quality-fail` | Cloud run status is `success`, but custom checks or column checks failed on an asset instance | `data-quality-investigate` |
 | `stale` | Run did not fail but data is past its freshness SLA | `freshness-sla-check` |
-| `anomaly` | Run succeeded, checks passed, but a tracked metric is out of expected range | `anomaly-investigate` |
+| `anomaly` | Cloud run status is `success`, asset instances are not `failed` or `checks_failed`, but a tracked metric is out of expected range | `anomaly-investigate` |
 | `code-regression` | Failure started immediately after a commit touching the failing asset | `pipeline-report` with link to commit; do not auto-revert |
 | `capacity` | OOM, quota exceeded, slot exhaustion, query timeout on a query that historically ran fine | `pipeline-report` — capacity changes need human approval |
 | `unknown` | None of the above match | `pipeline-diagnose` to gather more context |

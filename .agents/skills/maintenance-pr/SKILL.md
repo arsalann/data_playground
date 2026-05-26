@@ -8,7 +8,7 @@ argument-hint: "<finding file path>"
 
 The only skill in the set with write access to the repository. Every PR it opens must be traceable to a finding file produced by another skill — no freelancing.
 
-This skill may use local Bruin validation because it edits repository files, but it must not create operational local runs. Use Bruin Cloud MCP or docs/source-verified `bruin cloud ... --output json` commands for Cloud context. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection.
+This skill may use local Bruin validation because it edits repository files, but it must not create operational local runs. Use Bruin Cloud MCP or docs/source-verified `bruin cloud ... --output json` commands for Cloud context. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist.
 
 ## When to Use
 
@@ -58,9 +58,10 @@ Before any branch is created:
 3. **No existing PR** for the same finding - search open PRs by branch name pattern. If one exists, comment on it instead of opening another.
 4. **Recent PR/code context is reviewed** - inspect recent PRs and commits touching the same assets so the new PR does not duplicate, conflict with, or hide a recent change.
 5. **Change type is on the allow-list** - if not, abort and route to `pipeline-report` as an escalation.
-6. **Validation runs locally** - after applying the edit on a scratch branch, `bruin validate <pipeline>` must succeed. This is static validation, not an operational run.
-7. **Cloud validation context is checked** - inspect Bruin Cloud validation errors where relevant; if Cloud reports unrelated active errors, note them in the PR.
+6. **Validation scope is decided** - asset-only validation is faster (`bruin validate <asset-file-path> --output json`), but pipeline validation is required when dependency definitions, downstream SQL, pipeline defaults, or shared config changed (`bruin validate <pipeline-dir> --output json`). For variant-bearing pipelines, validate all affected concrete variants or explicitly pass `--variant <variant>`.
+7. **Cloud validation context is checked** - inspect `bruin cloud pipelines errors --output json` where relevant and filter client-side; if Cloud reports unrelated active errors, note them in the PR.
 8. **No secrets in the diff** - scan the diff for credential-shaped strings; abort if anything matches.
+9. **Behavioral write fields are reviewed** - any change to materialization strategy, `primary_key`, `update_on_merge`, `merge_sql`, or `incremental_key` requires explicit human approval because it changes how Bruin writes data.
 
 ## PR Construction
 
@@ -105,9 +106,9 @@ PR body template:
 
 ## Verification
 
-- [ ] `bruin validate <pipeline>` passes
+- [ ] `bruin validate <pipeline-dir-or-asset-file> --output json` passes, with `--variant <variant>` where applicable
 - [ ] Bruin Cloud validation/dry-run equivalent is checked where available
-- [ ] All quality checks on the changed asset are expected to pass on the affected interval
+- [ ] Quality checks passed only if verified by Cloud state or `bruin run --only checks <asset-file>`; otherwise marked not executed
 - [ ] End-to-end tested in a development/shadow/sandbox environment, or explicitly marked NOT TESTED when no safe environment exists
 
 ## Rollback
@@ -144,7 +145,7 @@ branch = create_branch(name=derive_branch_name(finding))
 if not branch.name.startswith('self-healing/'):
     return abort('self-healing branch prefix is required')
 apply_edits(finding.edits)
-if not bruin_validate():
+if not bruin_validate(scope='<asset-file-path or pipeline-dir>', output='json', variant=input.variant):
     discard_branch(branch)
     return abort('bruin validate failed after edits')
 
@@ -156,9 +157,9 @@ return result(pr_url=pr.url, branch=branch)
 
 ## Actions & Guardrails
 
-- **Auto-allowed**: branch creation, file edits scoped to the finding, static `bruin validate`, Bruin Cloud validation-error inspection, commit, push, `gh pr create` with `--draft`.
+- **Auto-allowed**: branch creation, file edits scoped to the finding, static `bruin validate <path> --output json`, Bruin Cloud validation-error inspection through `bruin cloud pipelines errors --output json`, commit, push, `gh pr create` with `--draft`.
 - **Requires approval**: non-draft PRs, any change type marked as such above, force-pushing to an existing PR, opening more than 3 PRs in a single invocation, and end-to-end tests that touch production.
-- **Never allowed**: operational local runs, merging the PR (always a human action), pushing to the base branch directly, modifying files outside the finding's declared scope, opening a PR without a finding file, using `gh pr create --no-draft` for an auto-allowed change without explicit approval, or claiming end-to-end test coverage when no safe test environment was used.
+- **Never allowed**: operational local runs, merging the PR (always a human action), pushing to the base branch directly, modifying files outside the finding's declared scope, opening a PR without a finding file, using `gh pr create --no-draft` for an auto-allowed change without explicit approval, claiming quality checks passed without Cloud verification or `bruin run --only checks <asset-file>`, or claiming end-to-end test coverage when no safe test environment was used.
 
 For PR verification, try to test end to end only when a development, shadow, sandbox, or otherwise safe non-production environment exists. If no safe environment exists, the PR body and report must clearly state: **NOT TESTED END TO END — MUST BE TESTED BEFORE DEPLOYMENT**. Do not run end-to-end tests against production unless a human explicitly approves and the test is safe.
 

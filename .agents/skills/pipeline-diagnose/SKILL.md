@@ -8,7 +8,7 @@ argument-hint: "<asset name> [run_id]"
 
 Forensics, not repair. Take one asset, gather every signal about its last failure, and produce a structured hypothesis another skill (or human) can act on. This skill should leave the system in the exact state it found it.
 
-This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Do not use local `bruin run` for operational execution.
+This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Do not use local `bruin run` for operational execution.
 
 ## When to Use
 
@@ -27,21 +27,25 @@ Do not use for: scanning a whole pipeline (use `pipeline-triage`), executing a f
 | `run_id` | no | `run_01HXYZ...` | Specific run to diagnose. Defaults to most recent failed run. |
 | `pipeline` | no | `wikipedia-ai-trends` | Inferred from asset if not provided. |
 | `project_id` | no | `01krk817ys2j45frftg1q4xfgv` | Bruin Cloud project ID. Required if the account can see multiple projects and it cannot be inferred from a triage snapshot. |
+| `variant` | no | `prod-us` | Concrete Bruin pipeline variant, if the Cloud pipeline is variant-backed. Pass this to local static commands. |
 
 ## Context to Gather
 
 Gather all of these — partial diagnosis is worse than no diagnosis because it biases the hypothesis.
 
-1. **Cloud run diagnosis** - use Bruin Cloud MCP or `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --latest --output json` / `--run-id <run-id>` for the consolidated failed-assets/checks/logs view.
-2. **Cloud run details** - use `bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json` or `--latest`.
+1. **Cloud run diagnosis** - use Bruin Cloud MCP or `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --latest --output json` / `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json` for the consolidated failed-assets/checks/logs view.
+2. **Cloud run details** - use `bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json` or `bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --latest --output json`.
 3. **Cloud asset details** - use `bruin cloud assets get --project-id <project-id> --pipeline <pipeline> --asset <asset> --output json`.
-4. **Cloud instance details and logs** - use `bruin cloud instances get`, `bruin cloud instances logs`, or `bruin cloud instances failed-logs` for the run.
-5. **Asset definition from repo** - read the YAML/SQL/Python file. Note materialization type, strategy, interval use, dependencies, declared columns, and quality checks.
+4. **Cloud instance details and logs** - use exact commands for the run:
+   - `bruin cloud instances get --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --asset <asset> --output json`
+   - `bruin cloud instances logs --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) (--asset <asset> [--step-name <step>] | --step-id <step-id>) --output json`
+   - `bruin cloud instances failed-logs --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
+5. **Asset definition from repo** - read the YAML/SQL/Python file. Note materialization type, strategy, interval use, dependencies, declared columns, and quality checks. If parsing/validation evidence matters, run `bruin validate <asset-file-path> --output json` and include `--variant <variant>` when applicable.
 6. **Last successful run** - timestamp, duration, row count. Establishes baseline.
 7. **Failed run** - status, failed instance/check, duration before failure, partial output if any, and Cloud run URL/ID.
 8. **Error fingerprint** - extract the deepest error message (not the wrapper). Hash it so we can match against known patterns.
 9. **Upstream state** - for each declared dependency, was its last run successful? When? Did the schema or row count change meaningfully?
-10. **Downstream impact** - which assets depend on this one and are now blocked or stale? Use Bruin Cloud asset state and local `bruin lineage <asset-file-path>` when the repo is available.
+10. **Downstream impact** - which assets depend on this one and are now blocked or stale? Use Bruin Cloud asset state and local `bruin lineage <asset-file-path> --output json --full` when the repo is available. Include `--variant <variant>` for variant-backed Cloud pipelines.
 11. **Recent changes** - inspect `git log --since="7d" -- <asset_file> <upstream_files>` and recent PRs/branches touching the asset or upstreams.
 12. **Connection health** - if the error mentions a source connector, check whether other assets using the same connector also failed.
 13. **Resource signals** - duration trend over recent Cloud runs. A 10x slowdown before failure points at capacity, not logic.
@@ -54,7 +58,7 @@ Match the error fingerprint against these common shapes. The match is a hypothes
 |---|---|---|
 | `column "X" does not exist` / `unknown field X` | Schema drift in source or upstream | `schema-drift-check` |
 | `cannot cast TYPE_A to TYPE_B` | Type drift or new enum value | `schema-drift-check` |
-| `Connection reset` / `EOF` / `5xx from <host>` | Transient source flake | retry once, then `pipeline-report` if it persists |
+| `Connection reset` / `EOF` / `5xx from <host>` | Transient source flake | route to `pipeline-backfill`, which may call `bruin cloud runs rerun ... --only-failed` or `bruin cloud runs trigger ...` after preflight |
 | `Quota exceeded` / `slot pool full` / `rate limit` | Capacity / billing | `pipeline-report`, do not retry |
 | `Query exceeded resource limits` / OOM | Capacity or a join that grew | flag for human; suggest partition or filter |
 | `Permission denied` / `access denied` / 401/403 | Credential expiry or IAM change | `pipeline-report`, do not retry |

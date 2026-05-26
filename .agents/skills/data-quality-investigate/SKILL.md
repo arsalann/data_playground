@@ -1,6 +1,6 @@
 ---
 name: data-quality-investigate
-description: Investigate a failed Bruin quality check. Walk the failing rows back to their source, classify the failure mode, and either propose a fix or hand off. Use when a custom_check or column check fails on an otherwise successful run.
+description: Investigate a failed Bruin quality check. Walk the failing rows back to their source, classify the failure mode, and either propose a fix or hand off. Use when a custom check or column check fails on an otherwise successful run.
 argument-hint: "<asset> <check_name>"
 ---
 
@@ -8,7 +8,7 @@ argument-hint: "<asset> <check_name>"
 
 A failed quality check is a question, not an answer. The check tells us _what_ is wrong (e.g. "duplicate primary keys exist") but rarely _why_. This skill answers the why.
 
-Use Bruin Cloud MCP for Cloud run/check state and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Local repo inspection is allowed for check definitions, lineage, and git/PR history; local `bruin run` is not an operational fallback.
+Use Bruin Cloud MCP for Cloud run/check state and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Local repo inspection is allowed for check definitions, lineage, and git/PR history; local `bruin run` is not an operational fallback.
 
 ## When to Use
 
@@ -30,15 +30,18 @@ Do not use for: schema problems (use `schema-drift-check`), missing/late data (u
 
 ## Context to Gather
 
-1. **Cloud check/run state** - use Bruin Cloud MCP or `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json` / `--latest` to identify failed checks and affected assets.
-2. **Cloud instance details/logs** - use `bruin cloud instances get`, `bruin cloud instances logs`, or `bruin cloud instances failed-logs` for the failed check/asset.
-3. **Check definition** - read the exact SQL or column-check rule from the repo. Note the threshold (e.g. `count(*) = 0`).
-4. **Failing rows** - rerun only read-only diagnostic SELECTs against the warehouse when credentials and cost controls allow it; otherwise use Cloud check output/logs. Cap at 1000.
+1. **Cloud check/run state** - use Bruin Cloud MCP or `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json` to identify failed checks and affected assets.
+2. **Cloud instance details/logs** - use exact CLI forms for the failed check/asset:
+   - `bruin cloud instances get --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --asset <asset> --output json`
+   - `bruin cloud instances logs --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) (--asset <asset> [--step-name <step>] | --step-id <step-id>) --output json`
+   - `bruin cloud instances failed-logs --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
+3. **Check definition** - read the exact SQL or column-check rule from the repo. Custom checks live in top-level `custom_checks` entries with required `name` and `query`, optional `description`, optional `value`, optional `count`, and optional `blocking`; omitted `blocking` behaves as `true` at runtime. If `value` is omitted, Bruin expects the query output to match integer zero. If `count` is set, Bruin wraps the query with `SELECT count(*) FROM (<query>)` and compares that result. Column checks live under `columns[].checks[]` with `name`, optional `value`, and optional `blocking`; omitted `blocking` is true.
+4. **Failing rows** - rerun only read-only diagnostic SELECTs against the warehouse when credentials and cost controls allow it; otherwise use Cloud check output/logs. Use `bruin query --connection <connection> --query <sql> --description "failing-row sample for <asset> <check>" --limit 1000 --output json` or `bruin query --asset <asset-file> --query <sql> --description "failing-row sample for <asset> <check>" --limit 1000 --output json`; dry-run expensive scans first.
 5. **Failing-row profile** - distribution of the offending rows across natural dimensions: time, source, category, anything in the asset's Bruin interval or natural key.
 6. **First-failure point** - check historical Cloud runs/intervals until you find the first interval where it would have failed. This is the regression interval.
 7. **Source comparison** - for a sample of failing rows, pull the corresponding source records. Is the bug in the source, in the transform, or in the check itself?
 8. **Recent transform changes** - inspect `git log` and recent PRs/branches touching the asset and upstreams since the first-failure interval.
-9. **Lineage** - use `bruin lineage <asset-file-path>` and repo inspection to understand upstream source tables and downstream impact.
+9. **Lineage** - use `bruin lineage <asset-file-path> --output json --full` and repo inspection to understand upstream source tables and downstream impact. Include `--variant <variant>` for variant-backed pipelines.
 10. **Volume** - what fraction of total rows are failing? 0.01% is different from 30%.
 
 ## Failure Mode Library
@@ -91,11 +94,13 @@ return result(
 
 ## Actions & Guardrails
 
-- **Auto-allowed**: inspect Bruin Cloud run/check state, run capped read-only diagnostic queries (the check SELECT, source comparisons, history scans), inspect git/PR history, write investigation report to `.context/`.
+- **Auto-allowed**: inspect Bruin Cloud run/check state, run capped read-only diagnostic queries (the check SELECT, source comparisons, history scans) with `--description`, `--limit`, `--output json`, and optional `--dry-run`, inspect git/PR history, write investigation report to `.context/`.
 - **Requires approval**: changing the check definition (e.g. loosening a threshold), opening a PR with a transform fix, triggering a Bruin Cloud backfill/rerun after a fix.
 - **Never allowed**: deleting failing rows to make the check pass, modifying historical data outside a sanctioned Bruin Cloud backfill, silencing the check, or using local operational runs as a shortcut.
 
 ## Verification
+
+A fix is verified operationally from Cloud state. Local `bruin run --only checks <asset-file>` is appropriate only for static validation or fake-data test pipelines. If targeted local check execution is appropriate, use `bruin run --only checks --single-check <check-id> <asset-file>`; `<check-id>` is the Bruin-generated check ID, not necessarily the display `check_name`.
 
 A fix is verified when:
 

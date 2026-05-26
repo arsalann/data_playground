@@ -8,7 +8,7 @@ argument-hint: "<pipeline> <start> <end>"
 
 The most dangerous skill in the set — backfills can overwrite good data, double-count rows, or saturate connectors. The guardrails matter more than the speed.
 
-This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Do not use local `bruin run` for operational execution.
+This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Do not use local `bruin run` for operational execution.
 
 ## When to Use
 
@@ -26,8 +26,8 @@ Do not use for: routine first-time runs (those happen on schedule), running an a
 | `project_id` | no | `01krk817ys2j45frftg1q4xfgv` | Bruin Cloud project ID. Required if the account can see multiple projects and it cannot be inferred. |
 | `pipeline` | yes | `wikipedia-ai-trends` | Bruin Cloud pipeline name. Cloud CLI run triggers are pipeline-level. |
 | `asset` | no | `marts.daily_top_articles` | Asset that motivated the rerun. Used for risk analysis, lineage, and verification. Do not assume Cloud CLI can trigger a single asset. |
-| `start` | yes | `2026-05-01T00:00:00Z` | Inclusive interval start date or timestamp. Prefer the pipeline's Bruin interval format. |
-| `end` | yes | `2026-05-21T00:00:00Z` | Inclusive interval end date or timestamp. Prefer the pipeline's Bruin interval format. |
+| `start` | yes | `2026-05-01T00:00:00Z` | Bruin interval start date or timestamp. Prefer the pipeline's Bruin interval format; do not assume date-bound inclusivity beyond Cloud's run-window semantics. |
+| `end` | yes | `2026-05-21T00:00:00Z` | Bruin interval end date or timestamp. Prefer the pipeline's Bruin interval format; do not assume date-bound inclusivity beyond Cloud's run-window semantics. |
 | `reason` | yes | `schema fix for view_count column` | Free text. Logged with the run for audit. |
 | `mode` | no | `trigger` \| `rerun` | Default is `trigger` for a new interval run. Use `rerun` only for an existing Cloud run ID. |
 | `run_id` | no | `run_01HXYZ...` | Required for `mode: rerun`; optional for investigating existing failed runs. |
@@ -42,7 +42,7 @@ Run all of these before any Bruin Cloud run is triggered or rerun. A single fail
 3. **Range is reasonable** - `end - start <= 90 days` without explicit override. Larger ranges need human approval and usually smaller intervals.
 4. **Range is in the past** - `end < now`. Backfilling future intervals is always a mistake.
 5. **Interval semantics** - decide whether Bruin intervals are necessary and meaningful for this pipeline/asset. Some assets may not use intervals, or may use them incorrectly; if interval slicing is not meaningful, escalate instead of pretending it is safe.
-6. **Materialization strategy** - inspect the asset and affected downstream assets. Explicitly classify `append`, `merge`, `delete+insert`, `time_interval`, `create+replace`, and any full-refresh behavior. Reruns must be crafted around the exact strategy.
+6. **Materialization strategy** - inspect the asset and affected downstream assets. Explicitly classify supported strategies including `append`, `merge`, `delete+insert`, `time_interval`, `create+replace`, `truncate+insert`, `ddl`, `scd2_by_time`, `scd2_by_column`, `datavault_hub`, `datavault_link`, `datavault_satellite`, and any full-refresh behavior. If the strategy is not understood well enough to estimate consequences, escalate instead of running.
 7. **Data source and reversibility** - identify where the data comes from and whether deleted data can be restored. If restoration is impossible, uncertain, or very expensive, require human intervention.
 8. **Layer risk** - classify the table as source/raw, mid-level, or final/report. Source/raw tables require extra precautions; full refresh or any delete-style operation on source/raw tables is strictly prohibited.
 9. **Upstream coverage** - every dependency must have successful Cloud runs covering the same interval. If any upstream interval is missing, abort with a list of missing intervals.
@@ -80,7 +80,12 @@ for interval in intervals_in_range(input.start, input.end):
             failed=interval,
             error=result.error,
         )
-    verify_interval(input.pipeline, input.asset, interval, result.cloud_run_id)
+    run = poll_latest_run(
+        project_id=input.project_id,
+        pipeline=input.pipeline,
+        interval=interval,
+    )
+    verify_interval(input.pipeline, input.asset, interval, run.run_id)
 
 return success(intervals=intervals_done)
 ```
@@ -104,6 +109,11 @@ bruin cloud runs trigger --project-id <project-id> --pipeline <pipeline> --start
 
 # Rerun an existing Cloud run, optionally only failed assets.
 bruin cloud runs rerun --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --only-failed --output json
+bruin cloud runs rerun --project-id <project-id> --pipeline <pipeline> --latest --only-failed --output json
+
+# Trigger/rerun returns a success envelope, not a run ID. Poll and verify.
+bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 1 --output json
+bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
 
 # Inspect asset instances and logs for verification.
 bruin cloud instances list --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
@@ -125,10 +135,10 @@ If approval is required, emit the plan and stop. Do not poll for approval — th
 
 After each interval:
 
-1. Confirm the Bruin Cloud run status is `succeeded`.
+1. Confirm the Bruin Cloud run status is `success`.
 2. Confirm row count is within 50%-200% of the historical mean for that day-of-week / day-of-month, whichever is the asset's natural seasonality.
 3. Confirm quality checks and asset instances are successful in Bruin Cloud.
-4. Capture the Cloud run ID and URL.
+4. Capture the Cloud run ID and URL from `runs list`/`runs get` after trigger or rerun polling.
 5. If verification fails, stop the backfill (do not proceed to next interval) and report.
 
 After the full range:

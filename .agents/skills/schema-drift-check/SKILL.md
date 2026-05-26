@@ -8,12 +8,12 @@ argument-hint: "<asset> [suspected_column]"
 
 Sources change schemas. Sometimes the change is additive and harmless; sometimes it breaks every downstream consumer. This skill figures out which, and proposes the minimum-impact response.
 
-Use Bruin Cloud MCP for Cloud state and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. Use local repo inspection and `bruin lineage` for static lineage evidence. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection.
+Use Bruin Cloud MCP for Cloud state and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. Use local repo inspection and `bruin lineage` for static lineage evidence. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist.
 
 ## When to Use
 
 - `pipeline-diagnose` returned hypothesis `schema-drift`.
-- A `bruin validate` warning flagged drift.
+- Cloud validation, `bruin validate`, or a warehouse dry-run surfaced a query/schema issue that may be source drift. `bruin validate` can catch config and platform dry-run failures, but it does not prove every source schema drift.
 - A source vendor announced a schema change and we want to be ready.
 - A query returns unexpected nulls in a column that used to be populated.
 - Observed values no longer match the declared type, e.g. a column declared as `INTEGER` was historically null and now receives string values.
@@ -33,14 +33,17 @@ Do not use for: data quality issues where the schema is fine but values are wron
 
 ## Context to Gather
 
-1. **Declared schema** - the asset's `columns:` block in YAML, or the SELECT projection in the SQL file.
+1. **Declared schema** - the Bruin asset definition fields in scope are `name`, `type`, `connection`, `depends`, `materialization`, `columns`, `custom_checks`, `secrets`, and `meta`. Treat `columns:` metadata as the declared schema; a SQL SELECT projection is supporting evidence for validation/query behavior, not an equivalent substitute for declared metadata.
 2. **Live source schema** - query the source. Method depends on connector:
    - Database: `INFORMATION_SCHEMA.COLUMNS` or `DESCRIBE`.
    - REST API: fetch one record, infer field shape.
    - File: read the header / first record of the latest file.
-3. **Sample data** - 100 rows from the source to confirm observed types, nullability, and previously-null columns that now carry incompatible values.
-4. **Bruin Cloud asset/run context** - use MCP or `bruin cloud assets get`, `bruin cloud runs diagnose`, and relevant instance logs to confirm the Cloud failure surface.
-5. **Asset-level lineage** - run `bruin lineage <asset-file-path>` for the affected asset and its immediate upstream/downstream assets where repo files are available.
+3. **Sample data** - 100 rows from the source to confirm observed types, nullability, and previously-null columns that now carry incompatible values. For warehouse-accessible sources, use `bruin query --connection <source-or-warehouse-connection> --query <sql> --description "schema drift sample for <asset>" --limit 100 --output json`; use `--dry-run` first for expensive BigQuery scans.
+4. **Bruin Cloud asset/run context** - use MCP or exact CLI forms to confirm the Cloud failure surface:
+   - `bruin cloud assets get --project-id <project-id> --pipeline <pipeline> --asset <asset> --output json`
+   - `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
+   - `bruin cloud instances logs --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) (--asset <asset> [--step-name <step>] | --step-id <step-id>) --output json`
+5. **Asset-level lineage** - run `bruin lineage <asset-file-path> --output json` for the affected asset and its immediate upstream/downstream assets where repo files are available; add `--full` when complete upstream/downstream evidence is needed. Include `--variant <variant>` when the pipeline is variant-backed.
 6. **Column-level lineage** - inspect each upstream/downstream SQL query or Python output contract to infer which source columns feed the drifted column and which downstream columns consume it. Do not rely on asset-level lineage alone for impact.
 7. **Recent source changes** - if the source has changelogs/release notes accessible, scan for the last 30 days. Skip if not available.
 8. **Recent repo changes and PRs** - inspect git history and recent PRs/branches touching the affected asset, its upstreams, or downstream consumers.

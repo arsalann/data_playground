@@ -8,7 +8,7 @@ argument-hint: "<metric or asset> <date or window>"
 
 The asset ran. The checks passed. The number still looks wrong. This skill is the one that finds out why — by attribution, not by guesswork.
 
-Use Bruin Cloud MCP for run/asset context and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Local repo inspection is allowed for metric definitions, lineage, and git/PR history; local operational runs are not.
+Use Bruin Cloud MCP for run/asset context and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. `bruin-cloud` is the repo convention for the `.bruin.yml` `bruin` connection, but the CLI cannot select that connection by name; export `BRUIN_CLOUD_API_KEY` when multiple `bruin` connections exist. Local repo inspection is allowed for metric definitions, lineage, and git/PR history; local operational runs are not.
 
 ## When to Use
 
@@ -32,15 +32,20 @@ Do not use for: failed runs (use `pipeline-diagnose`), schema problems (use `sch
 
 ## Context to Gather
 
-1. **Metric history** - at least 28 days of daily values, plus the anomalous window.
+1. **Metric history** - at least 28 days of daily values, plus the anomalous window. Use `bruin query --asset <asset-file> --query <sql> --description "anomaly history for <metric>" --output json` or `bruin query --connection <connection> --query <sql> --description "anomaly history for <metric>" --output json`; dry-run expensive scans first.
 2. **Baseline** - median + IQR over the baseline window, same-day-of-week when seasonality matters.
 3. **Anomaly magnitude** - how many IQRs or sigmas off, and absolute delta (both matter — small percentage on a tiny base is noise).
-4. **Dimension breakdowns** - the metric sliced by each candidate dimension, comparing anomalous window to baseline. Find dimensions where the anomaly concentrates.
-5. **Bruin Cloud context** - use Cloud run/asset/instance history to confirm runs and checks passed for the anomalous window.
-6. **Upstream row counts** - did the source row count change meaningfully on the anomalous date?
-7. **Upstream value distributions** - did a column's distribution shift, even if row count was normal?
+4. **Dimension breakdowns** - the metric sliced by each candidate dimension, comparing anomalous window to baseline. Find dimensions where the anomaly concentrates. Use `bruin query --connection <connection> --query <sql> --description "anomaly slice for <metric> by <dimension>" --limit 1000 --timeout 120 --output json`; dry-run wide scans before execution.
+5. **Bruin Cloud context** - use Cloud run/asset/instance history to confirm runs and checks passed for the anomalous window:
+   - `bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 20 --output json`
+   - `bruin cloud runs get --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
+   - `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
+   - `bruin cloud instances list --project-id <project-id> --pipeline <pipeline> (--run-id <run-id> | --latest) --output json`
+   "Checks passed" means Cloud run status is `success` or the inspected asset instance is not `failed` / `checks_failed`, depending on the API response being inspected.
+6. **Upstream row counts** - did the source row count change meaningfully on the anomalous date? Use read-only `bruin query` with `--description`, `--limit` for samples, `--timeout`, and optional `--dry-run`.
+7. **Upstream value distributions** - did a column's distribution shift, even if row count was normal? Use read-only `bruin query` with audit/cost controls.
 8. **Code changes** - inspect `git log` and recent PRs/branches on the metric's defining asset and upstreams over the last 30 days.
-9. **Lineage** - use `bruin lineage <asset-file-path>` and repo inspection to identify upstream metric sources and downstream consumers.
+9. **Lineage** - use `bruin lineage <asset-file-path> --output json --full` and repo inspection to identify upstream metric sources and downstream consumers. Include `--variant <variant>` for variant-backed pipelines.
 10. **External calendar** - holidays, product launches, known maintenance windows, paid acquisition pulses. If a calendar isn't accessible, list this as "not checked".
 
 ## Anomaly Attribution Patterns

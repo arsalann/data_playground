@@ -10,17 +10,17 @@ This pipeline is safe for local `bruin run` testing. It is not a production-patt
 
 ## Assets
 
-- `raw.pageviews` (`assets/raw/pageviews.py`) generates pageview events with session, user, country, browser, device, path, event time, and event date.
-- `staging.daily_pageviews` (`assets/staging/daily_pageviews.sql`) aggregates daily pageviews by country and browser.
+- `self_heal_test_raw.pageviews` (`assets/raw/pageviews.py`) generates pageview events with session, user, country, browser, device, path, event time, and event date.
+- `self_heal_test_staging.daily_pageviews` (`assets/staging/daily_pageviews.sql`) aggregates daily pageviews by country and browser.
 
 ## Skill Scenarios
 
 | Scenario | Date/window | Trigger asset/check | Expected skill path | Expected classification |
 |---|---:|---|---|---|
-| Indonesia traffic spike | `2026-05-18` | Metric `staging.daily_pageviews.pageviews` | `pipeline-triage` -> `anomaly-investigate` -> `pipeline-report` | `anomaly`, `single-dimension-driver` with `country=ID` |
-| New browser segment | Starts `2026-05-15` | `staging.daily_pageviews` check `known_browsers_only` | `pipeline-triage` -> `data-quality-investigate` or `schema-drift-check` -> `pipeline-report` | `quality-fail` with enum/new-segment context; schema drift class `enum-value-added` when treated as source contract drift |
-| Multi-day recent gap | Today, yesterday, and two days ago | BigQuery table `raw.pageviews` has no new rows for the latest three dates after fixture load | `pipeline-triage` -> `freshness-sla-check` -> `pipeline-report` | `stale`, likely `source-down`, `table-frozen`, or `genuine-stale` depending Cloud/table evidence |
-| Backfill/rerun risk | Any scoped rerun over already-loaded events | Warehouse asset `raw.pageviews` has append materialization | `pipeline-backfill` dry run -> `pipeline-report` | Approval required for append reruns where data already exists |
+| Indonesia traffic spike | `2026-05-18` | Metric `self_heal_test_staging.daily_pageviews.pageviews` | `pipeline-triage` -> `anomaly-investigate` -> `pipeline-report` | `anomaly`, `single-dimension-driver` with `country=ID` |
+| New browser segment | Starts `2026-05-15` | `self_heal_test_staging.daily_pageviews` check `known_browsers_only` | `pipeline-triage` -> `data-quality-investigate` or `schema-drift-check` -> `pipeline-report` | `quality-fail` with enum/new-segment context; schema drift class `enum-value-added` when treated as source contract drift |
+| Multi-day recent gap | Today, yesterday, and two days ago | BigQuery table `self_heal_test_raw.pageviews` has no new rows for the latest three dates after fixture load | `pipeline-triage` -> `freshness-sla-check` -> `pipeline-report` | `stale`, likely `source-down`, `table-frozen`, or `genuine-stale` depending Cloud/table evidence |
+| Backfill/rerun risk | Any scoped rerun over already-loaded events | Warehouse asset `self_heal_test_raw.pageviews` has append materialization | `pipeline-backfill` dry run -> `pipeline-report` | Approval required for append reruns where data already exists |
 
 ## What This Pipeline Covers
 
@@ -40,11 +40,11 @@ It does not directly test Slack posting, GitHub PR creation, Bruin Cloud rerun e
 bruin validate fake-webevents --output json
 
 # Traffic-spike anomaly fixture.
-bruin run fake-webevents/assets/raw/pageviews.py --start-date 2026-04-20 --end-date 2026-05-18
+bruin run fake-webevents/assets/raw/pageviews.py --start-date 2026-04-20 --end-date 2026-05-19
 bruin run fake-webevents/assets/staging/daily_pageviews.sql
 
 # New browser segment / enum-value-added fixture.
-bruin run fake-webevents/assets/raw/pageviews.py --start-date 2026-05-15 --end-date 2026-05-15
+bruin run fake-webevents/assets/raw/pageviews.py --start-date 2026-05-15 --end-date 2026-05-16
 bruin run fake-webevents/assets/staging/daily_pageviews.sql
 bruin run --only checks fake-webevents/assets/staging/daily_pageviews.sql
 

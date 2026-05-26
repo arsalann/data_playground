@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.hourly_sensor_stats
+name: self_heal_test_staging.hourly_sensor_stats
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,7 +9,7 @@ description: |
   check still surfaces the issue for the agents to handle.
 
 depends:
-  - raw.sensor_readings
+  - self_heal_test_raw.sensor_readings
 
 materialization:
   type: table
@@ -45,7 +45,7 @@ custom_checks:
       Failure on 2026-05-10 is expected (late-arriving injection).
     query: |
       SELECT COUNT(*)
-      FROM staging.hourly_sensor_stats
+      FROM self_heal_test_staging.hourly_sensor_stats
       WHERE ingest_lag_minutes > 60
     value: 0
 
@@ -58,6 +58,6 @@ SELECT
     humidity_pct,
     battery_pct,
     TIMESTAMP_DIFF(created_at, reading_time, SECOND) / 60.0 AS ingest_lag_minutes
-FROM raw.sensor_readings
+FROM self_heal_test_raw.sensor_readings
 WHERE temperature_c BETWEEN -50 AND 70
 ORDER BY hour DESC, sensor_id

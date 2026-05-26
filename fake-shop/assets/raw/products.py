@@ -1,5 +1,5 @@
 """@bruin
-name: raw.products
+name: self_heal_test_raw.products
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan
@@ -13,7 +13,7 @@ description: |
   SCHEMA-DRIFT — column_rename
     Before 2026-04-01 the catalog column is named `category`. From 2026-04-01
     onward, the same data is emitted under `product_category`. The downstream
-    staging.daily_revenue asset still references `category`, so any run with
+    self_heal_test_staging.daily_revenue asset still references `category`, so any run with
     BRUIN_END_DATE >= 2026-04-01 will surface a "column not found" error.
     Routes to schema-drift-check → maintenance-pr.
 
@@ -46,12 +46,12 @@ columns:
 custom_checks:
   - name: no_product_category_drift_column
     description: |
-      The live raw.products table should not contain product_category while the
+      The live self_heal_test_raw.products table should not contain product_category while the
       declared source contract still expects category. Failure after
       2026-04-01 is expected (schema drift injection).
     query: |
       SELECT COUNT(*)
-      FROM raw.INFORMATION_SCHEMA.COLUMNS
+      FROM self_heal_test_raw.INFORMATION_SCHEMA.COLUMNS
       WHERE table_name = 'products'
         AND column_name = 'product_category'
     value: 0

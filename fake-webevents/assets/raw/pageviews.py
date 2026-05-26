@@ -1,5 +1,5 @@
 """@bruin
-name: raw.pageviews
+name: self_heal_test_raw.pageviews
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan

@@ -1,5 +1,5 @@
 """@bruin
-name: raw.sensor_readings
+name: self_heal_test_raw.sensor_readings
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan
@@ -67,7 +67,7 @@ custom_checks:
       Failure on 2026-04-10 is expected (impossible_values injection).
     query: |
       SELECT COUNT(*)
-      FROM raw.sensor_readings
+      FROM self_heal_test_raw.sensor_readings
       WHERE temperature_c < -50 OR temperature_c > 70
     value: 0
 
@@ -78,7 +78,7 @@ custom_checks:
       injection).
     query: |
       SELECT COUNT(*)
-      FROM raw.sensor_readings
+      FROM self_heal_test_raw.sensor_readings
       WHERE created_at > TIMESTAMP_ADD(reading_time, INTERVAL 1 HOUR)
     value: 0
 

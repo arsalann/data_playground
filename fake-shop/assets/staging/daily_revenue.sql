@@ -1,15 +1,15 @@
 /* @bruin
-name: staging.daily_revenue
+name: self_heal_test_staging.daily_revenue
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Aggregates orders to daily revenue by country and product category.
   This is the asset most affected by the injected schema drift on
-  raw.products — it joins on `category`, which is renamed after 2026-04-01.
+  self_heal_test_raw.products — it joins on `category`, which is renamed after 2026-04-01.
 
 depends:
-  - raw.orders
-  - raw.products
+  - self_heal_test_raw.orders
+  - self_heal_test_raw.products
 
 materialization:
   type: table
@@ -50,7 +50,7 @@ custom_checks:
       SELECT COUNT(*)
       FROM (
         SELECT order_date, SUM(revenue_usd) AS total
-        FROM staging.daily_revenue
+        FROM self_heal_test_staging.daily_revenue
         GROUP BY 1
         HAVING SUM(revenue_usd) = 0
       )
@@ -62,7 +62,7 @@ WITH products AS (
     SELECT
         product_id,
         category
-    FROM raw.products
+    FROM self_heal_test_raw.products
     WHERE category IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY product_id
@@ -77,7 +77,7 @@ SELECT
     COUNT(*) AS order_count,
     COUNT(DISTINCT o.user_id) AS distinct_users,
     ROUND(SUM(o.amount_usd), 2) AS revenue_usd
-FROM raw.orders o
+FROM self_heal_test_raw.orders o
 LEFT JOIN products p ON o.product_id = p.product_id
 GROUP BY 1, 2, 3
 ORDER BY 1 DESC, 6 DESC

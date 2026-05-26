@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.daily_orders
+name: self_heal_test_staging.daily_orders
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -8,7 +8,7 @@ description: |
   show up here as a daily-total anomaly.
 
 depends:
-  - raw.orders
+  - self_heal_test_raw.orders
 
 materialization:
   type: table
@@ -40,6 +40,6 @@ SELECT
     COUNT(DISTINCT user_id) AS distinct_users,
     COUNT(DISTINCT country) AS distinct_countries,
     ROUND(SUM(amount_usd), 2) AS revenue_usd
-FROM raw.orders
+FROM self_heal_test_raw.orders
 GROUP BY 1
 ORDER BY 1 DESC

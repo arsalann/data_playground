@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.daily_pageviews
+name: self_heal_test_staging.daily_pageviews
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -8,7 +8,7 @@ description: |
   spike and the 2026-05-15 Arc-browser emergence both show up here.
 
 depends:
-  - raw.pageviews
+  - self_heal_test_raw.pageviews
 
 materialization:
   type: table
@@ -46,7 +46,7 @@ custom_checks:
       Failure starting 2026-05-15 is expected (Arc emergence).
     query: |
       SELECT COUNT(*)
-      FROM staging.daily_pageviews
+      FROM self_heal_test_staging.daily_pageviews
       WHERE browser NOT IN ('Chrome', 'Safari', 'Firefox', 'Edge')
     value: 0
 
@@ -59,6 +59,6 @@ SELECT
     COUNT(*) AS pageviews,
     COUNT(DISTINCT session_id) AS distinct_sessions,
     COUNT(DISTINCT user_id) AS distinct_users
-FROM raw.pageviews
+FROM self_heal_test_raw.pageviews
 GROUP BY 1, 2, 3
 ORDER BY 1 DESC, 4 DESC

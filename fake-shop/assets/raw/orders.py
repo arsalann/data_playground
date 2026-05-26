@@ -1,5 +1,5 @@
 """@bruin
-name: raw.orders
+name: self_heal_test_raw.orders
 type: python
 image: python:3.11
 connection: bruin-playground-arsalan
@@ -76,7 +76,7 @@ custom_checks:
     query: |
       WITH daily AS (
         SELECT order_date, SUM(amount_usd) AS revenue
-        FROM raw.orders
+        FROM self_heal_test_raw.orders
         GROUP BY 1
       ),
       with_baseline AS (

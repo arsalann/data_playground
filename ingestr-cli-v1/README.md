@@ -9,6 +9,8 @@ This example intentionally does not use a Bruin `type: ingestr` YAML asset. The
 goal is to show the CLI workflow: full refresh, query validation, incremental
 merge, and query validation again.
 
+![ingestr CLI v1 terminal walkthrough](walkthrough.gif)
+
 ## Files
 
 | File | Purpose |

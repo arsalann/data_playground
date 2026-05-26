@@ -15,13 +15,13 @@ description: |
      the delta to ID.
 
   2. NEW-SEGMENT — browser_arc
-     Browser "Arc" did not exist before 2026-05-15. Starting that date it
+     Browser "Arc" did not exist before 2026-05-16. Starting that date it
      appears with ~3% share. schema-drift-check classifies this as
      enum-value-added; anomaly-investigate may also pick it up.
 
   3. FRESHNESS — multi_day_gap
-     For run dates within the last 3 days (today, today-1, today-2), returns
-     an empty DataFrame. Routes to freshness-sla-check.
+     For run dates 2026-05-23 through 2026-05-25, returns an empty DataFrame.
+     Routes to freshness-sla-check.
 
 materialization:
   type: table
@@ -82,7 +82,9 @@ DEVICE_WEIGHTS = [0.45, 0.50, 0.05]
 PAGE_PATHS = ["/", "/products", "/blog", "/pricing", "/about", "/login", "/signup", "/help"]
 
 ANOMALY_DATE = date(2026, 5, 18)
-NEW_BROWSER_DATE = date(2026, 5, 15)
+NEW_BROWSER_DATE = date(2026, 5, 16)
+SOURCE_GAP_START_DATE = date(2026, 5, 23)
+SOURCE_GAP_END_DATE = date(2026, 5, 25)
 PAGEVIEW_COLUMNS = [
     "session_id", "user_id", "country", "browser",
     "device", "page_path", "event_time", "event_date",
@@ -149,14 +151,11 @@ def materialize():
     start = date.fromisoformat(start_str[:10])
     end = date.fromisoformat(end_str[:10])
 
-    today = date.today()
-    stale_window_start = today - timedelta(days=2)
-
     frames = []
     current = start
     while current <= end:
-        if current >= stale_window_start:
-            print(f"[fake-webevents] {current}: simulated source stall — returning 0 rows")
+        if SOURCE_GAP_START_DATE <= current <= SOURCE_GAP_END_DATE:
+            print(f"[self-heal-webevents] {current}: simulated source stall — returning 0 rows")
         else:
             frames.append(generate_day(current))
         current += timedelta(days=1)
@@ -167,5 +166,5 @@ def materialize():
     df = pd.concat(frames, ignore_index=True)[PAGEVIEW_COLUMNS]
     df["event_time"] = pd.to_datetime(df["event_time"]).astype("datetime64[us]")
     df["event_date"] = pd.to_datetime(df["event_date"])
-    print(f"[fake-webevents] generated {len(df):,} events across {df['event_date'].nunique()} days")
+    print(f"[self-heal-webevents] generated {len(df):,} events across {df['event_date'].nunique()} days")
     return df

@@ -1,8 +1,10 @@
-# fake-shop
+# self-heal-shop
 
 BigQuery-backed fixture pipeline for testing self-healing pipeline skills against e-commerce data. It generates deterministic orders and a deterministic product catalog, then injects duplicate keys, a product schema rename, a revenue anomaly, and recent empty-source windows.
 
 This pipeline is safe for local `bruin run` testing. It is not a production-pattern pipeline and does not exercise Bruin Cloud actions directly.
+
+For Bruin Cloud testing, schedule this pipeline daily and run a one-time daily backfill from `2026-03-01` through `2026-05-15` to create clean healthy history. Injected failures start on `2026-05-16`.
 
 ## Critical Agent Warning
 
@@ -19,10 +21,10 @@ This pipeline is safe for local `bruin run` testing. It is not a production-patt
 
 | Scenario | Date/window | Trigger asset/check | Expected skill path | Expected classification |
 |---|---:|---|---|---|
-| Duplicate order IDs | Starts `2026-05-15` | BigQuery table `self_heal_test_raw.orders`, column check `order_id.unique` | `pipeline-triage` -> `data-quality-investigate` -> `maintenance-pr` plan if transform/check change is proposed -> `pipeline-report` | `quality-fail`, likely `late-arriving-data` or `dedup-window-too-short` depending investigation framing |
+| Duplicate order IDs | Starts `2026-05-16` | BigQuery table `self_heal_test_raw.orders`, column check `order_id.unique` | `pipeline-triage` -> `data-quality-investigate` -> `maintenance-pr` plan if transform/check change is proposed -> `pipeline-report` | `quality-fail`, likely `late-arriving-data` or `dedup-window-too-short` depending investigation framing |
 | Country concentration revenue spike | `2026-05-20` | BigQuery table `self_heal_test_raw.orders`, check `daily_revenue_within_2x_28d_median`; metric `self_heal_test_staging.daily_orders.revenue_usd` | `pipeline-triage` -> `anomaly-investigate` -> `pipeline-report` | `anomaly`, `single-dimension-driver` with `country=TR` |
-| Product category rename | Active when `BRUIN_END_DATE >= 2026-04-01` | BigQuery table `self_heal_test_raw.products` contains `product_category`; check `no_product_category_drift_column` fails while the declared contract still expects `category` | `pipeline-diagnose` -> `schema-drift-check` -> `maintenance-pr` -> `pipeline-report` | `schema-drift`, `column-renamed` |
-| Recent source stall | Today and yesterday | BigQuery table `self_heal_test_raw.orders` has no new rows for the latest two dates after fixture load | `pipeline-triage` -> `freshness-sla-check` -> `pipeline-report` | `stale` / `source-down` or `table-frozen`, depending Cloud/table evidence |
+| Product category rename | Active when `BRUIN_END_DATE >= 2026-05-18` | BigQuery table `self_heal_test_raw.products` contains `product_category`; check `no_product_category_drift_column` fails while the declared contract still expects `category` | `pipeline-diagnose` -> `schema-drift-check` -> `maintenance-pr` -> `pipeline-report` | `schema-drift`, `column-renamed` |
+| Source stall | `2026-05-24` through `2026-05-25` | BigQuery table `self_heal_test_raw.orders` has no new rows for those dates after fixture load | `pipeline-triage` -> `freshness-sla-check` -> `pipeline-report` | `stale` / `source-down` or `table-frozen`, depending Cloud/table evidence |
 | Backfill after fix | Any scoped historical date range after a schema or dedup fix | Warehouse asset `self_heal_test_raw.orders` has append materialization; downstream staging uses `create+replace` | `pipeline-backfill` dry run -> approval if needed -> `pipeline-report` | Approval required for append reruns where rows already exist |
 
 ## What This Pipeline Covers
@@ -42,29 +44,30 @@ It does not directly test Slack posting, GitHub PR creation, Bruin Cloud rerun e
 ## Useful Commands
 
 ```bash
-bruin validate fake-shop --output json
+bruin validate self-heal-shop --output json
+bruin run self-heal-shop --start-date 2026-03-01 --end-date 2026-05-15
 
 # Duplicate-key quality fixture.
-bruin run fake-shop/assets/raw/orders.py --start-date 2026-05-15 --end-date 2026-05-16
-bruin run --only checks fake-shop/assets/raw/orders.py
+bruin run self-heal-shop/assets/raw/orders.py --start-date 2026-05-16 --end-date 2026-05-17
+bruin run --only checks self-heal-shop/assets/raw/orders.py
 
 # Revenue anomaly fixture. Run enough baseline history for the 28-day median check.
-bruin run fake-shop/assets/raw/orders.py --start-date 2026-04-15 --end-date 2026-05-21
-bruin run fake-shop/assets/staging/daily_orders.sql
-bruin run --only checks fake-shop/assets/raw/orders.py
+bruin run self-heal-shop/assets/raw/orders.py --start-date 2026-03-01 --end-date 2026-05-21
+bruin run self-heal-shop/assets/staging/daily_orders.sql
+bruin run --only checks self-heal-shop/assets/raw/orders.py
 
 # Product schema-drift fixture.
-bruin run fake-shop/assets/raw/products.py --start-date 2026-04-01 --end-date 2026-04-02
-bruin run fake-shop/assets/staging/daily_revenue.sql
+bruin run self-heal-shop/assets/raw/products.py --start-date 2026-05-18 --end-date 2026-05-19
+bruin run self-heal-shop/assets/staging/daily_revenue.sql
 
 # Lineage and static context.
-bruin lineage fake-shop/assets/staging/daily_revenue.sql --output json --full
+bruin lineage self-heal-shop/assets/staging/daily_revenue.sql --output json --full
 ```
 
 ## Expected Notes for Agents
 
-- Run scenarios separately. A whole-pipeline run after `2026-04-01` can fail at `self_heal_test_staging.daily_revenue` before later quality/anomaly review finishes.
+- Run scenarios separately. A whole-pipeline run after `2026-05-18` can fail at `self_heal_test_staging.daily_revenue` before later quality/anomaly review finishes.
 - Exclude `assets/raw/orders.py` and `assets/raw/products.py` from self-healing task scope. They are fixture setup, not the thing to fix.
 - `daily_revenue_within_2x_28d_median` is intentionally a tracked-metric guardrail; agents should still slice by dimensions instead of only reporting that the check failed.
 - The product rename is a routine maintenance-PR candidate only if all downstream references are updated in scope.
-- Treat local `bruin run` as allowed only because this is a fake-data test pipeline.
+- Treat local `bruin run` as allowed only because this is a self-heal test pipeline.

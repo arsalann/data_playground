@@ -5,7 +5,7 @@ connection: bruin-playground-arsalan
 description: |
   Daily pageview totals with country and browser breakdowns. This is the
   metric surface used by anomaly-investigate — the 2026-05-18 country=ID
-  spike and the 2026-05-15 Arc-browser emergence both show up here.
+  spike and the 2026-05-16 Arc-browser emergence both show up here.
 
 depends:
   - self_heal_test_raw.pageviews
@@ -43,7 +43,7 @@ custom_checks:
       Browser values should be limited to the historically-known set
       (Chrome, Safari, Firefox, Edge). A new value indicates a new
       segment that downstream code may not handle.
-      Failure starting 2026-05-15 is expected (Arc emergence).
+      Failure starting 2026-05-16 is expected (Arc emergence).
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_staging.daily_pageviews

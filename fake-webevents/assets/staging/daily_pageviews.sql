@@ -1,7 +1,7 @@
 /* @bruin
 name: staging.daily_pageviews
-type: duckdb.sql
-connection: duckdb-default
+type: bq.sql
+connection: bruin-playground-arsalan
 description: |
   Daily pageview totals with country and browser breakdowns. This is the
   metric surface used by anomaly-investigate — the 2026-05-18 country=ID
@@ -28,13 +28,13 @@ columns:
     primary_key: true
     nullable: false
   - name: pageviews
-    type: BIGINT
+    type: INTEGER
     nullable: false
   - name: distinct_sessions
-    type: BIGINT
+    type: INTEGER
     nullable: false
   - name: distinct_users
-    type: BIGINT
+    type: INTEGER
     nullable: false
 
 custom_checks:

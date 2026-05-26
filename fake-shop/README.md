@@ -1,8 +1,12 @@
 # fake-shop
 
-Local DuckDB fixture pipeline for testing self-healing pipeline skills against e-commerce data. It generates deterministic orders and a deterministic product catalog, then injects duplicate keys, a product schema rename, a revenue anomaly, and recent empty-source windows.
+BigQuery-backed fixture pipeline for testing self-healing pipeline skills against e-commerce data. It generates deterministic orders and a deterministic product catalog, then injects duplicate keys, a product schema rename, a revenue anomaly, and recent empty-source windows.
 
 This pipeline is safe for local `bruin run` testing. It is not a production-pattern pipeline and does not exercise Bruin Cloud actions directly.
+
+## Critical Agent Warning
+
+**DO NOT TARGET THE PYTHON DATA GENERATORS.** `assets/raw/orders.py` and `assets/raw/products.py` exist only to create deterministic fixture data and inject known failures. They are not part of the self-healing scenario surface. Do not diagnose, repair, open PRs against, backfill because of, or classify the Python generator logic. Use them only to load fixture data, then run the self-healing skills against the generated BigQuery tables, SQL staging assets, Bruin checks, Cloud run/check state, and `.context/` findings.
 
 ## Assets
 
@@ -15,11 +19,11 @@ This pipeline is safe for local `bruin run` testing. It is not a production-patt
 
 | Scenario | Date/window | Trigger asset/check | Expected skill path | Expected classification |
 |---|---:|---|---|---|
-| Duplicate order IDs | Starts `2026-05-15` | `raw.orders.order_id` `unique` column check | `pipeline-triage` -> `data-quality-investigate` -> `maintenance-pr` plan if transform/check change is proposed -> `pipeline-report` | `quality-fail`, likely `late-arriving-data` or `dedup-window-too-short` depending investigation framing |
-| Country concentration revenue spike | `2026-05-20` | `raw.orders` check `daily_revenue_within_4x_28d_median`; metric `staging.daily_orders.revenue_usd` | `pipeline-triage` -> `anomaly-investigate` -> `pipeline-report` | `anomaly`, `single-dimension-driver` with `country=TR` |
-| Product category rename | Active when `BRUIN_END_DATE >= 2026-04-01` | `staging.daily_revenue` references `raw.products.category` after source emits `product_category` | `pipeline-diagnose` -> `schema-drift-check` -> `maintenance-pr` -> `pipeline-report` | `schema-drift`, `column-renamed` |
-| Recent source stall | Today and yesterday | `raw.orders` returns 0 rows for the latest two dates | `pipeline-triage` -> `freshness-sla-check` -> `pipeline-report` | `stale` / `source-down` or `table-frozen`, depending Cloud/table evidence |
-| Backfill after fix | Any scoped historical date range after a schema or dedup fix | `raw.orders` uses `append`; downstream staging uses `create+replace` | `pipeline-backfill` dry run -> approval if needed -> `pipeline-report` | Approval required for append reruns where rows already exist |
+| Duplicate order IDs | Starts `2026-05-15` | BigQuery table `raw.orders`, column check `order_id.unique` | `pipeline-triage` -> `data-quality-investigate` -> `maintenance-pr` plan if transform/check change is proposed -> `pipeline-report` | `quality-fail`, likely `late-arriving-data` or `dedup-window-too-short` depending investigation framing |
+| Country concentration revenue spike | `2026-05-20` | BigQuery table `raw.orders`, check `daily_revenue_within_2x_28d_median`; metric `staging.daily_orders.revenue_usd` | `pipeline-triage` -> `anomaly-investigate` -> `pipeline-report` | `anomaly`, `single-dimension-driver` with `country=TR` |
+| Product category rename | Active when `BRUIN_END_DATE >= 2026-04-01` | BigQuery table `raw.products` contains `product_category`; check `no_product_category_drift_column` fails while the declared contract still expects `category` | `pipeline-diagnose` -> `schema-drift-check` -> `maintenance-pr` -> `pipeline-report` | `schema-drift`, `column-renamed` |
+| Recent source stall | Today and yesterday | BigQuery table `raw.orders` has no new rows for the latest two dates after fixture load | `pipeline-triage` -> `freshness-sla-check` -> `pipeline-report` | `stale` / `source-down` or `table-frozen`, depending Cloud/table evidence |
+| Backfill after fix | Any scoped historical date range after a schema or dedup fix | Warehouse asset `raw.orders` has append materialization; downstream staging uses `create+replace` | `pipeline-backfill` dry run -> approval if needed -> `pipeline-report` | Approval required for append reruns where rows already exist |
 
 ## What This Pipeline Covers
 
@@ -60,6 +64,7 @@ bruin lineage fake-shop/assets/staging/daily_revenue.sql --output json --full
 ## Expected Notes for Agents
 
 - Run scenarios separately. A whole-pipeline run after `2026-04-01` can fail at `staging.daily_revenue` before later quality/anomaly review finishes.
-- `daily_revenue_within_4x_28d_median` is intentionally a tracked-metric guardrail; agents should still slice by dimensions instead of only reporting that the check failed.
+- Exclude `assets/raw/orders.py` and `assets/raw/products.py` from self-healing task scope. They are fixture setup, not the thing to fix.
+- `daily_revenue_within_2x_28d_median` is intentionally a tracked-metric guardrail; agents should still slice by dimensions instead of only reporting that the check failed.
 - The product rename is a routine maintenance-PR candidate only if all downstream references are updated in scope.
 - Treat local `bruin run` as allowed only because this is a fake-data test pipeline.

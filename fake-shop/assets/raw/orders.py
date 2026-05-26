@@ -2,7 +2,7 @@
 name: raw.orders
 type: python
 image: python:3.11
-connection: duckdb-default
+connection: bruin-playground-arsalan
 description: |
   Generates deterministic fake e-commerce orders for testing the self-healing
   pipeline skills. Same date inputs always produce the same data.
@@ -18,8 +18,8 @@ description: |
      catch this. Routes to data-quality-investigate.
 
   2. ANOMALY — country_concentration
-     On 2026-05-20, country="TR" gets 10x its normal volume. Total daily
-     revenue spikes ~4x. Single-dimension-driver pattern. Routes to
+     On 2026-05-20, country="TR" gets 10x its normal share. Total daily
+     revenue spikes >2x. Single-dimension-driver pattern. Routes to
      anomaly-investigate.
 
   3. FRESHNESS — stalled_source
@@ -69,9 +69,9 @@ columns:
     nullable: false
 
 custom_checks:
-  - name: daily_revenue_within_4x_28d_median
+  - name: daily_revenue_within_2x_28d_median
     description: |
-      Daily revenue should not exceed 4x the 28-day rolling median.
+      Daily revenue should not exceed 2x the 28-day rolling median.
       Failure on 2026-05-20 is expected (anomaly injection).
     query: |
       WITH daily AS (
@@ -81,17 +81,18 @@ custom_checks:
       ),
       with_baseline AS (
         SELECT
-          order_date,
-          revenue,
-          MEDIAN(revenue) OVER (
-            ORDER BY order_date
-            ROWS BETWEEN 28 PRECEDING AND 1 PRECEDING
-          ) AS baseline
-        FROM daily
+          d.order_date,
+          d.revenue,
+          APPROX_QUANTILES(b.revenue, 2)[OFFSET(1)] AS baseline
+        FROM daily d
+        LEFT JOIN daily b
+          ON b.order_date >= DATE_SUB(d.order_date, INTERVAL 28 DAY)
+         AND b.order_date < d.order_date
+        GROUP BY d.order_date, d.revenue
       )
       SELECT COUNT(*)
       FROM with_baseline
-      WHERE baseline IS NOT NULL AND revenue > 4 * baseline
+      WHERE baseline IS NOT NULL AND revenue > 2 * baseline
     value: 0
 
 @bruin"""
@@ -110,6 +111,22 @@ AMOUNT_BUCKETS = [(10, 30, 0.35), (30, 80, 0.40), (80, 200, 0.20), (200, 600, 0.
 
 ANOMALY_DATE = date(2026, 5, 20)
 DUP_START_DATE = date(2026, 5, 15)
+ORDER_COLUMNS = [
+    "order_id", "user_id", "product_id", "country",
+    "amount_usd", "created_at", "order_date",
+]
+
+
+def empty_orders_frame() -> pd.DataFrame:
+    return pd.DataFrame({
+        "order_id": pd.Series(dtype="string"),
+        "user_id": pd.Series(dtype="string"),
+        "product_id": pd.Series(dtype="string"),
+        "country": pd.Series(dtype="string"),
+        "amount_usd": pd.Series(dtype="float64"),
+        "created_at": pd.Series(dtype="datetime64[us]"),
+        "order_date": pd.Series(dtype="datetime64[ns]"),
+    })
 
 
 def seed_for_date(d: date) -> int:
@@ -184,11 +201,11 @@ def materialize():
         current += timedelta(days=1)
 
     if not frames:
-        return pd.DataFrame(columns=[
-            "order_id", "user_id", "product_id", "country",
-            "amount_usd", "created_at", "order_date",
-        ])
+        return empty_orders_frame()
 
-    df = pd.concat(frames, ignore_index=True)
+    df = pd.concat(frames, ignore_index=True)[ORDER_COLUMNS]
+    df["amount_usd"] = df["amount_usd"].astype("float64")
+    df["created_at"] = pd.to_datetime(df["created_at"]).astype("datetime64[us]")
+    df["order_date"] = pd.to_datetime(df["order_date"])
     print(f"[fake-shop] generated {len(df):,} orders across {df['order_date'].nunique()} days")
     return df

@@ -1,7 +1,7 @@
 /* @bruin
 name: staging.daily_revenue
-type: duckdb.sql
-connection: duckdb-default
+type: bq.sql
+connection: bruin-playground-arsalan
 description: |
   Aggregates orders to daily revenue by country and product category.
   This is the asset most affected by the injected schema drift on
@@ -29,11 +29,11 @@ columns:
     primary_key: true
     nullable: false
   - name: order_count
-    type: BIGINT
+    type: INTEGER
     checks:
       - name: positive
   - name: distinct_users
-    type: BIGINT
+    type: INTEGER
     checks:
       - name: positive
   - name: revenue_usd
@@ -58,6 +58,18 @@ custom_checks:
 
 @bruin */
 
+WITH products AS (
+    SELECT
+        product_id,
+        category
+    FROM raw.products
+    WHERE category IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY product_id
+        ORDER BY extracted_at DESC
+    ) = 1
+)
+
 SELECT
     o.order_date,
     o.country,
@@ -66,6 +78,6 @@ SELECT
     COUNT(DISTINCT o.user_id) AS distinct_users,
     ROUND(SUM(o.amount_usd), 2) AS revenue_usd
 FROM raw.orders o
-LEFT JOIN raw.products p ON o.product_id = p.product_id
+LEFT JOIN products p ON o.product_id = p.product_id
 GROUP BY 1, 2, 3
 ORDER BY 1 DESC, 6 DESC

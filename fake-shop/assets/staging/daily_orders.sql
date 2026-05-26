@@ -1,7 +1,7 @@
 /* @bruin
 name: staging.daily_orders
-type: duckdb.sql
-connection: duckdb-default
+type: bq.sql
+connection: bruin-playground-arsalan
 description: |
   One row per order_date with counts and revenue. This is the metric surface
   used by anomaly-investigate — the 2026-05-20 spike from country=TR will
@@ -20,13 +20,13 @@ columns:
     primary_key: true
     nullable: false
   - name: order_count
-    type: BIGINT
+    type: INTEGER
     nullable: false
   - name: distinct_users
-    type: BIGINT
+    type: INTEGER
     nullable: false
   - name: distinct_countries
-    type: BIGINT
+    type: INTEGER
     nullable: false
   - name: revenue_usd
     type: DOUBLE

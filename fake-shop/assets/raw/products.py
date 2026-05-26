@@ -2,10 +2,11 @@
 name: raw.products
 type: python
 image: python:3.11
-connection: duckdb-default
+connection: bruin-playground-arsalan
 description: |
   Generates a deterministic fake product catalog. Re-emits the full catalog on
-  every run (create+replace), so downstream assets always see the current shape.
+  every run with an extraction timestamp. Downstream staging deduplicates to the
+  latest row per product so agents can rerun this fake fixture safely.
 
   Injected issue:
 
@@ -18,7 +19,7 @@ description: |
 
 materialization:
   type: table
-  strategy: create+replace
+  strategy: append
 
 columns:
   - name: product_id
@@ -37,12 +38,29 @@ columns:
     type: DOUBLE
     description: List price in USD
     nullable: false
+  - name: extracted_at
+    type: TIMESTAMP
+    description: UTC timestamp when this fake catalog row was generated.
+    nullable: false
+
+custom_checks:
+  - name: no_product_category_drift_column
+    description: |
+      The live raw.products table should not contain product_category while the
+      declared source contract still expects category. Failure after
+      2026-04-01 is expected (schema drift injection).
+    query: |
+      SELECT COUNT(*)
+      FROM raw.INFORMATION_SCHEMA.COLUMNS
+      WHERE table_name = 'products'
+        AND column_name = 'product_category'
+    value: 0
 
 @bruin"""
 
 import os
 import random
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pandas as pd
 
@@ -62,6 +80,8 @@ def materialize():
         })
 
     df = pd.DataFrame(rows)
+    df["extracted_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+    df["extracted_at"] = pd.to_datetime(df["extracted_at"]).astype("datetime64[us]")
 
     end_str = os.environ.get("BRUIN_END_DATE", date.today().isoformat())
     end = date.fromisoformat(end_str[:10])

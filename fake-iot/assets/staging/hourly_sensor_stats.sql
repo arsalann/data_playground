@@ -1,7 +1,7 @@
 /* @bruin
 name: staging.hourly_sensor_stats
-type: duckdb.sql
-connection: duckdb-default
+type: bq.sql
+connection: bruin-playground-arsalan
 description: |
   One row per (sensor, hour) with reading and a quality-window flag.
   Excludes physically-impossible temperature values via a WHERE clause so
@@ -39,19 +39,14 @@ columns:
     nullable: false
 
 custom_checks:
-  - name: median_ingest_lag_under_60_min
+  - name: ingest_lag_under_60_min
     description: |
-      Median ingest lag across all sensors should be under 60 minutes.
+      Every sensor reading should arrive within 60 minutes.
       Failure on 2026-05-10 is expected (late-arriving injection).
     query: |
-      SELECT
-        CASE
-          WHEN MEDIAN(ingest_lag_minutes) > 60 THEN 1 ELSE 0
-        END
+      SELECT COUNT(*)
       FROM staging.hourly_sensor_stats
-      WHERE hour::DATE = (
-        SELECT MAX(hour::DATE) FROM staging.hourly_sensor_stats
-      )
+      WHERE ingest_lag_minutes > 60
     value: 0
 
 @bruin */
@@ -62,7 +57,7 @@ SELECT
     temperature_c,
     humidity_pct,
     battery_pct,
-    EXTRACT(EPOCH FROM (created_at - reading_time)) / 60.0 AS ingest_lag_minutes
+    TIMESTAMP_DIFF(created_at, reading_time, SECOND) / 60.0 AS ingest_lag_minutes
 FROM raw.sensor_readings
 WHERE temperature_c BETWEEN -50 AND 70
 ORDER BY hour DESC, sensor_id

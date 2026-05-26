@@ -1,8 +1,12 @@
 # fake-iot
 
-Local DuckDB fixture pipeline for testing self-healing pipeline skills against IoT sensor data. It generates deterministic hourly readings for 12 sensors and intentionally injects bad values, late-arriving writes, and a type-shape change.
+BigQuery-backed fixture pipeline for testing self-healing pipeline skills against IoT sensor data. It generates deterministic hourly readings for 12 sensors and intentionally injects bad values, late-arriving writes, and a type-shape change.
 
 This pipeline is safe for local `bruin run` testing. It is not a production-pattern pipeline and does not exercise Bruin Cloud actions directly.
+
+## Critical Agent Warning
+
+**DO NOT TARGET THE PYTHON DATA GENERATOR.** `assets/raw/sensor_readings.py` exists only to create deterministic fixture data and inject known failures. It is not part of the self-healing scenario surface. Do not diagnose, repair, open PRs against, backfill because of, or classify the Python generator logic. Use it only to load fixture data, then run the self-healing skills against the generated BigQuery tables, SQL staging asset, Bruin checks, Cloud run/check state, and `.context/` findings.
 
 ## Assets
 
@@ -13,10 +17,10 @@ This pipeline is safe for local `bruin run` testing. It is not a production-patt
 
 | Scenario | Date/window | Trigger asset/check | Expected skill path | Expected classification |
 |---|---:|---|---|---|
-| Impossible sensor values | `2026-04-10` | `raw.sensor_readings` check `temperature_in_physical_range` | `pipeline-triage` -> `data-quality-investigate` -> `pipeline-report` | `quality-fail`, mode `source-bug` |
-| Type-shape narrowing | Starts `2026-03-01` | `raw.sensor_readings.temperature_c` distribution changes from decimal-like floats to whole-number floats | `pipeline-diagnose` or `schema-drift-check` -> `pipeline-report` | `observed-type-drift` / `type-narrowed`, escalation |
-| Late-arriving data | `2026-05-10` | `raw.sensor_readings` check `readings_arrive_within_one_hour`; staging check `median_ingest_lag_under_60_min` | `pipeline-triage` -> `data-quality-investigate` or `freshness-sla-check` -> `pipeline-report` | `late-arriving-data` / `table-frozen` style freshness signal |
-| Backfill risk review | Any historical rerun over an already-loaded range | `raw.sensor_readings` uses `append` materialization | `pipeline-backfill` dry run -> `pipeline-report` | Requires approval for append rerun where data already exists |
+| Impossible sensor values | `2026-04-10` | BigQuery table `raw.sensor_readings`, check `temperature_in_physical_range` | `pipeline-triage` -> `data-quality-investigate` -> `pipeline-report` | `quality-fail`, mode `source-bug` |
+| Type-shape narrowing | Starts `2026-03-01` | BigQuery column `raw.sensor_readings.temperature_c` distribution changes from decimal-like floats to whole-number floats | `pipeline-diagnose` or `schema-drift-check` -> `pipeline-report` | `observed-type-drift` / `type-narrowed`, escalation |
+| Late-arriving data | `2026-05-10` | BigQuery table `raw.sensor_readings`, check `readings_arrive_within_one_hour`; staging check `ingest_lag_under_60_min` | `pipeline-triage` -> `data-quality-investigate` or `freshness-sla-check` -> `pipeline-report` | `late-arriving-data` / `table-frozen` style freshness signal |
+| Backfill risk review | Any historical rerun over an already-loaded range | Warehouse asset `raw.sensor_readings` has append materialization | `pipeline-backfill` dry run -> `pipeline-report` | Requires approval for append rerun where data already exists |
 
 ## What This Pipeline Covers
 
@@ -45,6 +49,7 @@ bruin lineage fake-iot/assets/staging/hourly_sensor_stats.sql --output json --fu
 ## Expected Notes for Agents
 
 - Treat local `bruin run` as allowed only because this is a fake-data test pipeline.
+- Exclude `assets/raw/sensor_readings.py` from self-healing task scope. It is fixture setup, not the thing to fix.
 - For production pipelines, the skills must use Bruin Cloud MCP or `bruin cloud ... --output json`.
 - A whole-pipeline run can leave failing checks by design. Use narrow date windows when exercising one scenario at a time.
-- Type narrowing here is represented as an observed value-shape drift, not a hard physical column-type failure, because DuckDB stores the column as `DOUBLE`.
+- Type narrowing here is represented as an observed value-shape drift, not a hard physical column-type failure, because the warehouse column is declared as `DOUBLE`.

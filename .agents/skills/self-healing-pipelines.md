@@ -332,4 +332,6 @@ Three fake-data pipelines exist for exercising the skills end-to-end without tou
 - `fake-iot/` — sensor readings. Injects impossible values, type narrowing, late-arriving data.
 - `fake-webevents/` — pageviews. Injects single-dimension anomaly, new browser segment, multi-day freshness gap.
 
+**FAKE PIPELINE WARNING — DO NOT TARGET THE PYTHON DATA GENERATORS.** In `fake-shop/`, `fake-iot/`, and `fake-webevents/`, every `assets/raw/*.py` file is test-fixture setup code that manufactures deterministic sample data and injected failures. These Python assets are deliberately outside the self-healing scenario scope. Do not diagnose, repair, open maintenance PRs against, backfill because of, or classify the Python generator logic itself. Use those files only to load fixture data. The self-healing skills must operate on the generated warehouse tables, SQL staging assets, Bruin checks, Cloud run/check state, and `.context/` findings.
+
 Each pipeline's raw asset file documents the injected issues, their dates, and which skill should detect each one. Local `bruin run` is acceptable only for these fake-data test pipelines; it is not the operational path for the Bruin Cloud skills.

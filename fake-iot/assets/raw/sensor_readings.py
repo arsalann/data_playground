@@ -2,7 +2,7 @@
 name: raw.sensor_readings
 type: python
 image: python:3.11
-connection: duckdb-default
+connection: bruin-playground-arsalan
 description: |
   Generates deterministic fake IoT sensor readings (temperature, humidity,
   battery). Twelve sensors emit one reading per hour. Same date inputs always
@@ -79,7 +79,7 @@ custom_checks:
     query: |
       SELECT COUNT(*)
       FROM raw.sensor_readings
-      WHERE created_at > reading_time + INTERVAL 1 HOUR
+      WHERE created_at > TIMESTAMP_ADD(reading_time, INTERVAL 1 HOUR)
     value: 0
 
 @bruin"""
@@ -149,5 +149,7 @@ def materialize():
         current += timedelta(days=1)
 
     df = pd.concat(frames, ignore_index=True)
+    for column in ("reading_time", "created_at"):
+        df[column] = pd.to_datetime(df[column]).astype("datetime64[us]")
     print(f"[fake-iot] generated {len(df):,} readings across {df['reading_time'].dt.date.nunique()} days")
     return df

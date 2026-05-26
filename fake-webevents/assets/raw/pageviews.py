@@ -2,7 +2,7 @@
 name: raw.pageviews
 type: python
 image: python:3.11
-connection: duckdb-default
+connection: bruin-playground-arsalan
 description: |
   Generates deterministic fake web pageview events. Baseline: ~40k events per
   day across 6 countries, 4 browsers, 3 devices, 8 page paths.
@@ -83,6 +83,23 @@ PAGE_PATHS = ["/", "/products", "/blog", "/pricing", "/about", "/login", "/signu
 
 ANOMALY_DATE = date(2026, 5, 18)
 NEW_BROWSER_DATE = date(2026, 5, 15)
+PAGEVIEW_COLUMNS = [
+    "session_id", "user_id", "country", "browser",
+    "device", "page_path", "event_time", "event_date",
+]
+
+
+def empty_pageviews_frame() -> pd.DataFrame:
+    return pd.DataFrame({
+        "session_id": pd.Series(dtype="string"),
+        "user_id": pd.Series(dtype="string"),
+        "country": pd.Series(dtype="string"),
+        "browser": pd.Series(dtype="string"),
+        "device": pd.Series(dtype="string"),
+        "page_path": pd.Series(dtype="string"),
+        "event_time": pd.Series(dtype="datetime64[us]"),
+        "event_date": pd.Series(dtype="datetime64[ns]"),
+    })
 
 
 def seed_for_date(d: date) -> int:
@@ -145,11 +162,10 @@ def materialize():
         current += timedelta(days=1)
 
     if not frames:
-        return pd.DataFrame(columns=[
-            "session_id", "user_id", "country", "browser",
-            "device", "page_path", "event_time", "event_date",
-        ])
+        return empty_pageviews_frame()
 
-    df = pd.concat(frames, ignore_index=True)
+    df = pd.concat(frames, ignore_index=True)[PAGEVIEW_COLUMNS]
+    df["event_time"] = pd.to_datetime(df["event_time"]).astype("datetime64[us]")
+    df["event_date"] = pd.to_datetime(df["event_date"])
     print(f"[fake-webevents] generated {len(df):,} events across {df['event_date'].nunique()} days")
     return df

@@ -293,15 +293,15 @@ daily cron
 
 ### `pipeline-report`
 
-**Purpose** — Post structured Slack messages for status, incidents, escalations, and digests to the Slack destination configured in Bruin Cloud or provided by the caller context. Consistent shape (subject → what happened → what was done → what needs attention → evidence → suggested follow-up) so a human can pick up cold.
+**Purpose** — Post structured Slack messages for status, incidents, escalations, and digests to the Slack destination configured in Bruin Cloud, provided by the caller context, or this repo's configured self-healing Slack channel ID `C0B67QKKNK0`. Consistent shape (subject → what happened → what was done → what needs attention → evidence → suggested follow-up) so a human can pick up cold.
 
 **Use when** — end of every self-healing run (even when nothing was done), a specialist produced an escalation, or a scheduled digest is due.
 
 **Don't use for** — ad-hoc conversation, posting raw query results, or replacing PR review comments.
 
-**Key inputs** — `severity` (info/warn/error/critical), `subject`, optional `channel` only when supplied by Bruin Cloud/caller context, optional `source_files`, `thread_ts`, `mentions`.
+**Key inputs** — `severity` (info/warn/error/critical), `subject`, optional `channel` only when supplied by Bruin Cloud/caller context, optional `source_files`, `thread_ts`, `mentions`. Repo-configured default channel ID: `C0B67QKKNK0`.
 
-**Key guardrail** — never hard-code or infer a Slack channel; use the Bruin Cloud-configured destination or explicit caller-provided channel, and write a `.context/` report without Slack delivery if none is available. Severity is set by the caller, never silently changed; dedups against last hour of destination history (replies in thread instead of double-posting); never includes secrets or full row dumps; never pages someone not on current on-call.
+**Key guardrail** — never infer a Slack channel name; use the Bruin Cloud-configured destination, explicit caller-provided channel, or repo-configured channel ID `C0B67QKKNK0`, and write a `.context/` report without Slack delivery if no destination is available. Severity is set by the caller, never silently changed; dedups against last hour of destination history (replies in thread instead of double-posting); never includes secrets or full row dumps; never pages someone not on current on-call.
 
 **Hands off to** — nothing; this is always the terminal skill.
 

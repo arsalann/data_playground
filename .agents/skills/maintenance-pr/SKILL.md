@@ -57,7 +57,7 @@ Before any branch is created:
 2. **Working tree is clean** - we are operating on `main` (or the project's configured base branch) with no uncommitted changes.
 3. **No existing PR** for the same finding - search open PRs by branch name pattern. If one exists, comment on it instead of opening another.
 4. **Recent PR/code context is reviewed** - inspect recent PRs and commits touching the same assets so the new PR does not duplicate, conflict with, or hide a recent change.
-5. **Change type is on the allow-list** - if not, abort and route to `pipeline-report` as an escalation.
+5. **Change type is on the allow-list** - if not, abort with a structured escalation in the finding file.
 6. **Validation scope is decided** - asset-only validation is faster (`bruin validate <asset-file-path> --output json`), but pipeline validation is required when dependency definitions, downstream SQL, pipeline defaults, or shared config changed (`bruin validate <pipeline-dir> --output json`). For variant-bearing pipelines, validate all affected concrete variants or explicitly pass `--variant <variant>`.
 7. **Cloud validation context is checked** - inspect `bruin cloud pipelines errors --output json` where relevant and filter client-side; if Cloud reports unrelated active errors, note them in the PR.
 8. **No secrets in the diff** - scan the diff for credential-shaped strings; abort if anything matches.
@@ -161,7 +161,7 @@ return result(pr_url=pr.url, branch=branch)
 - **Requires approval**: non-draft PRs, any change type marked as such above, force-pushing to an existing PR, opening more than 3 PRs in a single invocation, and end-to-end tests that touch production.
 - **Never allowed**: operational local runs, merging the PR (always a human action), pushing to the base branch directly, modifying files outside the finding's declared scope, opening a PR without a finding file, using `gh pr create --no-draft` for an auto-allowed change without explicit approval, claiming quality checks passed without Cloud verification or `bruin run --only checks <asset-file>`, or claiming end-to-end test coverage when no safe test environment was used.
 
-For PR verification, try to test end to end only when a development, shadow, sandbox, or otherwise safe non-production environment exists. If no safe environment exists, the PR body and report must clearly state: **NOT TESTED END TO END — MUST BE TESTED BEFORE DEPLOYMENT**. Do not run end-to-end tests against production unless a human explicitly approves and the test is safe.
+For PR verification, try to test end to end only when a development, shadow, sandbox, or otherwise safe non-production environment exists. If no safe environment exists, the PR body and returned result must clearly state: **NOT TESTED END TO END — MUST BE TESTED BEFORE DEPLOYMENT**. Do not run end-to-end tests against production unless a human explicitly approves and the test is safe.
 
 ## Verification
 
@@ -174,9 +174,9 @@ A PR is "successfully opened" when:
 
 The PR is not "verified" — only humans verify. The skill's job ends when the PR is open and waiting for review.
 
-## Reporting
+## Output
 
-Update the source finding file with the PR URL, then hand off to `pipeline-report` with:
+Update the source finding file with the PR URL, then return this result shape:
 
 ```yaml
 pr_url: https://github.com/org/repo/pull/123
@@ -196,4 +196,4 @@ validation_status: passed
 end_to_end_test_status: NOT TESTED END TO END — MUST BE TESTED BEFORE DEPLOYMENT
 ```
 
-If the PR could not be opened, the report must explain which pre-flight check failed. "Tried and failed" is a valid outcome; "silently skipped" is never acceptable.
+If the PR could not be opened, the returned result must explain which pre-flight check failed. "Tried and failed" is a valid outcome; "silently skipped" is never acceptable.

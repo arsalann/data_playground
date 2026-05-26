@@ -4,7 +4,7 @@ This directory contains flat skill folders discovered by the agent runtime. Keep
 
 ## Skill Collections
 
-- [Self-healing pipeline skills](self-healing-pipelines.md) - Bruin Cloud operational skills for triage, diagnosis, freshness, quality, schema drift, backfills, maintenance PRs, anomaly investigation, and reporting.
+- [Self-healing pipeline skills](self-healing-pipelines.md) - Bruin Cloud operational skills for triage, diagnosis, freshness, quality, schema drift, backfills, anomaly investigation, and maintenance PR proposals.
 
 ## Individual Skills
 
@@ -17,4 +17,3 @@ This directory contains flat skill folders discovered by the agent runtime. Keep
 - [freshness-sla-check](freshness-sla-check/SKILL.md) - Freshness and stale asset classification.
 - [anomaly-investigate](anomaly-investigate/SKILL.md) - Metric spike/drop attribution through dimension slicing.
 - [maintenance-pr](maintenance-pr/SKILL.md) - Finding-gated routine maintenance PR creation.
-- [pipeline-report](pipeline-report/SKILL.md) - Structured Slack status, incident, and digest reporting.

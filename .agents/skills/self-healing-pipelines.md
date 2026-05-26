@@ -1,6 +1,6 @@
 # Self-Healing Pipeline Skills
 
-A set of composable skills for Bruin Cloud scheduled agents to perform routine data-engineering and analytics-engineering work: triaging failures, diagnosing issues, backfilling, investigating data quality, handling schema drift, explaining anomalies, opening maintenance PRs, and reporting to Slack.
+A set of composable skills for Bruin Cloud managed agents to perform routine data-engineering and analytics-engineering work: triaging failures, diagnosing issues, backfilling, investigating data quality, handling schema drift, explaining anomalies, and proposing solutions as maintenance PRs.
 
 These skills are for **Bruin Cloud only**. They must use Bruin Cloud MCP when available and `bruin cloud ... --output json` commands as the CLI fallback. They must not create operational runs with local `bruin run`; local repo commands are allowed only for static evidence such as `bruin lineage`, file inspection, validation before a maintenance PR, and git/PR history.
 
@@ -17,7 +17,7 @@ environments:
           api_token: "..."
 ```
 
-The Cloud CLI resolves credentials from `--api-key`, then `BRUIN_CLOUD_API_KEY`, then the first configured `.bruin.yml` `bruin` connection. The CLI cannot select a `bruin` connection by name. If multiple `bruin` connections exist, export `BRUIN_CLOUD_API_KEY` from the intended `bruin-cloud` connection for the duration of the command. Never print or persist the token in `.context/`, Slack, PRs, or logs.
+The Cloud CLI resolves credentials from `--api-key`, then `BRUIN_CLOUD_API_KEY`, then the first configured `.bruin.yml` `bruin` connection. The CLI cannot select a `bruin` connection by name. If multiple `bruin` connections exist, export `BRUIN_CLOUD_API_KEY` from the intended `bruin-cloud` connection for the duration of the command. Never print or persist the token in `.context/`, PRs, or logs.
 
 When a skill needs Bruin Cloud state or action, use this preference order:
 
@@ -99,25 +99,24 @@ Every skill follows the same shape so the scheduler can pick the right one and t
 4. **Decision tree** — the classification logic, in pseudo-code.
 5. **Actions & guardrails** — auto-allowed / requires-approval / never-allowed.
 6. **Verification** — how the skill knows the action stuck.
-7. **Reporting** — what gets written to `.context/` and to Slack.
+7. **Output** — what gets written to `.context/`, returned to the caller, or proposed as a PR.
 
-`.context/` is the shared filesystem between skills. Triage drops a snapshot; diagnose reads it; maintenance-pr requires a finding file as input; report annotates them all with the resulting permalink. The chain is auditable end-to-end.
+`.context/` is the shared filesystem between skills. Triage drops a snapshot, diagnose reads it, and `maintenance-pr` requires a finding file as input. These skills only produce structured findings, Cloud run evidence, and PRs; they do not connect to, choose, or post to any external destination. The chain is auditable through `.context/` files, Cloud run IDs, and PR URLs.
 
 ## Skill Map
 
-| Skill | One-line job | Writes to repo? | Posts to Slack? | Uses Bruin Cloud/MCP? |
-|---|---|---|---|---|
-| [`pipeline-triage`](pipeline-triage/SKILL.md) | Classify what's wrong and route | no | no (hands to report) | yes (read) |
-| [`pipeline-diagnose`](pipeline-diagnose/SKILL.md) | Single-asset forensics | no | no | yes (read) |
-| [`pipeline-backfill`](pipeline-backfill/SKILL.md) | Rerun a range safely | no | no (hands to report) | yes (Cloud action) |
-| [`schema-drift-check`](schema-drift-check/SKILL.md) | Detect & classify source drift | no | no | yes (read) |
-| [`data-quality-investigate`](data-quality-investigate/SKILL.md) | Walk failed checks to root cause | no | no | yes (read) |
-| [`freshness-sla-check`](freshness-sla-check/SKILL.md) | Find stale data, classify cause | no | no | yes (read + limited Cloud retrigger) |
-| [`anomaly-investigate`](anomaly-investigate/SKILL.md) | Explain a metric spike/dip | no | no | yes (read) |
-| [`maintenance-pr`](maintenance-pr/SKILL.md) | Open a PR for an allow-listed fix | **yes** | no (hands to report) | yes (read/validate) |
-| [`pipeline-report`](pipeline-report/SKILL.md) | Slack status / incident / digest | annotates findings | **yes** | no |
+| Skill | One-line job | Writes to repo? | Uses Bruin Cloud/MCP? |
+|---|---|---|---|
+| [`pipeline-triage`](pipeline-triage/SKILL.md) | Classify what's wrong and route | no | yes (read) |
+| [`pipeline-diagnose`](pipeline-diagnose/SKILL.md) | Single-asset forensics | no | yes (read) |
+| [`pipeline-backfill`](pipeline-backfill/SKILL.md) | Rerun a range safely | no | yes (Cloud action) |
+| [`schema-drift-check`](schema-drift-check/SKILL.md) | Detect & classify source drift | no | yes (read) |
+| [`data-quality-investigate`](data-quality-investigate/SKILL.md) | Walk failed checks to root cause | no | yes (read) |
+| [`freshness-sla-check`](freshness-sla-check/SKILL.md) | Find stale data, classify cause | no | yes (read + limited Cloud retrigger) |
+| [`anomaly-investigate`](anomaly-investigate/SKILL.md) | Explain a metric spike/dip | no | yes (read) |
+| [`maintenance-pr`](maintenance-pr/SKILL.md) | Open a PR for an allow-listed fix | **yes** | yes (read/validate) |
 
-Only `maintenance-pr` writes to the repo. Only `pipeline-report` posts to Slack. Every other skill is read-only against the world.
+Only `maintenance-pr` writes to the repo. `pipeline-backfill` is the only skill that can trigger Bruin Cloud runs, and only inside its guardrails. Every other skill is read-only against the world.
 
 ## Typical Run Shapes
 
@@ -133,7 +132,7 @@ alert webhook
       → anomaly-investigate        (if any class = anomaly)
       → freshness-sla-check        (if any class = stale)
       → pipeline-diagnose          (if class = unknown)
-  → pipeline-report             (always last; one consolidated message)
+  → return consolidated findings and recommended next actions
 ```
 
 ### Scheduled tick (no alert)
@@ -142,7 +141,7 @@ alert webhook
 cron tick (every 15-30 min)
   → freshness-sla-check         (catch missed runs even when nothing errored)
   → pipeline-triage             (full state scan)
-  → pipeline-report             (only if there's something to say)
+  → return only if there are findings or recommended actions
 ```
 
 ### Human-asked ("why did this fail?")
@@ -150,15 +149,7 @@ cron tick (every 15-30 min)
 ```
 human question
   → pipeline-diagnose <asset>   (gather context, produce hypothesis)
-  → pipeline-report             (post the hypothesis to a thread)
-```
-
-### Daily digest
-
-```
-daily cron
-  → invoke `pipeline-triage` with `pipeline: all` and `since: 24h`
-  → pipeline-report             (severity: info, digest format)
+  → return hypothesis plus evidence file path
 ```
 
 ## Per-Skill Reference
@@ -169,13 +160,13 @@ daily cron
 
 **Use when** — an alert fires, a scheduled tick runs, a human asks "what's broken", or another skill needs a fresh state snapshot.
 
-**Don't use for** — single-asset deep dives (use `pipeline-diagnose`), running fixes (use specialists), or composing the human-facing message (use `pipeline-report`).
+**Don't use for** — single-asset deep dives (use `pipeline-diagnose`) or running fixes (use specialists).
 
 **Key inputs** — `pipeline` (name or `all`), `since` (lookback), `severity_floor`.
 
 **Key guardrail** — never modifies state; every issue must receive a class, even if `unknown`; partial state never reported as health.
 
-**Hands off to** — every other specialist skill, and always ends with `pipeline-report`.
+**Hands off to** — whichever specialist skill matches each class; returns a structured triage summary to the caller.
 
 ---
 
@@ -191,7 +182,7 @@ daily cron
 
 **Key guardrail** — speculation without a matched signal is forbidden. "I don't know" with evidence is a valid output; "I don't know" with no work shown is not.
 
-**Hands off to** — whichever specialist the matched pattern recommends, or `pipeline-report` if `unknown`.
+**Hands off to** — whichever specialist the matched pattern recommends, or a human escalation if `unknown`.
 
 ---
 
@@ -207,7 +198,7 @@ daily cron
 
 **Key guardrail** — pre-flight checks must pass; Cloud reruns are planned by Bruin run interval where intervals are meaningful; destructive or irreversible source/raw table refreshes are prohibited; ranges > 7 days, large tables, and uncertain consequences require human approval or full human handoff.
 
-**Hands off to** — `pipeline-report` with full row-count delta.
+**Hands off to** — returns a backfill record with row-count delta and Cloud run IDs.
 
 ---
 
@@ -223,7 +214,7 @@ daily cron
 
 **Key guardrail** — `type-narrowed` and `observed-type-drift` are never auto-actioned without clear downstream impact; `column-removed` requires approval when downstream count > 0; column-level lineage must be listed.
 
-**Hands off to** — `maintenance-pr` for most drift types; escalates to `pipeline-report` for narrowings.
+**Hands off to** — `maintenance-pr` for most drift types; human escalation for narrowings or unclear downstream impact.
 
 ---
 
@@ -255,7 +246,7 @@ daily cron
 
 **Key guardrail** — never marks an asset fresh without Cloud and table-level evidence; never fabricates Bruin metadata; can retrigger at most one missed Cloud interval per asset automatically, more requires approval. A PR to document freshness/growth expectations or add custom checks requires approval.
 
-**Hands off to** — `pipeline-diagnose` for `attempted-failed` cases, `pipeline-report` for everything else.
+**Hands off to** — `pipeline-diagnose` for `attempted-failed` cases; otherwise returns freshness findings and recommended next action.
 
 ---
 
@@ -271,7 +262,7 @@ daily cron
 
 **Key guardrail** — read-only; attribution > 100% is forbidden (a common bug with overlapping dimensions); coverage < 50% must be reported as `anomaly-unexplained`, not stretched.
 
-**Hands off to** — `data-quality-investigate` if pipeline cause attributed, `pipeline-report` otherwise.
+**Hands off to** — `data-quality-investigate` if pipeline cause attributed; otherwise returns anomaly attribution with evidence.
 
 ---
 
@@ -287,29 +278,14 @@ daily cron
 
 **Key guardrail** — only allow-listed change types; never merges (humans only); branch must start with `self-healing/`; branch scoped to finding's declared files; secrets scan on the diff; CI must run before the PR is considered "open"; end-to-end tests run only in safe non-prod environments, otherwise the PR must clearly say it was not tested.
 
-**Hands off to** — `pipeline-report` with the PR URL and CI status.
+**Hands off to** — returns the PR URL, CI status, validation status, and updated finding file path.
 
----
-
-### `pipeline-report`
-
-**Purpose** — Post structured Slack messages for status, incidents, escalations, and digests to the Slack destination configured in Bruin Cloud, provided by the caller context, or this repo's configured self-healing Slack channel ID `C0B67QKKNK0`. Consistent shape (subject → what happened → what was done → what needs attention → evidence → suggested follow-up) so a human can pick up cold.
-
-**Use when** — end of every self-healing run (even when nothing was done), a specialist produced an escalation, or a scheduled digest is due.
-
-**Don't use for** — ad-hoc conversation, posting raw query results, or replacing PR review comments.
-
-**Key inputs** — `severity` (info/warn/error/critical), `subject`, optional `channel` only when supplied by Bruin Cloud/caller context, optional `source_files`, `thread_ts`, `mentions`. Repo-configured default channel ID: `C0B67QKKNK0`.
-
-**Key guardrail** — never infer a Slack channel name; use the Bruin Cloud-configured destination, explicit caller-provided channel, or repo-configured channel ID `C0B67QKKNK0`, and write a `.context/` report without Slack delivery if no destination is available. Severity is set by the caller, never silently changed; dedups against last hour of destination history (replies in thread instead of double-posting); never includes secrets or full row dumps; never pages someone not on current on-call.
-
-**Hands off to** — nothing; this is always the terminal skill.
 
 ## Composition Rules
 
 A few invariants that hold across the whole system:
 
-1. **Every run ends with `pipeline-report`.** Silent runs are forbidden — if nothing was wrong, post an `info` digest line; if nothing was done because approval is required, post a `warn` with the plan.
+1. **Every run ends with a structured result.** Silent runs are forbidden — if nothing was wrong, return a concise healthy result with the checked scope; if approval is required, return the exact plan and blocker.
 2. **`pipeline-triage` is the only entry point.** Other skills can be called directly by humans, but scheduled agents should always start from triage so classification is consistent.
 3. **Findings flow through `.context/`.** Skills don't pass structured state to each other through memory — they write a file and pass the path. This is what makes the whole chain auditable.
 4. **Read-only by default.** A skill that touches state (`pipeline-backfill`, `maintenance-pr`) is the exception, not the rule, and must declare every write in its guardrails section.

@@ -59,7 +59,7 @@ If none of these are available, list the asset as `unmonitored` and skip freshne
 | Class | Definition | Default response |
 |---|---|---|
 | `upstream-stale` | Asset is stale, AND a declared upstream is also stale by an equal or greater amount | Re-run check on the upstream, not this asset |
-| `source-down` | Asset has no upstreams, source connector is failing health checks | `pipeline-report` — wait, do not retry |
+| `source-down` | Asset has no upstreams, source connector is failing health checks | human escalation — wait, do not retry |
 | `scheduler-missed` | Last attempt timestamp is older than expected; scheduler appears to have skipped | Retrigger through Bruin Cloud MCP or `bruin cloud runs trigger --project-id <project-id> --pipeline <pipeline> --start-date <start> --end-date <end> --output json` only |
 | `run-stuck` | Last attempt is recent and still in progress past 3x median duration | Investigate or kill (requires approval); do not start another run |
 | `attempted-failed` | Last attempt failed — should have been caught by triage, but list it here too | Route to `pipeline-diagnose` |
@@ -155,7 +155,7 @@ roots:
       - raw.wikipedia_pageviews
       - raw.wikipedia_articles
     stale_for: 3h17m
-    next_action: pipeline-report; do not retry until source health recovers
+    next_action: human escalation; do not retry until source health recovers
   - root_cause: scheduler-missed
     affected_assets:
       - marts.daily_top_articles

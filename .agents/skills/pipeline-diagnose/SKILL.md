@@ -59,9 +59,9 @@ Match the error fingerprint against these common shapes. The match is a hypothes
 | `column "X" does not exist` / `unknown field X` | Schema drift in source or upstream | `schema-drift-check` |
 | `cannot cast TYPE_A to TYPE_B` | Type drift or new enum value | `schema-drift-check` |
 | `Connection reset` / `EOF` / `5xx from <host>` | Transient source flake | route to `pipeline-backfill`, which may call `bruin cloud runs rerun ... --only-failed` or `bruin cloud runs trigger ...` after preflight |
-| `Quota exceeded` / `slot pool full` / `rate limit` | Capacity / billing | `pipeline-report`, do not retry |
+| `Quota exceeded` / `slot pool full` / `rate limit` | Capacity / billing | human escalation, do not retry |
 | `Query exceeded resource limits` / OOM | Capacity or a join that grew | flag for human; suggest partition or filter |
-| `Permission denied` / `access denied` / 401/403 | Credential expiry or IAM change | `pipeline-report`, do not retry |
+| `Permission denied` / `access denied` / 401/403 | Credential expiry or IAM change | human escalation, do not retry |
 | `Custom check failed: <name>` | Data quality issue | `data-quality-investigate` |
 | `timeout` on a query that historically completed | Capacity or a join blowup | check upstream row counts |
 | Empty pattern but exit code != 0 | Bruin runner issue or signal kill | check Bruin Cloud status |

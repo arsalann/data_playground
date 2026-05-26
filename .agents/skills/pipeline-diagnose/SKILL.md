@@ -8,6 +8,8 @@ argument-hint: "<asset name> [run_id]"
 
 Forensics, not repair. Take one asset, gather every signal about its last failure, and produce a structured hypothesis another skill (or human) can act on. This skill should leave the system in the exact state it found it.
 
+This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Do not use local `bruin run` for operational execution.
+
 ## When to Use
 
 - `pipeline-triage` returned class `unknown` for an asset.
@@ -24,20 +26,25 @@ Do not use for: scanning a whole pipeline (use `pipeline-triage`), executing a f
 | `asset` | yes | `marts.daily_top_articles` | Fully qualified asset name. |
 | `run_id` | no | `run_01HXYZ...` | Specific run to diagnose. Defaults to most recent failed run. |
 | `pipeline` | no | `wikipedia-ai-trends` | Inferred from asset if not provided. |
+| `project_id` | no | `01krk817ys2j45frftg1q4xfgv` | Bruin Cloud project ID. Required if the account can see multiple projects and it cannot be inferred from a triage snapshot. |
 
 ## Context to Gather
 
 Gather all of these — partial diagnosis is worse than no diagnosis because it biases the hypothesis.
 
-1. **Asset definition** - read the YAML/SQL file. Note: materialization type, partition column, dependencies, declared columns, quality checks.
-2. **Last successful run** - timestamp, duration, row count. Establishes baseline.
-3. **Failed run** - full stderr/stdout, exit code, duration before failure, partial output if any.
-4. **Error fingerprint** - extract the deepest error message (not the wrapper). Hash it so we can match against known patterns.
-5. **Upstream state** - for each declared dependency, was its last run successful? When? Did the schema or row count change meaningfully?
-6. **Downstream impact** - which assets depend on this one and are now blocked or stale?
-7. **Recent changes** - `git log --since="7d" -- <asset_file> <upstream_files>`. Was the asset or any upstream touched recently?
-8. **Connection health** - if the error mentions a source connector, check whether other assets using the same connector also failed.
-9. **Resource signals** - duration trend over last 14 runs. A 10x slowdown before failure points at capacity, not logic.
+1. **Cloud run diagnosis** - use Bruin Cloud MCP or `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --latest --output json` / `--run-id <run-id>` for the consolidated failed-assets/checks/logs view.
+2. **Cloud run details** - use `bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json` or `--latest`.
+3. **Cloud asset details** - use `bruin cloud assets get --project-id <project-id> --pipeline <pipeline> --asset <asset> --output json`.
+4. **Cloud instance details and logs** - use `bruin cloud instances get`, `bruin cloud instances logs`, or `bruin cloud instances failed-logs` for the run.
+5. **Asset definition from repo** - read the YAML/SQL/Python file. Note materialization type, strategy, interval use, dependencies, declared columns, and quality checks.
+6. **Last successful run** - timestamp, duration, row count. Establishes baseline.
+7. **Failed run** - status, failed instance/check, duration before failure, partial output if any, and Cloud run URL/ID.
+8. **Error fingerprint** - extract the deepest error message (not the wrapper). Hash it so we can match against known patterns.
+9. **Upstream state** - for each declared dependency, was its last run successful? When? Did the schema or row count change meaningfully?
+10. **Downstream impact** - which assets depend on this one and are now blocked or stale? Use Bruin Cloud asset state and local `bruin lineage <asset-file-path>` when the repo is available.
+11. **Recent changes** - inspect `git log --since="7d" -- <asset_file> <upstream_files>` and recent PRs/branches touching the asset or upstreams.
+12. **Connection health** - if the error mentions a source connector, check whether other assets using the same connector also failed.
+13. **Resource signals** - duration trend over recent Cloud runs. A 10x slowdown before failure points at capacity, not logic.
 
 ## Error Pattern Library
 
@@ -96,9 +103,9 @@ return hypothesis(cause='unknown', recommendation='escalate to human with full c
 
 ## Actions & Guardrails
 
-- **Auto-allowed**: read asset files, read git log, query Bruin MCP for run state, write diagnosis to `.context/diag-<asset>-<timestamp>.md`.
+- **Auto-allowed**: read asset files, read git/PR history, query Bruin Cloud MCP or `bruin cloud` for run/asset/instance/log state, write diagnosis to `.context/diag-<asset>-<timestamp>.md`.
 - **Requires approval**: nothing — this skill never acts on the pipeline.
-- **Never allowed**: speculation without a matched signal. If no pattern matches and no commit lines up, the cause is `unknown` — say so. Do not pick the most-plausible-sounding cause.
+- **Never allowed**: local operational runs, speculation without a matched signal. If no pattern matches and no commit lines up, the cause is `unknown` — say so. Do not pick the most-plausible-sounding cause.
 
 ## Verification
 
@@ -111,6 +118,10 @@ Write the diagnosis to `.context/diag-<asset>-<timestamp>.md` in this shape, and
 ```yaml
 asset: marts.daily_top_articles
 run_id: run_01HXYZ...
+bruin_cloud:
+  project_id: 01krk817ys2j45frftg1q4xfgv
+  pipeline: wikipedia-ai-trends
+  run_url: https://cloud.getbruin.com/...
 diagnosed_at: 2026-05-22T14:30:00Z
 hypothesis:
   cause: schema-drift

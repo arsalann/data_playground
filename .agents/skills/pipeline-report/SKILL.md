@@ -8,6 +8,8 @@ argument-hint: "<channel> <severity> <subject>"
 
 Every self-healing run ends here. If the agent did something — or decided to do nothing — a human needs to be able to read one message and understand what happened, what was fixed, and what still needs attention.
 
+Reports should link to Bruin Cloud runs/assets and source finding files. If the report needs Cloud context, use Bruin Cloud MCP first and docs/source-verified `bruin cloud ... --output json` commands as fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Never include API tokens, connection values, full row dumps, or raw secrets in Slack.
+
 ## When to Use
 
 - End of any self-healing run, even when no action was taken.
@@ -52,7 +54,7 @@ Pipeline: `<pipeline>` · Time: `<UTC timestamp>` · Run: `<skill or alert handl
 
 *What was done*  (optional — omit if no action was taken)
 - <bullet per concrete action>
-- Include PR URLs, run IDs, partition ranges.
+- Include PR URLs, Bruin Cloud run IDs/URLs, and affected intervals.
 
 *What needs attention*  (optional)
 - <bullet per item requiring a human>

@@ -8,6 +8,8 @@ argument-hint: "<metric or asset> <date or window>"
 
 The asset ran. The checks passed. The number still looks wrong. This skill is the one that finds out why — by attribution, not by guesswork.
 
+Use Bruin Cloud MCP for run/asset context and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Local repo inspection is allowed for metric definitions, lineage, and git/PR history; local operational runs are not.
+
 ## When to Use
 
 - A monitored metric (revenue, sign-ups, pageviews, latency) is N standard deviations outside its expected range.
@@ -23,6 +25,8 @@ Do not use for: failed runs (use `pipeline-diagnose`), schema problems (use `sch
 |---|---|---|---|
 | `metric` | yes | `daily_pageviews` or `marts.daily_top_articles.total_views` | Metric or asset+column. |
 | `window` | yes | `2026-05-21` or `2026-05-15..2026-05-21` | Single date or range to investigate. |
+| `project_id` | no | `01krk817ys2j45frftg1q4xfgv` | Bruin Cloud project ID for Cloud run/asset context. |
+| `pipeline` | no | `wikipedia-ai-trends` | Bruin Cloud pipeline name, inferred from the metric asset when possible. |
 | `dimensions` | no | `[country, source, category]` | If known, the dimensions worth slicing. Inferred from the asset's columns otherwise. |
 | `baseline` | no | `last_28d_same_dow` | How "expected" is defined. Default: same day-of-week over last 4 weeks, median. |
 
@@ -32,18 +36,20 @@ Do not use for: failed runs (use `pipeline-diagnose`), schema problems (use `sch
 2. **Baseline** - median + IQR over the baseline window, same-day-of-week when seasonality matters.
 3. **Anomaly magnitude** - how many IQRs or sigmas off, and absolute delta (both matter — small percentage on a tiny base is noise).
 4. **Dimension breakdowns** - the metric sliced by each candidate dimension, comparing anomalous window to baseline. Find dimensions where the anomaly concentrates.
-5. **Upstream row counts** - did the source row count change meaningfully on the anomalous date?
-6. **Upstream value distributions** - did a column's distribution shift, even if row count was normal?
-7. **Code changes** - `git log` on the metric's defining asset and upstreams over the last 30 days.
-8. **External calendar** - holidays, product launches, known maintenance windows, paid acquisition pulses. If a calendar isn't accessible, list this as "not checked".
+5. **Bruin Cloud context** - use Cloud run/asset/instance history to confirm runs and checks passed for the anomalous window.
+6. **Upstream row counts** - did the source row count change meaningfully on the anomalous date?
+7. **Upstream value distributions** - did a column's distribution shift, even if row count was normal?
+8. **Code changes** - inspect `git log` and recent PRs/branches on the metric's defining asset and upstreams over the last 30 days.
+9. **Lineage** - use `bruin lineage <asset-file-path>` and repo inspection to identify upstream metric sources and downstream consumers.
+10. **External calendar** - holidays, product launches, known maintenance windows, paid acquisition pulses. If a calendar isn't accessible, list this as "not checked".
 
 ## Anomaly Attribution Patterns
 
 | Pattern | Signal | Default explanation |
 |---|---|---|
 | `single-dimension-driver` | One dimension value accounts for >50% of the delta vs. baseline | The named segment moved; report it |
-| `pipeline-double-count` | Row count in upstream is normal, but metric is 2x or 3x; partition column missing from dedup | Data quality issue — route to `data-quality-investigate` |
-| `pipeline-undercount` | Upstream row count dropped but no source failure logged; partition incomplete | Often `freshness-sla-check` will catch this; route there |
+| `pipeline-double-count` | Row count in upstream is normal, but metric is 2x or 3x; interval key missing from dedup | Data quality issue — route to `data-quality-investigate` |
+| `pipeline-undercount` | Upstream row count dropped but no source failure logged; interval incomplete | Often `freshness-sla-check` will catch this; route there |
 | `new-segment` | Anomaly is entirely from a dimension value that did not exist in baseline | New product/region/source launched — confirm with calendar |
 | `lost-segment` | A previously-present dimension value disappeared from the data | Source removed it (schema drift?) or business stopped collecting — escalate |
 | `seasonality-not-modeled` | Anomaly aligns with a recurring date (month-end, payday, holiday) and prior occurrences show same shape | Baseline is wrong, not the data — recommend updating baseline calc |
@@ -85,9 +91,9 @@ return result(
 
 ## Actions & Guardrails
 
-- **Auto-allowed**: read metric/asset data, run slicing queries, read source row counts, write report to `.context/`.
+- **Auto-allowed**: read metric/asset data, inspect Bruin Cloud run/asset state, run slicing queries, read source row counts, inspect git/PR history, write report to `.context/`.
 - **Requires approval**: nothing — this skill is read-only.
-- **Never allowed**: claiming a cause without an evidence link, "correcting" anomalous data, suppressing the anomaly from a dashboard or alert, attributing > 100% of the delta (a common failure when overlapping dimensions are double-counted).
+- **Never allowed**: local operational runs, claiming a cause without an evidence link, "correcting" anomalous data, suppressing the anomaly from a dashboard or alert, attributing > 100% of the delta (a common failure when overlapping dimensions are double-counted).
 
 ## Verification
 

@@ -1,45 +1,56 @@
 ---
 name: pipeline-backfill
-description: Safely rerun a Bruin asset or pipeline for a specific time range. Validates scope, checks dependencies, and executes the backfill via Bruin CLI with the right flags. Use when a fix has been merged, a transient failure needs a retry, or historical data was wrong and needs regeneration.
-argument-hint: "<asset> <start> <end>"
+description: Safely trigger or rerun Bruin Cloud pipeline runs for a specific time range. Validates scope, checks dependencies and materialization risk, and executes only through Bruin Cloud MCP or Bruin Cloud CLI. Use when a fix has been merged, a transient failure needs a retry, or historical data was wrong and needs regeneration.
+argument-hint: "<pipeline> <start> <end>"
 ---
 
 # Pipeline Backfill
 
 The most dangerous skill in the set — backfills can overwrite good data, double-count rows, or saturate connectors. The guardrails matter more than the speed.
 
+This is a Bruin Cloud skill. Use Bruin Cloud MCP first; use `bruin cloud ... --output json` as the CLI fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Do not use local `bruin run` for operational execution.
+
 ## When to Use
 
-- A code or schema fix has merged and historical partitions need to be regenerated.
+- A code or schema fix has merged and historical intervals need to be regenerated.
 - A transient failure was diagnosed; the affected runs need to be retried.
 - An upstream source republished data for a past window.
 - A human asks "rerun X for date range Y".
 
-Do not use for: routine first-time runs (those happen on schedule), running an asset that has never succeeded (use a manual `bruin run` instead — there is no "back" to fill), or "just rerun everything" requests without a scoped range.
+Do not use for: routine first-time runs (those happen on schedule), running an asset or pipeline that has never succeeded (there is no "back" to fill), source/raw table full refreshes, destructive reruns whose consequences are not reversible, or "just rerun everything" requests without a scoped range.
 
 ## Inputs
 
 | Input | Required | Example | Notes |
 |---|---|---|---|
-| `asset` | yes | `marts.daily_top_articles` | Single asset or comma-separated list. Use `--downstream` flag to include downstream. |
-| `start` | yes | `2026-05-01` | Inclusive start date or timestamp. |
-| `end` | yes | `2026-05-21` | Inclusive end date or timestamp. |
+| `project_id` | no | `01krk817ys2j45frftg1q4xfgv` | Bruin Cloud project ID. Required if the account can see multiple projects and it cannot be inferred. |
+| `pipeline` | yes | `wikipedia-ai-trends` | Bruin Cloud pipeline name. Cloud CLI run triggers are pipeline-level. |
+| `asset` | no | `marts.daily_top_articles` | Asset that motivated the rerun. Used for risk analysis, lineage, and verification. Do not assume Cloud CLI can trigger a single asset. |
+| `start` | yes | `2026-05-01T00:00:00Z` | Inclusive interval start date or timestamp. Prefer the pipeline's Bruin interval format. |
+| `end` | yes | `2026-05-21T00:00:00Z` | Inclusive interval end date or timestamp. Prefer the pipeline's Bruin interval format. |
 | `reason` | yes | `schema fix for view_count column` | Free text. Logged with the run for audit. |
-| `mode` | no | `replace` \| `append` \| `merge` | Default `replace`. Append only valid for append-only tables. |
+| `mode` | no | `trigger` \| `rerun` | Default is `trigger` for a new interval run. Use `rerun` only for an existing Cloud run ID. |
+| `run_id` | no | `run_01HXYZ...` | Required for `mode: rerun`; optional for investigating existing failed runs. |
 | `dry_run` | no | `true` \| `false` | Default `true` on first invocation, `false` only after preview is approved. |
 
 ## Pre-flight Checks
 
-Run all of these before any `bruin run` is issued. A single failure aborts the backfill.
+Run all of these before any Bruin Cloud run is triggered or rerun. A single failure aborts the backfill plan.
 
-1. **Asset exists and is healthy** - last run succeeded, definition validates with `bruin validate`.
-2. **Range is reasonable** - `end - start <= 90 days` without explicit override. Larger ranges need human approval.
-3. **Range is in the past** - `end < now`. Backfilling future partitions is always a mistake.
-4. **Upstream coverage** - every dependency must have successful runs covering the same range. If any upstream partition is missing, abort with a list of missing partitions.
-5. **Downstream awareness** - list all downstream assets. If any are currently running, wait or abort.
-6. **Idempotency** - the asset must declare `materialization.strategy` as one of `replace`, `merge`, `append`. If it is `time_interval` or unset, abort and ask for explicit `mode`.
-7. **Row count sanity** - estimate output volume from a sample partition. If estimated total > 10x historical, abort and require approval.
-8. **Connector quotas** - if the asset writes to a quota-limited destination (e.g. BigQuery slot pool, an API with daily limits), check current usage. Abort if the backfill would exhaust the day's budget.
+1. **Cloud project/pipeline exists** - resolve `project_id`, confirm the pipeline with `bruin cloud pipelines get --project-id <project-id> --name <pipeline> --output json`, and check Cloud validation errors.
+2. **Run history exists** - use `bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 20 --output json`; abort if the pipeline has never succeeded.
+3. **Range is reasonable** - `end - start <= 90 days` without explicit override. Larger ranges need human approval and usually smaller intervals.
+4. **Range is in the past** - `end < now`. Backfilling future intervals is always a mistake.
+5. **Interval semantics** - decide whether Bruin intervals are necessary and meaningful for this pipeline/asset. Some assets may not use intervals, or may use them incorrectly; if interval slicing is not meaningful, escalate instead of pretending it is safe.
+6. **Materialization strategy** - inspect the asset and affected downstream assets. Explicitly classify `append`, `merge`, `delete+insert`, `time_interval`, `create+replace`, and any full-refresh behavior. Reruns must be crafted around the exact strategy.
+7. **Data source and reversibility** - identify where the data comes from and whether deleted data can be restored. If restoration is impossible, uncertain, or very expensive, require human intervention.
+8. **Layer risk** - classify the table as source/raw, mid-level, or final/report. Source/raw tables require extra precautions; full refresh or any delete-style operation on source/raw tables is strictly prohibited.
+9. **Upstream coverage** - every dependency must have successful Cloud runs covering the same interval. If any upstream interval is missing, abort with a list of missing intervals.
+10. **Downstream awareness** - list downstream assets. If any are currently running, wait or abort.
+11. **Size and duration** - estimate table size, data processed, and normal run duration from Cloud history/warehouse metadata. Large or expensive reruns require explicit human approval and smaller intervals.
+12. **Row count sanity** - estimate output volume from a sample interval. If estimated total > 10x historical, abort and require approval.
+13. **Connector quotas** - if the asset writes to a quota-limited destination or reads a rate-limited source, check current usage. Abort if the backfill would exhaust the day's budget.
+14. **Confidence threshold** - if the agent is less than 90% confident in the action or the negative consequences, stop and hand off to a human.
 
 ## Decision Tree
 
@@ -53,65 +64,77 @@ if input.dry_run is None or True:
     emit_plan_for_approval(plan)
     return  # do not execute on dry run
 
-# Execute one partition at a time, not the whole range in one call.
-# This bounds the blast radius if something goes wrong mid-backfill.
-for partition in partitions_in_range(input.start, input.end):
-    result = bruin_run(
-        asset=input.asset,
-        start=partition.start,
-        end=partition.end,
-        full_refresh=(input.mode == 'replace'),
+# Execute one Bruin interval at a time when intervals are meaningful.
+# An interval is a Bruin run time window, not necessarily a physical database partition.
+for interval in intervals_in_range(input.start, input.end):
+    result = bruin_cloud_trigger_or_rerun(
+        project_id=input.project_id,
+        pipeline=input.pipeline,
+        start=interval.start,
+        end=interval.end,
+        run_id=input.run_id if input.mode == 'rerun' else None,
     )
     if result.failed:
         return abort_partial(
-            completed=partitions_done,
-            failed=partition,
+            completed=intervals_done,
+            failed=interval,
             error=result.error,
         )
-    verify_partition(input.asset, partition)
+    verify_interval(input.pipeline, input.asset, interval, result.cloud_run_id)
 
-return success(partitions=partitions_done)
+return success(intervals=intervals_done)
 ```
 
-## Bruin CLI Commands
+## Bruin Cloud Commands
 
 ```shell
-# Validate before running.
-bruin validate --pipeline <pipeline>
+# Resolve projects and pipeline state.
+bruin cloud projects list --output json
+bruin cloud pipelines list --project-id <project-id> --output json
+bruin cloud pipelines get --project-id <project-id> --name <pipeline> --output json
+bruin cloud pipelines errors --output json
 
-# Single-partition backfill (preferred — one partition per call).
-bruin run --asset <asset> --start-date <YYYY-MM-DD> --end-date <YYYY-MM-DD>
+# Inspect recent runs and the latest state.
+bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 20 --output json
+bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --latest --output json
+bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --latest --output json
 
-# With downstream propagation (use sparingly; review the plan first).
-bruin run --asset <asset> --downstream --start-date ... --end-date ...
+# Trigger a new interval run.
+bruin cloud runs trigger --project-id <project-id> --pipeline <pipeline> --start-date <start> --end-date <end> --output json
 
-# Full refresh for non-partitioned assets.
-bruin run --asset <asset> --full-refresh
+# Rerun an existing Cloud run, optionally only failed assets.
+bruin cloud runs rerun --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --only-failed --output json
+
+# Inspect asset instances and logs for verification.
+bruin cloud instances list --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
+bruin cloud instances failed-logs --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
 ```
 
-Always set `--start-date` and `--end-date` explicitly even when they look redundant — implicit defaults vary by materialization type and have surprised humans before.
+Always set `--start-date` and `--end-date` explicitly for Cloud triggers. Do not use local `bruin run`, local `--full-refresh`, or any local asset-scoped execution as a substitute for Bruin Cloud behavior.
 
 ## Actions & Guardrails
 
-- **Auto-allowed**: pre-flight checks, dry-run plan generation, backfills where `end - start <= 7 days` AND the asset has succeeded on the same range before.
-- **Requires approval**: ranges > 7 days, any backfill touching `prod` connections, `--downstream` flag, `mode: append` on a table that already has data in the range.
-- **Never allowed**: backfilling future dates, backfilling without a `reason`, backfilling an asset whose last run is still in progress, skipping pre-flight checks, running the entire range as one `bruin run` call (always partition).
+- **Auto-allowed**: pre-flight checks, dry-run plan generation, and at most a single small Cloud rerun/trigger where the affected pipeline previously succeeded for the same interval shape, the run is non-prod or explicitly auto-approved, and the action is reversible.
+- **Requires approval**: ranges > 7 days, production pipelines, large/expensive tables, `append` reruns where data already exists, `merge` or `delete+insert` reruns with unclear keys/windows, any source connector with quota risk, and any Cloud rerun touching more than one interval.
+- **Human-only**: ambiguous or irreversible changes, confidence < 90%, unclear materialization semantics, uncertain restore path, full refresh needs, source/raw table delete risk, and any operation where a wrong action could destroy or make raw data costly to recover.
+- **Never allowed**: backfilling future dates, backfilling without a `reason`, triggering while the pipeline/run is still in progress, skipping pre-flight checks, local operational runs, source/raw table full refresh, delete-style operations on source/raw tables, or running the whole range in one Cloud trigger when smaller meaningful intervals exist.
 
 If approval is required, emit the plan and stop. Do not poll for approval — the caller resumes the skill with `dry_run: false` once approved.
 
 ## Verification
 
-After each partition:
+After each interval:
 
-1. Confirm the run exit code is 0.
+1. Confirm the Bruin Cloud run status is `succeeded`.
 2. Confirm row count is within 50%-200% of the historical mean for that day-of-week / day-of-month, whichever is the asset's natural seasonality.
-3. Run any custom checks declared on the asset.
-4. If verification fails, stop the backfill (do not proceed to next partition) and report.
+3. Confirm quality checks and asset instances are successful in Bruin Cloud.
+4. Capture the Cloud run ID and URL.
+5. If verification fails, stop the backfill (do not proceed to next interval) and report.
 
 After the full range:
 
-1. Re-query the asset with the original failing condition to confirm the fix held.
-2. List downstream assets that should now be re-run, but do not auto-cascade unless `--downstream` was passed.
+1. Re-check the original failing condition to confirm the fix held.
+2. List downstream assets and Cloud runs that may still need reruns, but do not auto-cascade unless the approved Cloud plan explicitly included them.
 
 ## Reporting
 
@@ -119,12 +142,19 @@ Write a backfill record to `.context/backfill-<asset>-<timestamp>.yml` and post 
 
 ```yaml
 asset: marts.daily_top_articles
+pipeline: wikipedia-ai-trends
+project_id: 01krk817ys2j45frftg1q4xfgv
 range: 2026-05-01 to 2026-05-21
 reason: schema fix for view_count column
-mode: replace
-partitions_attempted: 21
-partitions_succeeded: 21
-partitions_failed: 0
+mode: trigger
+materialization_strategy: merge
+layer: mid-level
+intervals_attempted: 21
+intervals_succeeded: 21
+intervals_failed: 0
+cloud_runs:
+  - run_id: manual__2026-05-22T14:30:00Z
+    url: https://cloud.getbruin.com/...
 row_counts:
   before: 4_218_000
   after: 4_222_400

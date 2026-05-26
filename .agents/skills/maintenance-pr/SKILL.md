@@ -8,10 +8,13 @@ argument-hint: "<finding file path>"
 
 The only skill in the set with write access to the repository. Every PR it opens must be traceable to a finding file produced by another skill — no freelancing.
 
+This skill may use local Bruin validation because it edits repository files, but it must not create operational local runs. Use Bruin Cloud MCP or docs/source-verified `bruin cloud ... --output json` commands for Cloud context. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection.
+
 ## When to Use
 
 - `schema-drift-check` produced a finding with `action: maintenance-pr`.
 - `data-quality-investigate` recommended a transform fix.
+- `freshness-sla-check` recommended documenting an inferred freshness/growth expectation or adding a custom check, with approval.
 - A scheduled tick found a known-safe maintenance task (e.g. a dependency bump on the allow-list).
 - A human explicitly asks for a routine maintenance PR.
 
@@ -22,7 +25,7 @@ Do not use for: feature work, refactors, anything that changes pipeline _behavio
 | Input | Required | Example | Notes |
 |---|---|---|---|
 | `finding_file` | yes | `.context/drift-raw.wikipedia_pageviews-20260522.yml` | The finding from another skill. Must exist and be valid. |
-| `branch_name` | no | `auto/drift-wikipedia-views-rename` | Derived from finding if not provided. |
+| `branch_name` | no | `self-healing/drift-wikipedia-views-rename` | Derived from finding if not provided. Must start with `self-healing/`. |
 | `draft` | no | `true` \| `false` | Default `true`. Non-trivial PRs should land as drafts for human review. |
 
 ## Allowed Change Types
@@ -37,6 +40,10 @@ Only these change types are auto-allowed. Anything else is a human task.
 | `type-widen` | `int` → `bigint`, `varchar(N)` → `varchar(M)` where M > N | auto |
 | `type-narrow` | Any narrowing | NEVER auto — escalate |
 | `check-threshold-adjust` | Loosen a quality check threshold based on documented evidence | approval required |
+| `custom-check-create` | Add a new custom check backed by a finding, e.g. minimum recent row growth | approval required |
+| `custom-check-update` | Update an existing custom check based on documented evidence | approval required |
+| `asset-description-update` | Document cadence, freshness expectations, expected row growth, source caveats, or operational notes in an asset description | approval required |
+| `column-description-update` | Improve or correct column-level descriptions, units, caveats, or expected values | auto if non-behavioral, approval if tied to a check/contract change |
 | `dedup-window-adjust` | Change a windowed dedup interval | approval required |
 | `dependency-bump` | Patch-version bump of an allow-listed dependency | auto |
 | `dependency-bump-minor-or-major` | Anything beyond patch | approval required |
@@ -49,13 +56,15 @@ Before any branch is created:
 1. **Finding is valid** - file exists, parses, has a recognized `action` and `recommendation`.
 2. **Working tree is clean** - we are operating on `main` (or the project's configured base branch) with no uncommitted changes.
 3. **No existing PR** for the same finding - search open PRs by branch name pattern. If one exists, comment on it instead of opening another.
-4. **Change type is on the allow-list** - if not, abort and route to `pipeline-report` as an escalation.
-5. **Validation runs locally** - after applying the edit on a scratch branch, `bruin validate --pipeline <pipeline>` must succeed.
-6. **No secrets in the diff** - scan the diff for credential-shaped strings; abort if anything matches.
+4. **Recent PR/code context is reviewed** - inspect recent PRs and commits touching the same assets so the new PR does not duplicate, conflict with, or hide a recent change.
+5. **Change type is on the allow-list** - if not, abort and route to `pipeline-report` as an escalation.
+6. **Validation runs locally** - after applying the edit on a scratch branch, `bruin validate <pipeline>` must succeed. This is static validation, not an operational run.
+7. **Cloud validation context is checked** - inspect Bruin Cloud validation errors where relevant; if Cloud reports unrelated active errors, note them in the PR.
+8. **No secrets in the diff** - scan the diff for credential-shaped strings; abort if anything matches.
 
 ## PR Construction
 
-Branch name: `auto/<change-type>/<short-slug>-<YYYYMMDD>`.
+Branch name: `self-healing/<change-type>/<short-slug>-<YYYYMMDD>`.
 
 Commit message:
 
@@ -68,7 +77,7 @@ Affected assets: <comma-separated list>
 Downstream impact: <count, or "none">
 ```
 
-PR title: `[auto] <change-type>: <one-line summary>` (max 70 chars).
+PR title: `[self-healing] <change-type>: <one-line summary>` (max 80 chars).
 
 PR body template:
 
@@ -96,9 +105,10 @@ PR body template:
 
 ## Verification
 
-- [ ] `bruin validate --pipeline <name>` passes
-- [ ] `bruin run --asset <name> --dry-run` succeeds
-- [ ] All quality checks on the changed asset pass on a recent partition
+- [ ] `bruin validate <pipeline>` passes
+- [ ] Bruin Cloud validation/dry-run equivalent is checked where available
+- [ ] All quality checks on the changed asset are expected to pass on the affected interval
+- [ ] End-to-end tested in a development/shadow/sandbox environment, or explicitly marked NOT TESTED when no safe environment exists
 
 ## Rollback
 
@@ -131,6 +141,8 @@ if checks.failed:
     return abort(checks.failures)
 
 branch = create_branch(name=derive_branch_name(finding))
+if not branch.name.startswith('self-healing/'):
+    return abort('self-healing branch prefix is required')
 apply_edits(finding.edits)
 if not bruin_validate():
     discard_branch(branch)
@@ -144,9 +156,11 @@ return result(pr_url=pr.url, branch=branch)
 
 ## Actions & Guardrails
 
-- **Auto-allowed**: branch creation, file edits scoped to the finding, `bruin validate`, commit, push, `gh pr create` with `--draft`.
-- **Requires approval**: non-draft PRs, any change type marked as such above, force-pushing to an existing PR, opening more than 3 PRs in a single invocation.
-- **Never allowed**: merging the PR (always a human action), pushing to the base branch directly, modifying files outside the finding's declared scope, opening a PR without a finding file, using `gh pr create --no-draft` for an auto-allowed change without explicit approval.
+- **Auto-allowed**: branch creation, file edits scoped to the finding, static `bruin validate`, Bruin Cloud validation-error inspection, commit, push, `gh pr create` with `--draft`.
+- **Requires approval**: non-draft PRs, any change type marked as such above, force-pushing to an existing PR, opening more than 3 PRs in a single invocation, and end-to-end tests that touch production.
+- **Never allowed**: operational local runs, merging the PR (always a human action), pushing to the base branch directly, modifying files outside the finding's declared scope, opening a PR without a finding file, using `gh pr create --no-draft` for an auto-allowed change without explicit approval, or claiming end-to-end test coverage when no safe test environment was used.
+
+For PR verification, try to test end to end only when a development, shadow, sandbox, or otherwise safe non-production environment exists. If no safe environment exists, the PR body and report must clearly state: **NOT TESTED END TO END — MUST BE TESTED BEFORE DEPLOYMENT**. Do not run end-to-end tests against production unless a human explicitly approves and the test is safe.
 
 ## Verification
 
@@ -155,6 +169,7 @@ A PR is "successfully opened" when:
 1. The PR URL is returned.
 2. CI starts on the branch (or is not configured — note which).
 3. The finding file is updated to include the PR URL.
+4. End-to-end test status is recorded as either tested in a safe non-production environment or explicitly not tested.
 
 The PR is not "verified" — only humans verify. The skill's job ends when the PR is open and waiting for review.
 
@@ -164,7 +179,7 @@ Update the source finding file with the PR URL, then hand off to `pipeline-repor
 
 ```yaml
 pr_url: https://github.com/org/repo/pull/123
-branch: auto/column-rename/wikipedia-views-20260522
+branch: self-healing/column-rename/wikipedia-views-20260522
 finding: .context/drift-raw.wikipedia_pageviews-20260522.yml
 change_type: column-rename
 draft: true
@@ -176,6 +191,8 @@ affected_assets:
   - marts.daily_top_articles
 downstream_consumers_not_updated: []
 ci_status: pending
+validation_status: passed
+end_to_end_test_status: NOT TESTED END TO END — MUST BE TESTED BEFORE DEPLOYMENT
 ```
 
 If the PR could not be opened, the report must explain which pre-flight check failed. "Tried and failed" is a valid outcome; "silently skipped" is never acceptable.

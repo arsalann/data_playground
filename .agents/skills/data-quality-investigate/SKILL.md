@@ -8,6 +8,8 @@ argument-hint: "<asset> <check_name>"
 
 A failed quality check is a question, not an answer. The check tells us _what_ is wrong (e.g. "duplicate primary keys exist") but rarely _why_. This skill answers the why.
 
+Use Bruin Cloud MCP for Cloud run/check state and Bruin docs/source-verified `bruin cloud ... --output json` commands as fallback. The Bruin Cloud API token must come from the `.bruin.yml` `bruin` connection named `bruin-cloud` or from `BRUIN_CLOUD_API_KEY` populated from that connection. Local repo inspection is allowed for check definitions, lineage, and git/PR history; local `bruin run` is not an operational fallback.
+
 ## When to Use
 
 - A Bruin column check or `custom_checks` block failed on a successful asset run.
@@ -23,16 +25,21 @@ Do not use for: schema problems (use `schema-drift-check`), missing/late data (u
 | `asset` | yes | `marts.daily_top_articles` | The asset whose check failed. |
 | `check_name` | yes | `unique_article_id_per_day` | The specific check that failed. |
 | `run_id` | no | `run_01HXYZ...` | Defaults to most recent failed check. |
+| `project_id` | no | `01krk817ys2j45frftg1q4xfgv` | Bruin Cloud project ID for run/check context. |
+| `pipeline` | no | `wikipedia-ai-trends` | Bruin Cloud pipeline name, inferred from the asset or triage snapshot when possible. |
 
 ## Context to Gather
 
-1. **Check definition** - read the exact SQL or column-check rule. Note the threshold (e.g. `count(*) = 0`).
-2. **Failing rows** - rerun the check's SELECT (not the `count(*) = 0` wrapper) to get the actual offending rows. Cap at 1000.
-3. **Failing-row profile** - distribution of the offending rows across natural dimensions: time, source, category, anything in the asset's partition key.
-4. **First-failure point** - run the check against historical partitions until you find the first partition where it would have failed. This is the regression date.
-5. **Source comparison** - for a sample of failing rows, pull the corresponding source records. Is the bug in the source, in the transform, or in the check itself?
-6. **Recent transform changes** - `git log` on the asset's SQL file since the first-failure date.
-7. **Volume** - what fraction of total rows are failing? 0.01% is different from 30%.
+1. **Cloud check/run state** - use Bruin Cloud MCP or `bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json` / `--latest` to identify failed checks and affected assets.
+2. **Cloud instance details/logs** - use `bruin cloud instances get`, `bruin cloud instances logs`, or `bruin cloud instances failed-logs` for the failed check/asset.
+3. **Check definition** - read the exact SQL or column-check rule from the repo. Note the threshold (e.g. `count(*) = 0`).
+4. **Failing rows** - rerun only read-only diagnostic SELECTs against the warehouse when credentials and cost controls allow it; otherwise use Cloud check output/logs. Cap at 1000.
+5. **Failing-row profile** - distribution of the offending rows across natural dimensions: time, source, category, anything in the asset's Bruin interval or natural key.
+6. **First-failure point** - check historical Cloud runs/intervals until you find the first interval where it would have failed. This is the regression interval.
+7. **Source comparison** - for a sample of failing rows, pull the corresponding source records. Is the bug in the source, in the transform, or in the check itself?
+8. **Recent transform changes** - inspect `git log` and recent PRs/branches touching the asset and upstreams since the first-failure interval.
+9. **Lineage** - use `bruin lineage <asset-file-path>` and repo inspection to understand upstream source tables and downstream impact.
+10. **Volume** - what fraction of total rows are failing? 0.01% is different from 30%.
 
 ## Failure Mode Library
 
@@ -56,9 +63,9 @@ failing = run_check_select(check, limit=1000)
 if failing.empty:
     return result(status='resolved-since-alert')
 
-profile = profile_failing_rows(failing, asset.partition_keys + asset.natural_keys)
+profile = profile_failing_rows(failing, asset.interval_keys + asset.natural_keys)
 first_failure = bisect_history(check, asset)
-volume = count_failing_total / count_total_in_partition
+volume = count_failing_total / count_total_in_interval
 
 # Compare to source for a sample.
 source_sample = pull_source_records(failing.sample(20))
@@ -84,17 +91,17 @@ return result(
 
 ## Actions & Guardrails
 
-- **Auto-allowed**: run read-only queries (the check SELECT, source comparisons, history scans), write investigation report to `.context/`.
-- **Requires approval**: changing the check definition (e.g. loosening a threshold), opening a PR with a transform fix, triggering a backfill after a fix.
-- **Never allowed**: deleting failing rows to make the check pass, modifying historical data outside a sanctioned backfill, silencing the check.
+- **Auto-allowed**: inspect Bruin Cloud run/check state, run capped read-only diagnostic queries (the check SELECT, source comparisons, history scans), inspect git/PR history, write investigation report to `.context/`.
+- **Requires approval**: changing the check definition (e.g. loosening a threshold), opening a PR with a transform fix, triggering a Bruin Cloud backfill/rerun after a fix.
+- **Never allowed**: deleting failing rows to make the check pass, modifying historical data outside a sanctioned Bruin Cloud backfill, silencing the check, or using local operational runs as a shortcut.
 
 ## Verification
 
 A fix is verified when:
 
-1. The check passes on the partition where it originally failed.
-2. The check still passes on a sample of historical partitions (no regression).
-3. The volume of failing rows in any newly-rerun partition is < the pre-fix volume.
+1. The check passes on the interval where it originally failed.
+2. The check still passes on a sample of historical intervals (no regression).
+3. The volume of failing rows in any newly-rerun interval is < the pre-fix volume.
 
 If a check was loosened rather than a bug fixed, the report must include explicit acknowledgment of the new error budget.
 
@@ -111,7 +118,7 @@ volume:
   failing_rows: 142
   total_rows: 1_204_300
   pct: 0.012
-first_failure_partition: 2026-05-15
+first_failure_interval: 2026-05-15T00:00:00Z/2026-05-16T00:00:00Z
 recent_commits:
   - sha: abc123
     message: 'speed up dedup using row_number'
@@ -124,4 +131,4 @@ recommendation:
   backfill_skill: pipeline-backfill
 ```
 
-The report must always include the first-failure date — without it, downstream backfill scope is guesswork.
+The report must always include the first-failure interval/date — without it, downstream Bruin Cloud backfill scope is guesswork.

@@ -2,6 +2,57 @@
 
 A set of composable skills for Bruin Cloud scheduled agents to perform routine data-engineering and analytics-engineering work: triaging failures, diagnosing issues, backfilling, investigating data quality, handling schema drift, explaining anomalies, opening maintenance PRs, and reporting to Slack.
 
+These skills are for **Bruin Cloud only**. They must use Bruin Cloud MCP when available and `bruin cloud ... --output json` commands as the CLI fallback. They must not create operational runs with local `bruin run`; local repo commands are allowed only for static evidence such as `bruin lineage`, file inspection, validation before a maintenance PR, and git/PR history.
+
+## Bruin Cloud Access
+
+Use the Bruin Cloud API token from the `.bruin.yml` `bruin` connection named `bruin-cloud`. The connection shape is:
+
+```yaml
+environments:
+  default:
+    connections:
+      bruin:
+        - name: "bruin-cloud"
+          api_token: "..."
+```
+
+The Cloud CLI resolves credentials from `--api-key`, `BRUIN_CLOUD_API_KEY`, or a `.bruin.yml` `bruin` connection. If multiple `bruin` connections exist and the CLI cannot select by name, export `BRUIN_CLOUD_API_KEY` from the `bruin-cloud` connection for the duration of the command. Never print or persist the token in `.context/`, Slack, PRs, or logs.
+
+When a skill needs Bruin Cloud state or action, use this preference order:
+
+1. Bruin Cloud MCP tools, if connected and capable of the operation.
+2. `bruin cloud ... --output json` commands, with exact flags checked against current Bruin docs/source.
+3. Human escalation if neither MCP nor Cloud CLI can perform the operation safely.
+
+Useful Cloud CLI commands verified against the Bruin docs/source:
+
+```shell
+bruin cloud projects list --output json
+bruin cloud pipelines list --project-id <project-id> --output json
+bruin cloud pipelines get --project-id <project-id> --name <pipeline> --output json
+bruin cloud pipelines errors --output json
+bruin cloud runs list --project-id <project-id> --pipeline <pipeline> --limit 20 --output json
+bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
+bruin cloud runs get --project-id <project-id> --pipeline <pipeline> --latest --output json
+bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --latest --output json
+bruin cloud runs diagnose --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
+bruin cloud runs trigger --project-id <project-id> --pipeline <pipeline> --start-date <ISO-or-date> --end-date <ISO-or-date> --output json
+bruin cloud runs rerun --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --only-failed --output json
+bruin cloud assets list --project-id <project-id> --pipeline <pipeline> --output json
+bruin cloud assets get --project-id <project-id> --pipeline <pipeline> --asset <asset> --output json
+bruin cloud instances list --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
+bruin cloud instances get --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --asset <asset> --output json
+bruin cloud instances logs --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --asset <asset> --output json
+bruin cloud instances failed-logs --project-id <project-id> --pipeline <pipeline> --run-id <run-id> --output json
+```
+
+Bruin Cloud `runs trigger` triggers a pipeline run for an interval. It is not an asset-level local backfill command. If an operation requires asset-scoped execution, confirm that Bruin Cloud MCP supports it; otherwise escalate to a human instead of inventing a local workaround.
+
+## Evidence Rules
+
+Every investigative skill must use Bruin docs/source behavior for Cloud commands, Bruin Cloud MCP when available, and repo evidence when relevant. The repo is part of the evidence surface: inspect asset files, `bruin lineage`, git history, and recent PRs/code changes before assigning cause to source drift, code regression, data quality, or anomaly patterns.
+
 Each skill is a single `SKILL.md` file in its own directory. The skills are atomic on purpose: one skill, one job. Composition happens at the scheduled-agent layer, not inside any individual skill.
 
 ## The 7-Section Contract
@@ -20,16 +71,16 @@ Every skill follows the same shape so the scheduler can pick the right one and t
 
 ## Skill Map
 
-| Skill | One-line job | Writes to repo? | Posts to Slack? | Calls Bruin CLI? |
+| Skill | One-line job | Writes to repo? | Posts to Slack? | Uses Bruin Cloud/MCP? |
 |---|---|---|---|---|
 | [`pipeline-triage`](pipeline-triage/SKILL.md) | Classify what's wrong and route | no | no (hands to report) | yes (read) |
 | [`pipeline-diagnose`](pipeline-diagnose/SKILL.md) | Single-asset forensics | no | no | yes (read) |
-| [`pipeline-backfill`](pipeline-backfill/SKILL.md) | Rerun a range safely | no | no (hands to report) | yes (write) |
+| [`pipeline-backfill`](pipeline-backfill/SKILL.md) | Rerun a range safely | no | no (hands to report) | yes (Cloud action) |
 | [`schema-drift-check`](schema-drift-check/SKILL.md) | Detect & classify source drift | no | no | yes (read) |
 | [`data-quality-investigate`](data-quality-investigate/SKILL.md) | Walk failed checks to root cause | no | no | yes (read) |
-| [`freshness-sla-check`](freshness-sla-check/SKILL.md) | Find stale data, classify cause | no | no | yes (read + limited retrigger) |
+| [`freshness-sla-check`](freshness-sla-check/SKILL.md) | Find stale data, classify cause | no | no | yes (read + limited Cloud retrigger) |
 | [`anomaly-investigate`](anomaly-investigate/SKILL.md) | Explain a metric spike/dip | no | no | yes (read) |
-| [`maintenance-pr`](maintenance-pr/SKILL.md) | Open a PR for an allow-listed fix | **yes** | no (hands to report) | yes (validate) |
+| [`maintenance-pr`](maintenance-pr/SKILL.md) | Open a PR for an allow-listed fix | **yes** | no (hands to report) | yes (read/validate) |
 | [`pipeline-report`](pipeline-report/SKILL.md) | Slack status / incident / digest | annotates findings | **yes** | no |
 
 Only `maintenance-pr` writes to the repo. Only `pipeline-report` posts to Slack. Every other skill is read-only against the world.
@@ -112,15 +163,15 @@ daily cron
 
 ### `pipeline-backfill`
 
-**Purpose** — Safely rerun an asset for a specific time range, partition-by-partition, with row-count verification at each step.
+**Purpose** — Safely trigger or rerun Bruin Cloud pipeline runs for a specific time range, interval-by-interval where intervals are meaningful, with Cloud run verification at each step.
 
 **Use when** — a fix has merged, a transient failure needs a retry, or an upstream republished historical data.
 
-**Don't use for** — first-time runs (those happen on schedule), running an asset with no prior success, or "just rerun everything" requests with no scoped range.
+**Don't use for** — first-time runs (those happen on schedule), running a pipeline with no prior success, source/raw table full refreshes, or "just rerun everything" requests with no scoped range.
 
-**Key inputs** — `asset`, `start`, `end`, `reason` (required, logged for audit), `mode` (`replace`/`append`/`merge`), `dry_run` (default true).
+**Key inputs** — `project_id`, `pipeline`, optional motivating `asset`, `start`, `end`, `reason` (required, logged for audit), `mode` (`trigger`/`rerun`), `dry_run` (default true).
 
-**Key guardrail** — 8 pre-flight checks must pass; backfills always run one partition per `bruin run` call (bounded blast radius); ranges > 7 days require approval; future-dated backfills are never allowed.
+**Key guardrail** — pre-flight checks must pass; Cloud reruns are planned by Bruin run interval where intervals are meaningful; destructive or irreversible source/raw table refreshes are prohibited; ranges > 7 days, large tables, and uncertain consequences require human approval or full human handoff.
 
 **Hands off to** — `pipeline-report` with full row-count delta.
 
@@ -128,15 +179,15 @@ daily cron
 
 ### `schema-drift-check`
 
-**Purpose** — Compare a Bruin asset's declared schema to the live source schema, classify each diff into one of 8 drift types (`column-added`, `column-renamed`, `type-narrowed`, `enum-value-added`, etc.), and propose the minimum-impact fix.
+**Purpose** — Compare a Bruin asset's declared schema to the live source schema and observed values, classify each diff into drift types (`column-added`, `column-renamed`, `type-narrowed`, `observed-type-drift`, `enum-value-added`, etc.), and propose the minimum-impact fix.
 
 **Use when** — `pipeline-diagnose` hypothesizes schema drift, `bruin validate` warns about drift, or a vendor announces a schema change.
 
 **Don't use for** — wrong values with a correct schema (use `data-quality-investigate`), or proposing new columns nobody asked for.
 
-**Key inputs** — `asset`, optional `suspected_column`.
+**Key inputs** — `asset`, optional `suspected_column`, `project_id`, `pipeline`, and lineage scope.
 
-**Key guardrail** — `type-narrowed` is never auto-actioned (it always breaks consumers); `column-removed` requires approval when downstream count > 0.
+**Key guardrail** — `type-narrowed` and `observed-type-drift` are never auto-actioned without clear downstream impact; `column-removed` requires approval when downstream count > 0; column-level lineage must be listed.
 
 **Hands off to** — `maintenance-pr` for most drift types; escalates to `pipeline-report` for narrowings.
 
@@ -144,13 +195,13 @@ daily cron
 
 ### `data-quality-investigate`
 
-**Purpose** — When a Bruin custom check or column check fails, pull the offending rows, profile them by partition/dimension, bisect history to find the first-failure date, and classify the failure into one of 9 modes (`source-bug`, `transform-bug`, `late-arriving-data`, `seasonality-miss`, etc.).
+**Purpose** — When a Bruin custom check or column check fails, pull the offending rows, profile them by interval/dimension, bisect Cloud history to find the first-failure interval, and classify the failure into one of 9 modes (`source-bug`, `transform-bug`, `late-arriving-data`, `seasonality-miss`, etc.).
 
 **Use when** — a quality check failed on an otherwise successful run, or a downstream consumer reported wrong numbers.
 
 **Don't use for** — schema problems (use `schema-drift-check`), missing data (use `freshness-sla-check`), or designing new checks (that's a human task).
 
-**Key inputs** — `asset`, `check_name`, optional `run_id`.
+**Key inputs** — `asset`, `check_name`, optional `run_id`, `project_id`, and `pipeline`.
 
 **Key guardrail** — never deletes failing rows to make a check pass; never silences a check; threshold changes require approval.
 
@@ -160,15 +211,15 @@ daily cron
 
 ### `freshness-sla-check`
 
-**Purpose** — Find assets past their freshness SLA and classify why: upstream stale, source down, scheduler missed a tick, run is stuck, or genuine outage. Resolves SLA from explicit `meta.freshness`, schedule cadence, partition cadence, or historical median (in that order).
+**Purpose** — Find assets past their inferred freshness expectation and classify why: upstream stale, source down, scheduler missed a tick, run is stuck, table is frozen, or growth regressed. Infers freshness from asset descriptions, pipeline schedule, warehouse table metadata, max freshness columns, table growth history, and Cloud run cadence.
 
 **Use when** — scheduled tick (every 15-30 min), triage flagged staleness, after a maintenance window, or a human asks "is the data fresh".
 
-**Don't use for** — failed runs that produced errors (use `pipeline-diagnose`), assets with no SLA at all (those are listed as `unmonitored`).
+**Don't use for** — failed runs that produced errors (use `pipeline-diagnose`) or assets where no expectation can be inferred from description, schedule, table metadata, or history (those are listed as `unmonitored`).
 
 **Key inputs** — `pipeline` (or `all`), `grace_minutes`.
 
-**Key guardrail** — never marks an asset fresh that has no recent successful run; never fabricates an SLA; can retrigger at most one missed run per asset auto, more requires approval.
+**Key guardrail** — never marks an asset fresh without Cloud and table-level evidence; never fabricates Bruin metadata; can retrigger at most one missed Cloud interval per asset automatically, more requires approval. A PR to document freshness/growth expectations or add custom checks requires approval.
 
 **Hands off to** — `pipeline-diagnose` for `attempted-failed` cases, `pipeline-report` for everything else.
 
@@ -192,7 +243,7 @@ daily cron
 
 ### `maintenance-pr`
 
-**Purpose** — The only skill with repo write access. Opens a PR for routine, allow-listed maintenance: column rename, type widening, dependency patch bump, dedup-window adjust, dead-code removal. Every PR is traceable to a finding file produced by another skill.
+**Purpose** — The only skill with repo write access. Opens a PR for routine, allow-listed maintenance: column rename, type widening, dependency patch bump, dedup-window adjust, asset/column description updates, custom check create/update, dead-code removal. Every PR is traceable to a finding file produced by another skill.
 
 **Use when** — another skill produced a finding with `action: maintenance-pr`, a scheduled tick found an allow-listed task, or a human explicitly requested a routine PR.
 
@@ -200,7 +251,7 @@ daily cron
 
 **Key inputs** — `finding_file` (must exist and validate), optional `branch_name`, `draft` (default true).
 
-**Key guardrail** — only allow-listed change types; never merges (humans only); branch scoped to finding's declared files; secrets scan on the diff; CI must run before the PR is considered "open".
+**Key guardrail** — only allow-listed change types; never merges (humans only); branch must start with `self-healing/`; branch scoped to finding's declared files; secrets scan on the diff; CI must run before the PR is considered "open"; end-to-end tests run only in safe non-prod environments, otherwise the PR must clearly say it was not tested.
 
 **Hands off to** — `pipeline-report` with the PR URL and CI status.
 
@@ -247,4 +298,4 @@ Three fake-data pipelines exist for exercising the skills end-to-end without tou
 - `fake-iot/` — sensor readings. Injects impossible values, type narrowing, late-arriving data.
 - `fake-webevents/` — pageviews. Injects single-dimension anomaly, new browser segment, multi-day freshness gap.
 
-Each pipeline's raw asset file documents the injected issues, their dates, and which skill should detect each one. Run `bruin run <pipeline> --start-date 2026-01-01 --end-date 2026-05-25` to materialize.
+Each pipeline's raw asset file documents the injected issues, their dates, and which skill should detect each one. Local `bruin run` is acceptable only for these fake-data test pipelines; it is not the operational path for the Bruin Cloud skills.

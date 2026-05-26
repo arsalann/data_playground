@@ -1,0 +1,7 @@
+name: ingestr-cli-v1
+schedule: monthly
+start_date: "2025-06-01"
+
+default_connections:
+  postgres: "ingestr-cli-v1-pg"
+  duckdb: "ingestr-cli-v1-duckdb"

@@ -2,5 +2,9 @@ name: self-heal-shop
 schedule: daily
 start_date: "2026-03-01"
 
+notifications:
+  slack:
+    - channel: "#self-healing-pipeline-demo"
+
 default_connections:
   google_cloud_platform: bruin-playground-arsalan

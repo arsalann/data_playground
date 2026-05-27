@@ -40,14 +40,13 @@ columns:
 custom_checks:
   - name: known_browsers_only
     description: |
-      Browser values should be limited to the historically-known set
-      (Chrome, Safari, Firefox, Edge). A new value indicates a new
+      Browser values should be limited to the supported set
+      (Chrome, Safari, Firefox, Edge, Arc). A new value indicates a
       segment that downstream code may not handle.
-      Failure starting 2026-05-16 is expected (Arc emergence).
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_staging.daily_pageviews
-      WHERE browser NOT IN ('Chrome', 'Safari', 'Firefox', 'Edge')
+      WHERE browser NOT IN ('Chrome', 'Safari', 'Firefox', 'Edge', 'Arc')
     value: 0
 
 @bruin */

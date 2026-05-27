@@ -3,9 +3,9 @@ name: self_heal_test_staging.daily_revenue
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Aggregates orders to daily revenue by country and product category.
-  This is the asset most affected by the injected schema drift on
-  self_heal_test_raw.products — it joins on `category`, which is renamed after 2026-05-18.
+  Aggregates deduplicated orders to daily revenue by country and product
+  category. Handles the product category source column whether it arrives as
+  `category` or `product_category`.
 
 depends:
   - self_heal_test_raw.orders
@@ -58,12 +58,25 @@ custom_checks:
 
 @bruin */
 
-WITH products AS (
+WITH deduped_orders AS (
+    SELECT *
+    FROM self_heal_test_raw.orders
+    WHERE order_id IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY order_id
+        ORDER BY created_at DESC, user_id DESC, product_id DESC, country DESC, amount_usd DESC
+    ) = 1
+),
+
+products AS (
     SELECT
         product_id,
-        category
-    FROM self_heal_test_raw.products
-    WHERE category IS NOT NULL
+        COALESCE(
+            JSON_VALUE(TO_JSON_STRING(product_rows), '$.product_category'),
+            JSON_VALUE(TO_JSON_STRING(product_rows), '$.category')
+        ) AS category
+    FROM self_heal_test_raw.products AS product_rows
+    WHERE product_id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY product_id
         ORDER BY extracted_at DESC
@@ -71,13 +84,13 @@ WITH products AS (
 )
 
 SELECT
-    o.order_date,
-    o.country,
-    p.category AS category,
+    deduped_orders.order_date,
+    deduped_orders.country,
+    COALESCE(products.category, 'unknown') AS category,
     COUNT(*) AS order_count,
-    COUNT(DISTINCT o.user_id) AS distinct_users,
-    ROUND(SUM(o.amount_usd), 2) AS revenue_usd
-FROM self_heal_test_raw.orders o
-LEFT JOIN products p ON o.product_id = p.product_id
+    COUNT(DISTINCT deduped_orders.user_id) AS distinct_users,
+    ROUND(SUM(deduped_orders.amount_usd), 2) AS revenue_usd
+FROM deduped_orders
+LEFT JOIN products ON deduped_orders.product_id = products.product_id
 GROUP BY 1, 2, 3
 ORDER BY 1 DESC, 6 DESC

@@ -12,18 +12,18 @@ For Bruin Cloud testing, schedule this pipeline daily and run a one-time daily b
 
 ## Assets
 
-- `self_heal_test_raw.sensor_readings` (`assets/raw/sensor_readings.py`) generates hourly sensor readings with temperature, humidity, battery, reading time, and ingest time. Its temperature range check is a non-blocking source-health alert.
-- `self_heal_test_staging.valid_sensor_readings` (`assets/staging/valid_sensor_readings.sql`) deduplicates raw readings and drops physically impossible temperature values before downstream use.
-- `self_heal_test_staging.sensor_readings_quarantine` (`assets/staging/sensor_readings_quarantine.sql`) captures the dropped sensor readings with a rejection reason for auditability.
+- `self_heal_test_raw.sensor_readings` (`assets/raw/sensor_readings.py`) generates hourly sensor readings with temperature, humidity, battery, reading time, and ingest time. Its late-arrival check is scoped to the current Bruin interval.
+- `self_heal_test_staging.valid_sensor_readings` (`assets/staging/valid_sensor_readings.sql`) deduplicates raw readings by inserted timestamp (`created_at`) and drops physically impossible temperature values before downstream use.
+- `self_heal_test_staging.sensor_readings_quarantine` (`assets/staging/sensor_readings_quarantine.sql`) captures the dropped sensor readings with a rejection reason for auditability, deduplicated by inserted timestamp (`created_at`).
 - `self_heal_test_staging.hourly_sensor_stats` (`assets/staging/hourly_sensor_stats.sql`) computes one row per sensor-hour with ingest lag from the cleaned readings table.
 
 ## Skill Scenarios
 
 | Scenario | Date/window | Trigger asset/check | Expected skill path | Expected classification |
 |---|---:|---|---|---|
-| Impossible sensor values | `2026-05-16` | Non-blocking raw check `temperature_in_physical_range`; dropped rows in `self_heal_test_staging.sensor_readings_quarantine` | `pipeline-triage` -> `data-quality-investigate` -> `pipeline-report` | `source-bug`, cleaned by staging quarantine |
+| Impossible sensor values | `2026-05-16` | Dropped rows in `self_heal_test_staging.sensor_readings_quarantine`; clean check on `self_heal_test_staging.valid_sensor_readings` | `pipeline-triage` -> `data-quality-investigate` -> `pipeline-report` | `source-bug`, cleaned by staging quarantine |
 | Type-shape narrowing | Starts `2026-05-18` | BigQuery column `self_heal_test_raw.sensor_readings.temperature_c` distribution changes from decimal-like floats to whole-number floats | `pipeline-diagnose` or `schema-drift-check` -> `pipeline-report` | `observed-type-drift` / `type-narrowed`, escalation |
-| Late-arriving data | `2026-05-22` | BigQuery table `self_heal_test_raw.sensor_readings`, check `readings_arrive_within_one_hour`; staging check `ingest_lag_under_60_min` | `pipeline-triage` -> `data-quality-investigate` or `freshness-sla-check` -> `pipeline-report` | `late-arriving-data` / `table-frozen` style freshness signal |
+| Late-arriving data | `2026-05-22` | Interval-scoped raw check `readings_arrive_within_one_hour`; interval-scoped staging check `ingest_lag_under_60_min` | `pipeline-triage` -> `data-quality-investigate` or `freshness-sla-check` -> `pipeline-report` | `late-arriving-data` / `table-frozen` style freshness signal |
 | Backfill risk review | Any historical rerun over an already-loaded range | Warehouse asset `self_heal_test_raw.sensor_readings` has append materialization | `pipeline-backfill` dry run -> `pipeline-report` | Requires approval for append rerun where data already exists |
 
 ## What This Pipeline Covers

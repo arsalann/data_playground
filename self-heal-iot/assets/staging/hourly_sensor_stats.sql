@@ -5,7 +5,8 @@ connection: bruin-playground-arsalan
 description: |
   One row per (sensor, hour) with reading and a quality-window flag.
   Reads from the cleaned sensor readings table so physically-impossible
-  temperature values are dropped before downstream aggregation.
+  temperature values are dropped before downstream aggregation. Upstream clean
+  data is deduplicated by inserted timestamp (`created_at`).
 
 depends:
   - self_heal_test_staging.valid_sensor_readings
@@ -40,12 +41,14 @@ columns:
 custom_checks:
   - name: ingest_lag_under_60_min
     description: |
-      Every sensor reading should arrive within 60 minutes.
-      Failure on 2026-05-22 is expected (late-arriving injection).
+      Every sensor reading in the current run interval should arrive within 60
+      minutes. Failure on 2026-05-22 is expected (late-arriving injection).
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_staging.hourly_sensor_stats
-      WHERE ingest_lag_minutes > 60
+      WHERE hour >= TIMESTAMP('{{ start_timestamp }}')
+        AND hour <= TIMESTAMP('{{ end_timestamp }}')
+        AND ingest_lag_minutes > 60
     value: 0
 
 @bruin */

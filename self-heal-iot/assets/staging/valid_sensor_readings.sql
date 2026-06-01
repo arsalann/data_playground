@@ -4,7 +4,8 @@ type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Clean sensor readings for downstream assets. Deduplicates the append-only raw
-  table by sensor and reading timestamp, then drops physically impossible
+  table by sensor and reading timestamp, keeping the latest duplicate by the
+  inserted timestamp (`created_at`), then drops physically impossible
   temperature readings so bad source records do not block derived tables.
 
 depends:

@@ -1,0 +1,31 @@
+asset: self_heal_test_raw.sensor_readings
+pipeline: self-heal-iot
+project_id: 01krk817ys2j45frftg1q4xfgv
+range: 2026-05-16T00:00:00Z to 2026-05-16T23:59:59Z
+reason: rerun after merging PR 50 to clean invalid S07 temperature readings
+mode: trigger-after-rerun-failed
+merged_pr:
+  number: 50
+  url: https://github.com/arsalann/data_playground/pull/50
+  merge_commit: cdb046580a5ce7ecb90c2d5c0b22d709db3879fa
+cloud_runs:
+  - run_id: manual__2026-06-01T16:46:01+00:00
+    status: failed
+    duration: 00:00:31
+intervals_attempted: 1
+intervals_succeeded: 0
+intervals_failed: 1
+failed_checks:
+  - asset: self_heal_test_raw.sensor_readings
+    check: readings_arrive_within_one_hour
+    result: 288
+    expected: 0
+  - asset: self_heal_test_raw.sensor_readings
+    check: temperature_in_physical_range
+    result: 48
+    expected: 0
+verified: false
+notes: >-
+  Direct Bruin Cloud rerun of the original failed run returned a generic rerun error, so a replacement manual run was triggered for the exact May 16 interval. The merged code version was used, but the run still failed because raw custom checks scan the full append table. The May 22 late-arrival rows remain globally visible, and the May 16 invalid temperature rows doubled from 24 to 48 because the raw append asset was triggered again.
+next_action: >-
+  A follow-up fix is needed before another rerun: either make raw source-health checks interval-scoped/non-blocking in a way Cloud honors, or drop/quarantine invalid readings before they land in the raw table. Also handle the global late-arrival check before rerunning historical intervals.

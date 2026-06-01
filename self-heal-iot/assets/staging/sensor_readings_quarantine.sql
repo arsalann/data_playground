@@ -4,8 +4,9 @@ type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Quarantined sensor readings that are intentionally dropped from the cleaned
-  downstream dataset. Keeps rejected source records auditable without allowing
-  physically impossible values into reporting tables.
+  downstream dataset. Deduplicates by sensor and reading timestamp, keeping the
+  latest duplicate by the inserted timestamp (`created_at`), so rejected source
+  records remain auditable without allowing impossible values into reporting.
 
 depends:
   - self_heal_test_raw.sensor_readings

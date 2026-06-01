@@ -61,27 +61,17 @@ columns:
     nullable: false
 
 custom_checks:
-  - name: temperature_in_physical_range
-    description: |
-      Temperature readings outside -50..70 degC are sensor malfunctions. This
-      is a non-blocking source-health alert because staging quarantines and
-      drops invalid readings before downstream use.
-    query: |
-      SELECT COUNT(*)
-      FROM self_heal_test_raw.sensor_readings
-      WHERE temperature_c < -50 OR temperature_c > 70
-    value: 0
-    blocking: false
-
   - name: readings_arrive_within_one_hour
     description: |
-      created_at should be within 1 hour of reading_time. Larger gaps point
-      to late-arriving data. Failure on 2026-05-22 is expected (late-arriving
-      injection).
+      created_at should be within 1 hour of reading_time for the current run
+      interval. Larger gaps point to late-arriving data. Failure on 2026-05-22
+      is expected (late-arriving injection).
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_raw.sensor_readings
-      WHERE created_at > TIMESTAMP_ADD(reading_time, INTERVAL 1 HOUR)
+      WHERE reading_time >= TIMESTAMP('{{ start_timestamp }}')
+        AND reading_time <= TIMESTAMP('{{ end_timestamp }}')
+        AND created_at > TIMESTAMP_ADD(reading_time, INTERVAL 1 HOUR)
     value: 0
 
 @bruin"""

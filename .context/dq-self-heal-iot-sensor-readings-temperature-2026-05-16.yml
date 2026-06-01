@@ -1,0 +1,43 @@
+asset: self_heal_test_raw.sensor_readings
+pipeline: self-heal-iot
+run_id: backfill_541ac397_0__2026-05-16T00:00:00.000Z
+investigated_at: 2026-05-27T12:01:57Z
+status: checks_failed
+failed_check: temperature_in_physical_range
+error_fingerprint_sha256: a850a0493676cdc6a3d9f6bfc8d502bd8644ad42917fddc2e8313f1e1ac6b051
+mode: source-bug
+run_summary:
+  data_interval: 2026-05-16T00:00:00Z/2026-05-16T23:59:59Z
+  run_status: failed
+  duration: 00:00:28
+  raw_asset_main_status: success
+  raw_asset_check_status: checks_failed
+  downstream_staging_status: upstream_failed
+volume:
+  failing_rows: 24
+  total_interval_rows: 288
+  pct_of_interval: 8.3333
+  affected_sensors: 1
+first_failure_interval: 2026-05-16T00:00:00Z/2026-05-16T23:59:59Z
+profile:
+  sensor_id: S07
+  hours_affected: 24
+  temperature_c: 999.0
+  late_rows: 0
+  ingest_lag_minutes_range: 0..9
+neighbor_days:
+  2026-05-15: clean
+  2026-05-17: clean
+lineage:
+  upstreams: []
+  downstreams:
+    - self_heal_test_staging.hourly_sensor_stats
+recent_commits:
+  - sha: 95b01f7
+    date: 2026-05-27
+    message: Merge pull request #47 from arsalann/arsalann/self-heal-slack-notifications
+    relevance: low - no evidence of asset logic change causing this data pattern
+classification: >-
+  Source-bug quality failure. The raw source table contains physically impossible temperature readings for S07 on every hour of 2026-05-16. The SQL staging transform is not the source of the issue; it was blocked by the raw check and is designed to filter impossible temperatures when it runs.
+recommendation: >-
+  Treat this interval as bad source data. Do not target or change the Python fixture generator for this self-heal scenario. If this were production, isolate/remediate the 2026-05-16 S07 source records or quarantine them, then rerun the affected raw checks and rebuild downstream staging.

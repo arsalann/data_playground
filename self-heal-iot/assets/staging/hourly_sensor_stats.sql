@@ -4,12 +4,11 @@ type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   One row per (sensor, hour) with reading and a quality-window flag.
-  Excludes physically-impossible temperature values via a WHERE clause so
-  this downstream view is robust even when the raw check fails; the raw
-  check still surfaces the issue for the agents to handle.
+  Reads from the cleaned sensor readings table so physically-impossible
+  temperature values are dropped before downstream aggregation.
 
 depends:
-  - self_heal_test_raw.sensor_readings
+  - self_heal_test_staging.valid_sensor_readings
 
 materialization:
   type: table
@@ -58,6 +57,5 @@ SELECT
     humidity_pct,
     battery_pct,
     TIMESTAMP_DIFF(created_at, reading_time, SECOND) / 60.0 AS ingest_lag_minutes
-FROM self_heal_test_raw.sensor_readings
-WHERE temperature_c BETWEEN -50 AND 70
+FROM self_heal_test_staging.valid_sensor_readings
 ORDER BY hour DESC, sensor_id

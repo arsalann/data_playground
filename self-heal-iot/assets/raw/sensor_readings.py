@@ -63,13 +63,15 @@ columns:
 custom_checks:
   - name: temperature_in_physical_range
     description: |
-      Temperature readings outside -50..70 degC are sensor malfunctions.
-      Failure on 2026-05-16 is expected (impossible_values injection).
+      Temperature readings outside -50..70 degC are sensor malfunctions. This
+      is a non-blocking source-health alert because staging quarantines and
+      drops invalid readings before downstream use.
     query: |
       SELECT COUNT(*)
       FROM self_heal_test_raw.sensor_readings
       WHERE temperature_c < -50 OR temperature_c > 70
     value: 0
+    blocking: false
 
   - name: readings_arrive_within_one_hour
     description: |

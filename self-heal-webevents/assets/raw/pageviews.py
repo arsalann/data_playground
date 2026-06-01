@@ -61,13 +61,17 @@ columns:
     type: DATE
     description: Pageview date (UTC, derived)
     nullable: false
+  - name: inserted_at
+    type: TIMESTAMP
+    description: Timestamp when this ingestion run inserted the row into the raw table (UTC)
+    nullable: false
 
 @bruin"""
 
 import hashlib
 import os
 import random
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -87,7 +91,7 @@ SOURCE_GAP_START_DATE = date(2026, 5, 23)
 SOURCE_GAP_END_DATE = date(2026, 5, 25)
 PAGEVIEW_COLUMNS = [
     "session_id", "user_id", "country", "browser",
-    "device", "page_path", "event_time", "event_date",
+    "device", "page_path", "event_time", "event_date", "inserted_at",
 ]
 
 
@@ -101,6 +105,7 @@ def empty_pageviews_frame() -> pd.DataFrame:
         "page_path": pd.Series(dtype="string"),
         "event_time": pd.Series(dtype="datetime64[us]"),
         "event_date": pd.Series(dtype="datetime64[ns]"),
+        "inserted_at": pd.Series(dtype="datetime64[us]"),
     })
 
 
@@ -163,8 +168,10 @@ def materialize():
     if not frames:
         return empty_pageviews_frame()
 
-    df = pd.concat(frames, ignore_index=True)[PAGEVIEW_COLUMNS]
+    df = pd.concat(frames, ignore_index=True)
     df["event_time"] = pd.to_datetime(df["event_time"]).astype("datetime64[us]")
     df["event_date"] = pd.to_datetime(df["event_date"])
+    df["inserted_at"] = datetime.now(timezone.utc)
+    df = df[PAGEVIEW_COLUMNS]
     print(f"[self-heal-webevents] generated {len(df):,} events across {df['event_date'].nunique()} days")
     return df

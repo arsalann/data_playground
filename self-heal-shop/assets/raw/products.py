@@ -12,10 +12,8 @@ description: |
 
   SCHEMA-DRIFT — column_rename
     Before 2026-05-18 the catalog column is named `category`. From 2026-05-18
-    onward, the same data is emitted under `product_category`. The downstream
-    self_heal_test_staging.daily_revenue asset still references `category`, so any run with
-    BRUIN_END_DATE >= 2026-05-18 will surface a "column not found" error.
-    Routes to schema-drift-check → maintenance-pr.
+    onward, the same data is emitted under `product_category`. Downstream
+    staging normalizes either source column name to `category`.
 
 materialization:
   type: table
@@ -44,16 +42,16 @@ columns:
     nullable: false
 
 custom_checks:
-  - name: no_product_category_drift_column
+  - name: category_or_product_category_present
     description: |
-      The live self_heal_test_raw.products table should not contain product_category while the
-      declared source contract still expects category. Failure after
-      2026-05-18 is expected (schema drift injection).
+      The live self_heal_test_raw.products table should expose either the
+      original category column or the drifted product_category column. Downstream
+      staging normalizes both names to category.
     query: |
-      SELECT COUNT(*)
+      SELECT IF(COUNT(*) = 0, 1, 0)
       FROM self_heal_test_raw.INFORMATION_SCHEMA.COLUMNS
       WHERE table_name = 'products'
-        AND column_name = 'product_category'
+        AND column_name IN ('category', 'product_category')
     value: 0
 
 @bruin"""

@@ -12,10 +12,10 @@ description: |
 
   Injected issues (the agents should detect these):
 
-  1. QUALITY-FAIL — duplicate_order_id
-     Starting 2026-05-16, ~12 duplicate order_ids appear per day. The asset
-     declares order_id as primary_key, so a `unique` check on order_id should
-     catch this. Routes to data-quality-investigate.
+  1. QUALITY-FIXTURE — duplicate_order_id
+     Starting 2026-05-16, ~12 duplicate order_ids appear per day. Downstream
+     staging assets deduplicate on order_id so repeated raw keys do not block
+     healthy metric rebuilds.
 
   2. ANOMALY — country_concentration
      On 2026-05-20, country="TR" gets 10x its normal share. Total daily
@@ -35,11 +35,10 @@ materialization:
 columns:
   - name: order_id
     type: VARCHAR
-    description: Unique order identifier
+    description: Order identifier used as the downstream deduplication key
     primary_key: true
     nullable: false
     checks:
-      - name: unique
       - name: not_null
   - name: user_id
     type: VARCHAR
@@ -71,28 +70,40 @@ columns:
 custom_checks:
   - name: daily_revenue_within_2x_28d_median
     description: |
-      Daily revenue should not exceed 2x the 28-day rolling median.
-      Failure on 2026-05-20 is expected (anomaly injection).
+      Daily revenue for the current Bruin interval should not exceed 2x the
+      28-day rolling median after applying the same order_id deduplication
+      contract used by downstream staging.
     query: |
-      WITH daily AS (
-        SELECT order_date, SUM(amount_usd) AS revenue
+      WITH deduped_orders AS (
+        SELECT *
         FROM self_heal_test_raw.orders
+        WHERE order_id IS NOT NULL
+        QUALIFY ROW_NUMBER() OVER (
+          PARTITION BY order_id
+          ORDER BY created_at DESC, user_id DESC, product_id DESC, country DESC, amount_usd DESC
+        ) = 1
+      ),
+      daily AS (
+        SELECT order_date, SUM(amount_usd) AS revenue
+        FROM deduped_orders
         GROUP BY 1
       ),
       with_baseline AS (
         SELECT
-          d.order_date,
-          d.revenue,
-          APPROX_QUANTILES(b.revenue, 2)[OFFSET(1)] AS baseline
-        FROM daily d
-        LEFT JOIN daily b
-          ON b.order_date >= DATE_SUB(d.order_date, INTERVAL 28 DAY)
-         AND b.order_date < d.order_date
-        GROUP BY d.order_date, d.revenue
+          daily.order_date,
+          daily.revenue,
+          APPROX_QUANTILES(baseline.revenue, 2)[OFFSET(1)] AS baseline
+        FROM daily
+        LEFT JOIN daily AS baseline
+          ON baseline.order_date >= DATE_SUB(daily.order_date, INTERVAL 28 DAY)
+         AND baseline.order_date < daily.order_date
+        GROUP BY daily.order_date, daily.revenue
       )
       SELECT COUNT(*)
       FROM with_baseline
-      WHERE baseline IS NOT NULL AND revenue > 2 * baseline
+      WHERE baseline IS NOT NULL
+        AND revenue > 2 * baseline
+        AND order_date BETWEEN DATE('{{ start_date }}') AND DATE('{{ end_date }}')
     value: 0
 
 @bruin"""

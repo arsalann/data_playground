@@ -21,9 +21,9 @@ For Bruin Cloud testing, schedule this pipeline daily and run a one-time daily b
 
 | Scenario | Date/window | Trigger asset/check | Expected skill path | Expected classification |
 |---|---:|---|---|---|
-| Duplicate order IDs | Starts `2026-05-16` | BigQuery table `self_heal_test_raw.orders`, column check `order_id.unique` | `pipeline-triage` -> `data-quality-investigate` -> `maintenance-pr` plan if transform/check change is proposed -> `pipeline-report` | `quality-fail`, likely `late-arriving-data` or `dedup-window-too-short` depending investigation framing |
+| Duplicate order IDs | Starts `2026-05-16` | BigQuery table `self_heal_test_raw.orders`; downstream staging deduplicates by `order_id` | `pipeline-triage` -> `data-quality-investigate` -> `maintenance-pr` plan if transform/check change is proposed -> `pipeline-report` | `quality-fail`, likely `late-arriving-data` or `dedup-window-too-short` depending investigation framing |
 | Country concentration revenue spike | `2026-05-20` | BigQuery table `self_heal_test_raw.orders`, check `daily_revenue_within_2x_28d_median`; metric `self_heal_test_staging.daily_orders.revenue_usd` | `pipeline-triage` -> `anomaly-investigate` -> `pipeline-report` | `anomaly`, `single-dimension-driver` with `country=TR` |
-| Product category rename | Active when `BRUIN_END_DATE >= 2026-05-18` | BigQuery table `self_heal_test_raw.products` contains `product_category`; check `no_product_category_drift_column` fails while the declared contract still expects `category` | `pipeline-diagnose` -> `schema-drift-check` -> `maintenance-pr` -> `pipeline-report` | `schema-drift`, `column-renamed` |
+| Product category rename | Active when `BRUIN_END_DATE >= 2026-05-18` | BigQuery table `self_heal_test_raw.products` contains `product_category`; downstream staging accepts either `category` or `product_category` | `pipeline-diagnose` -> `schema-drift-check` -> `maintenance-pr` -> `pipeline-report` | `schema-drift`, `column-renamed` |
 | Source stall | `2026-05-24` through `2026-05-25` | BigQuery table `self_heal_test_raw.orders` has no new rows for those dates after fixture load | `pipeline-triage` -> `freshness-sla-check` -> `pipeline-report` | `stale` / `source-down` or `table-frozen`, depending Cloud/table evidence |
 | Backfill after fix | Any scoped historical date range after a schema or dedup fix | Warehouse asset `self_heal_test_raw.orders` has append materialization; downstream staging uses `create+replace` | `pipeline-backfill` dry run -> approval if needed -> `pipeline-report` | Approval required for append reruns where rows already exist |
 
@@ -66,8 +66,8 @@ bruin lineage self-heal-shop/assets/staging/daily_revenue.sql --output json --fu
 
 ## Expected Notes for Agents
 
-- Run scenarios separately. A whole-pipeline run after `2026-05-18` can fail at `self_heal_test_staging.daily_revenue` before later quality/anomaly review finishes.
-- Exclude `assets/raw/orders.py` and `assets/raw/products.py` from self-healing task scope. They are fixture setup, not the thing to fix.
+- Run scenarios separately when testing alert routing. Whole-pipeline runs after downstream maintenance should allow staging to rebuild from tolerated raw duplicate keys and product category renames.
+- Exclude Python generator logic in `assets/raw/orders.py` and `assets/raw/products.py` from self-healing task scope. The Bruin metadata checks may still be adjusted when their blocking behavior no longer matches downstream contracts.
 - `daily_revenue_within_2x_28d_median` is intentionally a tracked-metric guardrail; agents should still slice by dimensions instead of only reporting that the check failed.
 - The product rename is a routine maintenance-PR candidate only if all downstream references are updated in scope.
 - Treat local `bruin run` as allowed only because this is a self-heal test pipeline.

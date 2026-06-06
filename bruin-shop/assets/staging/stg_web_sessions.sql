@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.stg_web_sessions
+name: bruin_shop_staging.stg_web_sessions
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,7 +7,7 @@ description: |
   preserving exact purchase-event counts from the generated funnel.
 
 depends:
-  - raw.ga4_sessions
+  - bruin_shop_raw.ga4_sessions
 
 materialization:
   type: table
@@ -78,4 +78,4 @@ SELECT
     s.state_code,
     s.state_name,
     s.city
-FROM raw.ga4_sessions s
+FROM bruin_shop_raw.ga4_sessions s

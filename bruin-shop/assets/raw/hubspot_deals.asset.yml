@@ -1,4 +1,4 @@
-name: raw.hubspot_deals
+name: bruin_shop_raw.hubspot_deals
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

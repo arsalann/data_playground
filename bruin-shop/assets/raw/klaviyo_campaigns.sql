@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.klaviyo_campaigns
+name: bruin_shop_raw.klaviyo_campaigns
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,7 +7,7 @@ description: |
   apparel marketing funnel.
 
 depends:
-  - raw.marketing_funnel
+  - bruin_shop_raw.marketing_funnel
 
 materialization:
   type: table
@@ -36,7 +36,7 @@ SELECT
     FORMAT('Lifecycle apparel offer %s', FORMAT_DATE('%b %d, %Y', activity_date)) AS name,
     TIMESTAMP(DATETIME(activity_date, TIME(16, 0, 0)), 'UTC') AS send_time,
     SUM(impressions) AS num_recipients
-FROM raw.marketing_funnel
+FROM bruin_shop_raw.marketing_funnel
 WHERE channel = 'email'
 GROUP BY activity_date
 ORDER BY send_time

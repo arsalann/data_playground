@@ -1,4 +1,4 @@
-name: raw.google_ads_campaigns_test
+name: bruin_shop_raw.google_ads_campaigns_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

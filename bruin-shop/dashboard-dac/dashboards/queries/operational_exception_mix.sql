@@ -34,17 +34,23 @@ WITH filtered_orders AS (
         WHEN 'Product defect' THEN 'product_defect'
       END
     )
+),
+exceptions AS (
+  SELECT 'Payment pending' AS exception_type, COUNTIF(payment_status = 'pending') AS orders FROM filtered_orders
+  UNION ALL
+  SELECT 'Payment voided', COUNTIF(payment_status = 'voided') FROM filtered_orders
+  UNION ALL
+  SELECT 'Partial refund', COUNTIF(payment_status = 'partially_refunded') FROM filtered_orders
+  UNION ALL
+  SELECT 'Partial fulfillment', COUNTIF(fulfillment_status = 'partial') FROM filtered_orders
+  UNION ALL
+  SELECT 'Unfulfilled', COUNTIF(fulfillment_status = 'unfulfilled') FROM filtered_orders
 )
 
 SELECT
-  CASE fulfillment_status
-    WHEN 'fulfilled' THEN 'Fulfilled'
-    WHEN 'partial' THEN 'Partial'
-    ELSE INITCAP(REPLACE(COALESCE(fulfillment_status, 'unknown'), '_', ' '))
-  END AS fulfillment_status,
-  COUNT(*) AS orders,
-  ROUND(SUM(order_total), 2) AS gross_revenue_usd,
-  ROUND(SAFE_DIVIDE(COUNT(*), SUM(COUNT(*)) OVER ()) * 100, 2) AS order_share_pct
-FROM filtered_orders
-GROUP BY fulfillment_status
+  exception_type,
+  orders,
+  ROUND(SAFE_DIVIDE(orders, NULLIF((SELECT COUNT(*) FROM filtered_orders), 0)) * 100, 2) AS order_share_pct
+FROM exceptions
+WHERE orders > 0
 ORDER BY orders DESC

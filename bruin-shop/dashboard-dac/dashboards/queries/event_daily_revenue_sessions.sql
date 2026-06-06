@@ -5,7 +5,7 @@ WITH date_bounds AS (
 ),
 selected_events AS (
   SELECT event_start_date, event_end_date
-  FROM `bruin-playground-arsalan.raw.special_events`
+  FROM `bruin-playground-arsalan.bruin_shop_raw.special_events`
   WHERE '{{ filters.event_type }}' = 'All event types'
     OR event_type = CASE '{{ filters.event_type }}'
       WHEN 'Failed campaign' THEN 'failed_campaign'
@@ -20,7 +20,7 @@ orders AS (
     DATE(order_date) AS activity_date,
     ROUND(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), 2) AS net_revenue_usd,
     COUNTIF(payment_status IN ('paid', 'partially_refunded')) AS paid_orders
-  FROM `bruin-playground-arsalan.staging.stg_orders`
+  FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
   WHERE '{{ filters.channel }}' = 'All channels'
     OR source_channel = CASE '{{ filters.channel }}'
       WHEN 'Paid social' THEN 'paid_ads'
@@ -36,7 +36,7 @@ sessions AS (
     session_date AS activity_date,
     SUM(total_sessions) AS sessions,
     SUM(purchase_events) AS purchase_events
-  FROM `bruin-playground-arsalan.staging.stg_web_sessions`
+  FROM `bruin-playground-arsalan.bruin_shop_staging.stg_web_sessions`
   WHERE '{{ filters.channel }}' = 'All channels'
     OR channel = CASE '{{ filters.channel }}'
       WHEN 'Paid social' THEN 'paid_ads'
@@ -51,7 +51,7 @@ spend AS (
   SELECT
     spend_date AS activity_date,
     ROUND(SUM(spend), 2) AS total_spend_usd
-  FROM `bruin-playground-arsalan.staging.stg_marketing_spend`
+  FROM `bruin-playground-arsalan.bruin_shop_staging.stg_marketing_spend`
   WHERE '{{ filters.channel }}' = 'All channels'
     OR channel = CASE '{{ filters.channel }}'
       WHEN 'Paid social' THEN 'paid_ads'

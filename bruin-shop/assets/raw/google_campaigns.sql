@@ -1,12 +1,12 @@
 /* @bruin
-name: raw.google_campaigns
+name: bruin_shop_raw.google_campaigns
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Deterministic fake Google Ads campaign metadata.
 
 depends:
-  - raw.marketing_funnel
+  - bruin_shop_raw.marketing_funnel
 
 materialization:
   type: table
@@ -31,6 +31,6 @@ SELECT DISTINCT
     campaign_id,
     campaign_name,
     'ENABLED' AS status
-FROM raw.marketing_funnel
+FROM bruin_shop_raw.marketing_funnel
 WHERE channel = 'paid_search'
 ORDER BY campaign_id

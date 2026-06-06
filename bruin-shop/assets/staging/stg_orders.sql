@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.stg_orders
+name: bruin_shop_staging.stg_orders
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -8,7 +8,7 @@ description: |
   for reporting.
 
 depends:
-  - raw.shopify_orders
+  - bruin_shop_raw.shopify_orders
 
 materialization:
   type: table
@@ -110,7 +110,7 @@ columns:
 
 WITH deduped AS (
     SELECT *
-    FROM raw.shopify_orders
+    FROM bruin_shop_raw.shopify_orders
     WHERE id IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY id

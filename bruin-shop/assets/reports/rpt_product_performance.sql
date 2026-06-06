@@ -1,5 +1,5 @@
 /* @bruin
-name: reports.rpt_product_performance
+name: bruin_shop_reports.rpt_product_performance
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -8,8 +8,8 @@ description: |
   metrics are attributed to the generated primary product on each order.
 
 depends:
-  - staging.stg_products
-  - staging.stg_orders
+  - bruin_shop_staging.stg_products
+  - bruin_shop_staging.stg_orders
 
 materialization:
   type: table
@@ -73,7 +73,7 @@ WITH product_orders AS (
         SUM(item_count) AS items_sold,
         SUM(order_total) AS net_revenue,
         SUM(order_total - COALESCE(cogs_amount, 0) - COALESCE(shipping_cost, 0)) AS gross_profit
-    FROM staging.stg_orders
+    FROM bruin_shop_staging.stg_orders
     WHERE payment_status IN ('paid', 'partially_refunded')
     GROUP BY primary_product_id
 )
@@ -94,7 +94,7 @@ SELECT
     COALESCE(po.gross_profit, 0) AS gross_profit,
     created_at,
     updated_at
-FROM staging.stg_products
+FROM bruin_shop_staging.stg_products
 LEFT JOIN product_orders po
     USING (product_id)
 ORDER BY product_name

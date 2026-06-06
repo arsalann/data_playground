@@ -1,10 +1,10 @@
 /* @bruin
-name: raw.shopify_orders
+name: bruin_shop_raw.shopify_orders
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Deterministic fake Shopify-style order facts for a US apparel company. Orders
-  are generated one-for-one from `raw.marketing_funnel.conversions`, making
+  are generated one-for-one from `bruin_shop_raw.marketing_funnel.conversions`, making
   ad spend, impressions, clicks, web sessions, purchases, order counts, revenue,
   cost of goods sold, shipping cost, and contribution profit internally
   consistent by date, channel, state, and city. Customer assignment uses a
@@ -13,10 +13,11 @@ description: |
   customer cohorts instead of hash collisions across the whole city pool.
 
 depends:
-  - raw.us_markets
-  - raw.marketing_funnel
-  - raw.shopify_products
-  - raw.special_events
+  - bruin_shop_raw.us_markets
+  - bruin_shop_raw.marketing_funnel
+  - bruin_shop_raw.shopify_products
+  - bruin_shop_raw.shopify_orders_test
+  - bruin_shop_raw.special_events
 
 materialization:
   type: table
@@ -135,8 +136,8 @@ WITH funnel_orders AS (
         CAST(1200 + ROUND(m.demand_weight * 2800) AS INT64) AS customer_count,
         order_index,
         FORMAT('%s|%s|%03d|%05d', FORMAT_DATE('%Y%m%d', mf.activity_date), mf.channel, mf.market_id, order_index) AS order_key
-    FROM raw.marketing_funnel mf
-    INNER JOIN raw.us_markets m
+    FROM bruin_shop_raw.marketing_funnel mf
+    INNER JOIN bruin_shop_raw.us_markets m
         ON mf.market_id = m.market_id
     CROSS JOIN UNNEST(GENERATE_ARRAY(1, mf.conversions)) AS order_index
     WHERE mf.conversions > 0
@@ -322,7 +323,7 @@ priced AS (
                 END SECOND
         ) AS order_ts
     FROM assigned s
-    INNER JOIN raw.shopify_products p
+    INNER JOIN bruin_shop_raw.shopify_products p
         ON p.id = FORMAT('prod_%s_%02d', s.category_slug, s.product_slot)
 ),
 amounts AS (

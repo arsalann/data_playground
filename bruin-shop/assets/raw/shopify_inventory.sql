@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.shopify_inventory
+name: bruin_shop_raw.shopify_inventory
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,7 +7,7 @@ description: |
   generated apparel product catalog.
 
 depends:
-  - raw.shopify_products
+  - bruin_shop_raw.shopify_products
 
 materialization:
   type: table
@@ -36,4 +36,4 @@ SELECT
     sku,
     TRUE AS tracked,
     updated_at
-FROM raw.shopify_products
+FROM bruin_shop_raw.shopify_products

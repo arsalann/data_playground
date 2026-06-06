@@ -1,5 +1,5 @@
 /* @bruin
-name: reports.rpt_special_event_impact
+name: bruin_shop_reports.rpt_special_event_impact
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,12 +9,12 @@ description: |
   baseline window with the same number of days as the event.
 
 depends:
-  - raw.special_events
-  - staging.stg_marketing_spend
-  - staging.stg_web_sessions
-  - staging.stg_orders
-  - staging.stg_products
-  - reports.rpt_daily_kpis
+  - bruin_shop_raw.special_events
+  - bruin_shop_staging.stg_marketing_spend
+  - bruin_shop_staging.stg_web_sessions
+  - bruin_shop_staging.stg_orders
+  - bruin_shop_staging.stg_products
+  - bruin_shop_reports.rpt_daily_kpis
 
 materialization:
   type: table
@@ -115,8 +115,8 @@ WITH events AS (
         e.*,
         DATE_DIFF(e.event_end_date, e.event_start_date, DAY) + 1 AS event_days,
         p.product_name AS affected_product_name
-    FROM raw.special_events e
-    LEFT JOIN staging.stg_products p
+    FROM bruin_shop_raw.special_events e
+    LEFT JOIN bruin_shop_staging.stg_products p
         ON e.affected_product_id = p.product_id
 ),
 marketing AS (
@@ -127,7 +127,7 @@ marketing AS (
         SUM(ms.clicks) AS clicks,
         SUM(ms.conversions) AS platform_conversions
     FROM events e
-    LEFT JOIN staging.stg_marketing_spend ms
+    LEFT JOIN bruin_shop_staging.stg_marketing_spend ms
         ON ms.spend_date BETWEEN e.event_start_date AND e.event_end_date
         AND e.event_type != 'product_defect'
         AND (e.primary_channel = 'all_channels' OR ms.channel = e.primary_channel)
@@ -139,7 +139,7 @@ sessions AS (
         SUM(ws.total_sessions) AS sessions,
         SUM(ws.purchase_events) AS purchase_events
     FROM events e
-    LEFT JOIN staging.stg_web_sessions ws
+    LEFT JOIN bruin_shop_staging.stg_web_sessions ws
         ON ws.session_date BETWEEN e.event_start_date AND e.event_end_date
         AND (e.primary_channel = 'all_channels' OR ws.channel = e.primary_channel)
     GROUP BY e.event_id
@@ -157,7 +157,7 @@ orders AS (
             ELSE 0
         END) AS gross_profit
     FROM events e
-    LEFT JOIN staging.stg_orders o
+    LEFT JOIN bruin_shop_staging.stg_orders o
         ON DATE(o.order_date) BETWEEN e.event_start_date AND e.event_end_date
         AND (e.primary_channel = 'all_channels' OR o.source_channel = e.primary_channel)
         AND (e.affected_product_id IS NULL OR o.primary_product_id = e.affected_product_id)
@@ -169,7 +169,7 @@ baseline AS (
         SUM(k.net_revenue) AS baseline_net_revenue,
         SUM(k.sessions) AS baseline_sessions
     FROM events e
-    LEFT JOIN reports.rpt_daily_kpis k
+    LEFT JOIN bruin_shop_reports.rpt_daily_kpis k
         ON k.kpi_date BETWEEN DATE_SUB(e.event_start_date, INTERVAL e.event_days DAY)
             AND DATE_SUB(e.event_start_date, INTERVAL 1 DAY)
     GROUP BY e.event_id

@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.stripe_payment_intents
+name: bruin_shop_raw.stripe_payment_intents
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,7 +9,7 @@ description: |
   relying on external Stripe connector-test data.
 
 depends:
-  - raw.shopify_orders
+  - bruin_shop_raw.shopify_orders
 
 materialization:
   type: table
@@ -112,5 +112,5 @@ SELECT
             THEN CAST(ROUND((total_price + total_tax) * 100 * 0.029 + 30) AS INT64)
         ELSE 0
     END AS stripe_fee_amount
-FROM raw.shopify_orders
+FROM bruin_shop_raw.shopify_orders
 ORDER BY created, shopify_order_id

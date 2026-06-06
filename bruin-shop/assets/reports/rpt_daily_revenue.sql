@@ -1,5 +1,5 @@
 /* @bruin
-name: reports.rpt_daily_revenue
+name: bruin_shop_reports.rpt_daily_revenue
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -8,7 +8,7 @@ description: |
   metrics.
 
 depends:
-  - staging.stg_orders
+  - bruin_shop_staging.stg_orders
 
 materialization:
   type: table
@@ -84,6 +84,6 @@ SELECT
     ) * 100, 2) AS gross_margin_pct,
     ROUND(SAFE_DIVIDE(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), COUNTIF(payment_status IN ('paid', 'partially_refunded'))), 2) AS avg_order_value,
     ROUND(SAFE_DIVIDE(COUNTIF(cancel_reason IS NOT NULL), COUNT(*)) * 100, 2) AS cancellation_rate
-FROM staging.stg_orders
+FROM bruin_shop_staging.stg_orders
 GROUP BY DATE(order_date)
 ORDER BY order_date

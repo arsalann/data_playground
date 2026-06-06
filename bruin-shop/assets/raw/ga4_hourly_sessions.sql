@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.ga4_hourly_sessions
+name: bruin_shop_raw.ga4_hourly_sessions
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,8 +9,8 @@ description: |
   a small return-to-shop bump.
 
 depends:
-  - raw.ga4_sessions
-  - raw.shopify_orders
+  - bruin_shop_raw.ga4_sessions
+  - bruin_shop_raw.shopify_orders
 
 materialization:
   type: table
@@ -71,7 +71,7 @@ WITH daily AS (
         ANY_VALUE(special_event_type) AS special_event_type,
         ANY_VALUE(special_event_name) AS special_event_name,
         ANY_VALUE(event_phase) AS event_phase
-    FROM raw.ga4_sessions
+    FROM bruin_shop_raw.ga4_sessions
     GROUP BY session_date, channel
 ),
 hours AS (
@@ -110,7 +110,7 @@ hourly_orders AS (
         source_channel AS channel,
         EXTRACT(HOUR FROM created_at) AS hour_of_day,
         COUNTIF(financial_status IN ('paid', 'partially_refunded')) AS purchase_events
-    FROM raw.shopify_orders
+    FROM bruin_shop_raw.shopify_orders
     GROUP BY session_date, channel, hour_of_day
 )
 

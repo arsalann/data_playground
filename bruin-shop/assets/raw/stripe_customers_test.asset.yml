@@ -1,4 +1,4 @@
-name: raw.stripe_customers_test
+name: bruin_shop_raw.stripe_customers_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

@@ -1,5 +1,5 @@
 /* @bruin
-name: reports.rpt_marketing_roi
+name: bruin_shop_reports.rpt_marketing_roi
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,9 +9,9 @@ description: |
   profit metrics are internally reconciled.
 
 depends:
-  - staging.stg_marketing_spend
-  - staging.stg_web_sessions
-  - staging.stg_orders
+  - bruin_shop_staging.stg_marketing_spend
+  - bruin_shop_staging.stg_web_sessions
+  - bruin_shop_staging.stg_orders
 
 materialization:
   type: table
@@ -84,7 +84,7 @@ WITH channel_spend AS (
         SUM(impressions) AS total_impressions,
         SUM(clicks) AS total_clicks,
         SUM(conversions) AS total_conversions
-    FROM staging.stg_marketing_spend
+    FROM bruin_shop_staging.stg_marketing_spend
     GROUP BY spend_date, channel
 ),
 channel_sessions AS (
@@ -94,7 +94,7 @@ channel_sessions AS (
         SUM(total_sessions) AS sessions,
         SUM(new_users) AS new_users,
         SUM(purchase_events) AS purchases
-    FROM staging.stg_web_sessions
+    FROM bruin_shop_staging.stg_web_sessions
     GROUP BY session_date, channel
 ),
 channel_orders AS (
@@ -106,7 +106,7 @@ channel_orders AS (
         SUM(COALESCE(cogs_amount, 0)) AS total_cogs,
         SUM(COALESCE(shipping_cost, 0)) AS total_shipping_cost,
         SUM(order_total - COALESCE(cogs_amount, 0) - COALESCE(shipping_cost, 0)) AS gross_profit
-    FROM staging.stg_orders
+    FROM bruin_shop_staging.stg_orders
     WHERE payment_status IN ('paid', 'partially_refunded')
     GROUP BY order_date, channel
 ),

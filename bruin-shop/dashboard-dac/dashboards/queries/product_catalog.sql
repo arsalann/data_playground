@@ -4,5 +4,5 @@ SELECT
   vendor,
   price,
   product_status
-FROM `bruin-playground-arsalan.reports.rpt_product_performance`
+FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_product_performance`
 ORDER BY price DESC, product_name

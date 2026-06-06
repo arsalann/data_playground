@@ -12,7 +12,7 @@ SELECT
   SUM(purchase_events) AS purchases,
   ROUND(SAFE_DIVIDE(SUM(engaged_sessions), NULLIF(SUM(total_sessions), 0)) * 100, 2) AS engagement_rate_pct,
   ROUND(SAFE_DIVIDE(SUM(purchase_events), NULLIF(SUM(total_sessions), 0)) * 100, 2) AS conversion_rate_pct
-FROM `bruin-playground-arsalan.staging.stg_web_sessions`
+FROM `bruin-playground-arsalan.bruin_shop_staging.stg_web_sessions`
 WHERE session_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
     AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
   AND (

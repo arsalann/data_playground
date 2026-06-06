@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.marketing_funnel
+name: bruin_shop_raw.marketing_funnel
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -12,8 +12,8 @@ description: |
   deterministically for dashboard storytelling and anomaly testing.
 
 depends:
-  - raw.us_markets
-  - raw.special_events
+  - bruin_shop_raw.us_markets
+  - bruin_shop_raw.special_events
 
 materialization:
   type: table
@@ -196,7 +196,7 @@ base AS (
         0.96 + ABS(MOD(FARM_FINGERPRINT(CONCAT(CAST(c.activity_date AS STRING), ch.channel, CAST(m.market_id AS STRING), 'rate')), 9)) / 100.0 AS rate_noise
     FROM calendar c
     CROSS JOIN channels ch
-    CROSS JOIN raw.us_markets m
+    CROSS JOIN bruin_shop_raw.us_markets m
 ),
 annotated AS (
     SELECT
@@ -209,7 +209,7 @@ annotated AS (
             ELSE b.campaign_name
         END AS applied_campaign_name
     FROM base b
-    LEFT JOIN raw.special_events e
+    LEFT JOIN bruin_shop_raw.special_events e
         ON b.special_event_id = e.event_id
 ),
 scaled AS (

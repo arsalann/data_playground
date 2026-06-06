@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.us_markets
+name: bruin_shop_raw.us_markets
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |

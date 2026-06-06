@@ -1,4 +1,4 @@
-name: raw.klaviyo_profiles_test
+name: bruin_shop_raw.klaviyo_profiles_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

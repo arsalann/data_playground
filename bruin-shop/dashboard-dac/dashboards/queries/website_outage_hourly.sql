@@ -2,7 +2,7 @@ SELECT
   FORMAT_TIMESTAMP('%b %d %H:%M', activity_hour) AS hour_label,
   SUM(sessions) AS sessions,
   SUM(purchase_events) AS purchase_events
-FROM `bruin-playground-arsalan.raw.ga4_hourly_sessions`
+FROM `bruin-playground-arsalan.bruin_shop_raw.ga4_hourly_sessions`
 WHERE session_date BETWEEN DATE '2026-02-04' AND DATE '2026-02-05'
   AND (
     '{{ filters.channel }}' = 'All channels'

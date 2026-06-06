@@ -1,4 +1,4 @@
-name: raw.klaviyo_events_test
+name: bruin_shop_raw.klaviyo_events_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

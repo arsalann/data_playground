@@ -1,4 +1,4 @@
-name: raw.stripe_payment_intents_test
+name: bruin_shop_raw.stripe_payment_intents_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

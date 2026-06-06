@@ -1,4 +1,4 @@
-name: raw.facebook_campaigns_test
+name: bruin_shop_raw.facebook_campaigns_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

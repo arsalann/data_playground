@@ -8,7 +8,7 @@ WITH paid_social AS (
     SUM(impressions) AS impressions,
     SUM(clicks) AS clicks,
     SUM(conversions) AS platform_conversions
-  FROM `bruin-playground-arsalan.staging.stg_marketing_spend`
+  FROM `bruin-playground-arsalan.bruin_shop_staging.stg_marketing_spend`
   WHERE channel = 'paid_ads'
     AND spend_date BETWEEN DATE '2025-05-01' AND DATE '2025-05-31'
   GROUP BY spend_date, state_code, state_name, city
@@ -23,7 +23,7 @@ orders AS (
     SUM(cogs_amount) AS cogs,
     SUM(shipping_cost) AS shipping_cost,
     SUM(order_total - cogs_amount - shipping_cost) AS gross_profit
-  FROM `bruin-playground-arsalan.staging.stg_orders`
+  FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
   WHERE source_channel = 'paid_ads'
     AND payment_status IN ('paid', 'partially_refunded')
     AND DATE(order_date) BETWEEN DATE '2025-05-01' AND DATE '2025-05-31'

@@ -1,11 +1,14 @@
 /* @bruin
-name: raw.shopify_products
+name: bruin_shop_raw.shopify_products
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Deterministic fake Shopify-style product catalog for a US apparel company.
   The catalog spans T-shirts, pants, shoes, and accessories with category-
   specific prices, unit costs, vendors, SKUs, and inventory quantities.
+
+depends:
+  - bruin_shop_raw.shopify_products_test
 
 materialization:
   type: table

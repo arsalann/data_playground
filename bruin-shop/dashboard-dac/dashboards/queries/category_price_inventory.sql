@@ -8,7 +8,7 @@ SELECT
   ROUND(SUM(p.gross_profit), 2) AS gross_profit_usd,
   SUM(COALESCE(p.inventory_units, 0)) AS available_units,
   ROUND(SUM(COALESCE(p.inventory_value_usd, 0)), 2) AS inventory_value_usd
-FROM `bruin-playground-arsalan.reports.rpt_product_performance` p
+FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_product_performance` p
 WHERE '{{ filters.category }}' = 'All categories'
   OR p.category = '{{ filters.category }}'
 GROUP BY p.category

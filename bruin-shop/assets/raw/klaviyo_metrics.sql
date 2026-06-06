@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.klaviyo_metrics
+name: bruin_shop_raw.klaviyo_metrics
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,7 +7,7 @@ description: |
   apparel marketing funnel.
 
 depends:
-  - raw.marketing_funnel
+  - bruin_shop_raw.marketing_funnel
 
 materialization:
   type: table
@@ -32,7 +32,7 @@ SELECT
     FORMAT('kl_%s', FORMAT_DATE('%Y%m%d', activity_date)) AS campaign_id,
     SUM(clicks) AS click_count,
     SUM(conversions) AS conversion_count
-FROM raw.marketing_funnel
+FROM bruin_shop_raw.marketing_funnel
 WHERE channel = 'email'
 GROUP BY activity_date
 ORDER BY campaign_id

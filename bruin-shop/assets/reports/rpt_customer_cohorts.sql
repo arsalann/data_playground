@@ -1,5 +1,5 @@
 /* @bruin
-name: reports.rpt_customer_cohorts
+name: bruin_shop_reports.rpt_customer_cohorts
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,8 +7,8 @@ description: |
   standardized customers and orders.
 
 depends:
-  - staging.stg_orders
-  - staging.stg_customers
+  - bruin_shop_staging.stg_orders
+  - bruin_shop_staging.stg_customers
 
 materialization:
   type: table
@@ -46,8 +46,8 @@ WITH customer_orders AS (
         DATE_TRUNC(DATE(c.first_seen_at), MONTH) AS cohort_month,
         DATE_TRUNC(DATE(o.order_date), MONTH) AS order_month,
         o.order_total
-    FROM staging.stg_orders o
-    INNER JOIN staging.stg_customers c
+    FROM bruin_shop_staging.stg_orders o
+    INNER JOIN bruin_shop_staging.stg_customers c
         ON o.customer_email = c.customer_email
     WHERE o.payment_status IN ('paid', 'partially_refunded')
 ),

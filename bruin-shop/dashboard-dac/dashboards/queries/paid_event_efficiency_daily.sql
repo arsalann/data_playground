@@ -5,7 +5,7 @@ WITH date_bounds AS (
 ),
 selected_events AS (
   SELECT event_start_date, event_end_date
-  FROM `bruin-playground-arsalan.raw.special_events`
+  FROM `bruin-playground-arsalan.bruin_shop_raw.special_events`
   WHERE '{{ filters.event_type }}' = 'All event types'
     OR event_type = CASE '{{ filters.event_type }}'
       WHEN 'Failed campaign' THEN 'failed_campaign'
@@ -21,7 +21,7 @@ SELECT
   ROUND(SAFE_DIVIDE(SUM(total_clicks), NULLIF(SUM(total_impressions), 0)) * 100, 2) AS click_through_rate_pct,
   ROUND(SAFE_DIVIDE(SUM(total_conversions), NULLIF(SUM(total_clicks), 0)) * 100, 2) AS click_to_order_rate_pct,
   ROUND(SAFE_DIVIDE(SUM(attributed_revenue), NULLIF(SUM(total_spend), 0)), 2) AS roas
-FROM `bruin-playground-arsalan.reports.rpt_marketing_roi`
+FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
 CROSS JOIN date_bounds db
 WHERE channel IN ('paid_ads', 'paid_search')
   AND report_date BETWEEN db.start_date AND db.end_date

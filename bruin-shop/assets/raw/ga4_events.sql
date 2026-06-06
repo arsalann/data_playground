@@ -1,17 +1,17 @@
 /* @bruin
-name: raw.ga4_events
+name: bruin_shop_raw.ga4_events
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Deterministic fake GA4 ecommerce and page-path event totals. Session-level
-  page activity comes from `raw.ga4_sessions`; checkout, purchase, and order
+  page activity comes from `bruin_shop_raw.ga4_sessions`; checkout, purchase, and order
   confirmation events are reconciled to successful Shopify-style orders so the
   GA4 purchase funnel behaves like a real storefront.
 
 depends:
-  - raw.ga4_sessions
-  - raw.shopify_orders
-  - raw.shopify_products
+  - bruin_shop_raw.ga4_sessions
+  - bruin_shop_raw.shopify_orders
+  - bruin_shop_raw.shopify_products
 
 materialization:
   type: table
@@ -98,7 +98,7 @@ WITH session_rows AS (
         special_event_type,
         special_event_name,
         event_phase
-    FROM raw.ga4_sessions
+    FROM bruin_shop_raw.ga4_sessions
 ),
 category_pages AS (
     SELECT *
@@ -234,7 +234,7 @@ order_event_base AS (
         COUNTIF(financial_status IN ('paid', 'partially_refunded')) AS successful_orders,
         COUNTIF(financial_status = 'pending') AS pending_orders,
         COUNTIF(financial_status = 'voided') AS voided_orders
-    FROM raw.shopify_orders
+    FROM bruin_shop_raw.shopify_orders
     GROUP BY
         date,
         channel,
@@ -268,7 +268,7 @@ product_event_counts AS (
         oa.special_event_name,
         oa.event_phase
     FROM order_event_base oa
-    INNER JOIN raw.shopify_products p
+    INNER JOIN bruin_shop_raw.shopify_products p
         ON oa.product_id = p.id
     CROSS JOIN UNNEST([
         STRUCT('view_item' AS event_name, CAST(ROUND((oa.order_attempts + oa.successful_orders) * 3.10) AS INT64) AS event_count),

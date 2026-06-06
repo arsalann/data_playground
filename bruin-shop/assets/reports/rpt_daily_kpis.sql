@@ -1,5 +1,5 @@
 /* @bruin
-name: reports.rpt_daily_kpis
+name: bruin_shop_reports.rpt_daily_kpis
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,11 +7,11 @@ description: |
   one executive KPI table.
 
 depends:
-  - reports.rpt_daily_revenue
-  - staging.stg_customers
-  - staging.stg_orders
-  - staging.stg_web_sessions
-  - staging.stg_marketing_spend
+  - bruin_shop_reports.rpt_daily_revenue
+  - bruin_shop_staging.stg_customers
+  - bruin_shop_staging.stg_orders
+  - bruin_shop_staging.stg_web_sessions
+  - bruin_shop_staging.stg_marketing_spend
 
 materialization:
   type: table
@@ -76,8 +76,8 @@ WITH daily_customers AS (
         DATE(o.order_date) AS order_date,
         COUNT(DISTINCT IF(DATE(c.first_seen_at) = DATE(o.order_date), o.customer_email, NULL)) AS new_customers,
         COUNT(DISTINCT IF(DATE(c.first_seen_at) < DATE(o.order_date), o.customer_email, NULL)) AS returning_customers
-    FROM staging.stg_orders o
-    LEFT JOIN staging.stg_customers c
+    FROM bruin_shop_staging.stg_orders o
+    LEFT JOIN bruin_shop_staging.stg_customers c
         ON o.customer_email = c.customer_email
     WHERE o.payment_status IN ('paid', 'partially_refunded')
     GROUP BY DATE(o.order_date)
@@ -88,14 +88,14 @@ daily_sessions AS (
         SUM(total_sessions) AS sessions,
         SUM(new_users) AS new_visitors,
         SUM(purchase_events) AS purchases
-    FROM staging.stg_web_sessions
+    FROM bruin_shop_staging.stg_web_sessions
     GROUP BY session_date
 ),
 daily_spend AS (
     SELECT
         spend_date,
         SUM(spend) AS total_ad_spend
-    FROM staging.stg_marketing_spend
+    FROM bruin_shop_staging.stg_marketing_spend
     WHERE channel IN ('paid_ads', 'paid_search')
     GROUP BY spend_date
 )
@@ -117,7 +117,7 @@ SELECT
     r.gross_profit,
     r.gross_profit - COALESCE(sp.total_ad_spend, 0) AS contribution_profit,
     r.gross_margin_pct
-FROM reports.rpt_daily_revenue r
+FROM bruin_shop_reports.rpt_daily_revenue r
 LEFT JOIN daily_customers dc
     ON r.order_date = dc.order_date
 LEFT JOIN daily_sessions ds

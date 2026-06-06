@@ -1,4 +1,4 @@
-name: raw.ga4_custom_report_test
+name: bruin_shop_raw.ga4_custom_report_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

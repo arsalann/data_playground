@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.stripe_refunds
+name: bruin_shop_raw.stripe_refunds
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -9,8 +9,8 @@ description: |
   reinforces the same incident visible in Shopify operations.
 
 depends:
-  - raw.shopify_orders
-  - raw.stripe_payment_intents
+  - bruin_shop_raw.shopify_orders
+  - bruin_shop_raw.stripe_payment_intents
 
 materialization:
   type: table
@@ -87,8 +87,8 @@ SELECT
     o.special_event_type,
     o.special_event_name,
     o.event_phase
-FROM raw.shopify_orders o
-INNER JOIN raw.stripe_payment_intents pi
+FROM bruin_shop_raw.shopify_orders o
+INNER JOIN bruin_shop_raw.stripe_payment_intents pi
     ON o.id = pi.shopify_order_id
 WHERE o.financial_status = 'partially_refunded'
 ORDER BY created, shopify_order_id

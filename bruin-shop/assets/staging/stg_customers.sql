@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.stg_customers
+name: bruin_shop_staging.stg_customers
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -11,8 +11,8 @@ description: |
   purchase.
 
 depends:
-  - raw.shopify_customers
-  - raw.shopify_orders
+  - bruin_shop_raw.shopify_customers
+  - bruin_shop_raw.shopify_orders
 
 materialization:
   type: table
@@ -65,7 +65,7 @@ columns:
 
 WITH deduped AS (
     SELECT *
-    FROM raw.shopify_customers
+    FROM bruin_shop_raw.shopify_customers
     WHERE email IS NOT NULL
     QUALIFY ROW_NUMBER() OVER (
         PARTITION BY email
@@ -79,7 +79,7 @@ order_rollup AS (
         MIN(IF(financial_status IN ('paid', 'partially_refunded'), COALESCE(processed_at, created_at), NULL)) AS first_paid_order_at,
         COUNTIF(financial_status IN ('paid', 'partially_refunded')) AS paid_orders,
         SUM(CASE WHEN financial_status IN ('paid', 'partially_refunded') THEN SAFE_CAST(total_price AS NUMERIC) ELSE 0 END) AS paid_total_spent
-    FROM raw.shopify_orders
+    FROM bruin_shop_raw.shopify_orders
     WHERE email IS NOT NULL
       AND test IS NOT TRUE
     GROUP BY email

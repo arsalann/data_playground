@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.ga4_sessions
+name: bruin_shop_raw.ga4_sessions
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -8,8 +8,8 @@ description: |
   attribution matches the synthetic order facts exactly.
 
 depends:
-  - raw.marketing_funnel
-  - raw.shopify_orders
+  - bruin_shop_raw.marketing_funnel
+  - bruin_shop_raw.shopify_orders
 
 materialization:
   type: table
@@ -74,7 +74,7 @@ WITH paid_orders AS (
         state_code,
         city,
         COUNTIF(financial_status IN ('paid', 'partially_refunded')) AS paid_order_count
-    FROM raw.shopify_orders
+    FROM bruin_shop_raw.shopify_orders
     GROUP BY order_date, channel, state_code, city
 )
 
@@ -93,7 +93,7 @@ SELECT
     mf.special_event_name,
     mf.event_phase,
     mf.state_name
-FROM raw.marketing_funnel mf
+FROM bruin_shop_raw.marketing_funnel mf
 LEFT JOIN paid_orders po
     ON mf.activity_date = po.order_date
     AND mf.channel = po.channel

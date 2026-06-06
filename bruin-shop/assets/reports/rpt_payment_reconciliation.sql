@@ -1,5 +1,5 @@
 /* @bruin
-name: reports.rpt_payment_reconciliation
+name: bruin_shop_reports.rpt_payment_reconciliation
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -10,9 +10,9 @@ description: |
   records.
 
 depends:
-  - staging.stg_orders
-  - raw.stripe_payment_intents
-  - raw.stripe_refunds
+  - bruin_shop_staging.stg_orders
+  - bruin_shop_raw.stripe_payment_intents
+  - bruin_shop_raw.stripe_refunds
 
 materialization:
   type: table
@@ -69,7 +69,7 @@ WITH shopify AS (
         COUNT(*) AS shopify_order_attempts,
         COUNTIF(payment_status IN ('paid', 'partially_refunded')) AS shopify_successful_orders,
         COUNTIF(payment_status = 'partially_refunded') AS shopify_partially_refunded_orders
-    FROM staging.stg_orders
+    FROM bruin_shop_staging.stg_orders
     GROUP BY report_date
 ),
 stripe AS (
@@ -80,7 +80,7 @@ stripe AS (
         COUNTIF(status = 'processing') AS stripe_processing_intents,
         COUNTIF(status = 'canceled') AS stripe_canceled_intents,
         ROUND(SUM(amount_received) / 100.0, 2) AS stripe_gross_amount_usd
-    FROM raw.stripe_payment_intents
+    FROM bruin_shop_raw.stripe_payment_intents
     GROUP BY report_date
 ),
 refunds AS (
@@ -88,8 +88,8 @@ refunds AS (
         DATE(o.order_date) AS report_date,
         COUNT(*) AS stripe_refunds,
         ROUND(SUM(r.amount) / 100.0, 2) AS stripe_refund_amount_usd
-    FROM raw.stripe_refunds r
-    INNER JOIN staging.stg_orders o
+    FROM bruin_shop_raw.stripe_refunds r
+    INNER JOIN bruin_shop_staging.stg_orders o
         ON r.shopify_order_id = o.order_id
     GROUP BY report_date
 )

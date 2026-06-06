@@ -1,5 +1,5 @@
 /* @bruin
-name: staging.stg_marketing_spend
+name: bruin_shop_staging.stg_marketing_spend
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,10 +7,10 @@ description: |
   common daily channel-performance table with city and state geography.
 
 depends:
-  - raw.facebook_ad_insights
-  - raw.google_ad_insights
-  - raw.klaviyo_campaigns
-  - raw.klaviyo_metrics
+  - bruin_shop_raw.facebook_ad_insights
+  - bruin_shop_raw.google_ad_insights
+  - bruin_shop_raw.klaviyo_campaigns
+  - bruin_shop_raw.klaviyo_metrics
 
 materialization:
   type: table
@@ -79,7 +79,7 @@ WITH facebook AS (
         CAST(COALESCE(impressions, 0) AS INT64) AS impressions,
         CAST(COALESCE(clicks, 0) AS INT64) AS clicks,
         CAST(COALESCE(conversions, 0) AS INT64) AS conversions
-    FROM raw.facebook_ad_insights
+    FROM bruin_shop_raw.facebook_ad_insights
 ),
 google AS (
     SELECT
@@ -97,7 +97,7 @@ google AS (
         CAST(COALESCE(impressions, 0) AS INT64) AS impressions,
         CAST(COALESCE(clicks, 0) AS INT64) AS clicks,
         CAST(COALESCE(conversions, 0) AS INT64) AS conversions
-    FROM raw.google_ad_insights
+    FROM bruin_shop_raw.google_ad_insights
 ),
 klaviyo AS (
     SELECT
@@ -115,8 +115,8 @@ klaviyo AS (
         CAST(COALESCE(kc.num_recipients, 0) AS INT64) AS impressions,
         CAST(COALESCE(km.click_count, 0) AS INT64) AS clicks,
         CAST(COALESCE(km.conversion_count, 0) AS INT64) AS conversions
-    FROM raw.klaviyo_campaigns kc
-    LEFT JOIN raw.klaviyo_metrics km
+    FROM bruin_shop_raw.klaviyo_campaigns kc
+    LEFT JOIN bruin_shop_raw.klaviyo_metrics km
         ON kc.id = km.campaign_id
     WHERE kc.send_time IS NOT NULL
 )

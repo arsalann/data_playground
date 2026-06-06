@@ -1,4 +1,4 @@
-name: raw.shopify_customers_test
+name: bruin_shop_raw.shopify_customers_test
 type: ingestr
 connection: bruin-playground-arsalan
 description: |

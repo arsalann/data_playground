@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.shopify_customers
+name: bruin_shop_raw.shopify_customers
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -8,7 +8,8 @@ description: |
   tied to a stable customer, state, and city without relying on live Shopify.
 
 depends:
-  - raw.us_markets
+  - bruin_shop_raw.us_markets
+  - bruin_shop_raw.shopify_customers_test
 
 materialization:
   type: table
@@ -74,7 +75,7 @@ market_customers AS (
     SELECT
         m.*,
         CAST(1200 + ROUND(m.demand_weight * 2800) AS INT64) AS customer_count
-    FROM raw.us_markets m
+    FROM bruin_shop_raw.us_markets m
 ),
 customers AS (
     SELECT

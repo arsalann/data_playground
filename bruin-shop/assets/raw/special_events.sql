@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.special_events
+name: bruin_shop_raw.special_events
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |

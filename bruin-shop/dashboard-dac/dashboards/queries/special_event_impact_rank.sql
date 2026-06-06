@@ -5,7 +5,15 @@ WITH date_bounds AS (
 )
 
 SELECT
-  event_name,
+  CASE
+    WHEN event_name = 'Google search broad-match test failure' THEN 'Failed search'
+    WHEN event_name = 'Black Tote Bag defect refund incident' THEN 'Tote defect'
+    WHEN event_name = 'Website checkout outage and recovery' THEN 'Outage'
+    WHEN event_name = 'Google Memorial Day search campaign win' THEN 'Search win'
+    WHEN event_name = 'Instagram trail-shoe launch and stockout' THEN 'Trail stockout'
+    WHEN event_name = 'Instagram spring outfit campaign win' THEN 'Spring win'
+    ELSE event_name
+  END AS event_label,
   CASE event_type
     WHEN 'failed_campaign' THEN 'Failed campaign'
     WHEN 'stockout_campaign' THEN 'Stockout campaign'
@@ -13,31 +21,9 @@ SELECT
     WHEN 'successful_campaign' THEN 'Successful campaign'
     WHEN 'product_defect' THEN 'Product defect'
   END AS event_type,
-  FORMAT_DATE('%Y-%m-%d', event_start_date) AS start_date,
-  FORMAT_DATE('%Y-%m-%d', event_end_date) AS end_date,
-  CASE primary_channel
-    WHEN 'paid_ads' THEN 'Paid social'
-    WHEN 'paid_search' THEN 'Paid search'
-    WHEN 'all_channels' THEN 'All channels'
-    ELSE INITCAP(REPLACE(primary_channel, '_', ' '))
-  END AS channel,
-  COALESCE(affected_product_name, affected_product_id, '-') AS affected_product,
-  ROUND(total_spend, 2) AS spend_usd,
-  impressions,
-  clicks,
-  platform_conversions,
-  sessions,
-  orders,
-  paid_orders,
-  refunded_orders,
-  ROUND(attributed_revenue, 2) AS revenue_usd,
+  ROUND(revenue_delta_vs_baseline, 2) AS revenue_delta_usd,
   ROUND(contribution_profit, 2) AS contribution_profit_usd,
-  ctr_pct,
-  conversion_rate_pct,
-  refund_rate_pct,
-  ROUND(revenue_delta_vs_baseline, 2) AS revenue_delta_vs_baseline_usd,
-  sessions_delta_vs_baseline,
-  expected_effect
+  ROUND(refund_rate_pct, 2) AS refund_rate_pct
 FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_special_event_impact`
 CROSS JOIN date_bounds db
 WHERE event_start_date <= db.end_date
@@ -63,4 +49,4 @@ WHERE event_start_date <= db.end_date
       WHEN 'Direct' THEN 'direct'
     END
   )
-ORDER BY start_date
+ORDER BY revenue_delta_usd

@@ -1,5 +1,5 @@
 /* @bruin
-name: raw.google_ad_insights
+name: bruin_shop_raw.google_ad_insights
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
@@ -7,7 +7,7 @@ description: |
   shared apparel marketing funnel.
 
 depends:
-  - raw.marketing_funnel
+  - bruin_shop_raw.marketing_funnel
 
 materialization:
   type: table
@@ -79,6 +79,6 @@ SELECT
     impressions,
     clicks,
     conversions
-FROM raw.marketing_funnel
+FROM bruin_shop_raw.marketing_funnel
 WHERE channel = 'paid_search'
 ORDER BY date, state_code, city

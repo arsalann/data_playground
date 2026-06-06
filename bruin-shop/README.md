@@ -26,6 +26,12 @@ Current generated window: **2025-01-01 through 2026-06-05**. The refreshed model
 
 Separate Shopify and HubSpot ingestr assets are active for source-connection proofing because this validation workspace has local connections for those sources. The remaining connector-test definitions are parked as `.asset.yml.tmpl` template files so Bruin excludes them from pipeline discovery until valid local credentials are available.
 
+`pipeline.yml` declares the active connection defaults explicitly:
+
+- `google_cloud_platform: bruin-playground-arsalan` for BigQuery destination work.
+- `shopify: bruin-shop-shopify-test` for active Shopify ingestr proofing assets.
+- `hubspot: bruin-shop-hubspot-test` for active HubSpot ingestr proofing assets.
+
 ## Modeling Contract
 
 The dashboard-ready data is deterministic fake data, but it is generated with explicit reconciliation contracts so it behaves like a coherent ecommerce business instead of independent random tables.

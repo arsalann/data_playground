@@ -1,0 +1,29 @@
+name: bruin_shop_raw.hubspot_contacts
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Ingests HubSpot contacts into BigQuery with Bruin's built-in ingestr runner.
+  This table is not currently consumed by the demo staging, report, or
+  dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-hubspot-test
+  source_table: contacts
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: lastmodifieddate
+
+columns:
+  - name: hs_object_id
+    type: VARCHAR
+    primary_key: true
+    description: HubSpot contact object identifier.
+  - name: lastmodifieddate
+    type: TIMESTAMP
+    description: Timestamp when the HubSpot contact was last modified.
+  - name: createdate
+    type: TIMESTAMP
+    description: Timestamp when the HubSpot contact was created.
+  - name: email
+    type: VARCHAR
+    description: Contact email address, if present.

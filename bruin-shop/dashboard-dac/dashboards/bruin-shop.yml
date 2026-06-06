@@ -1,0 +1,1384 @@
+name: Bruin Shop
+description: Tabbed ecommerce validation dashboard covering sales, marketing, operations, customers, catalog, and synthetic
+  special events.
+connection: bruin-playground-arsalan
+theme: vibrant-shop
+
+filters:
+- name: date_range
+  type: date-range
+  default: all_time
+- name: channel
+  type: select
+  default: All channels
+  options:
+    values: [All channels, Paid social, Paid search, Email, Organic search, Direct]
+- name: category
+  type: select
+  default: All categories
+  options:
+    values: [All categories, T-shirts, Pants, Shoes, Accessories]
+- name: event_type
+  type: select
+  default: All event types
+  options:
+    values: [All event types, Failed campaign, Stockout campaign, Website outage, Successful campaign, Product defect]
+- name: payment_status
+  type: select
+  default: All payment statuses
+  options:
+    values: [All payment statuses, Paid, Partially refunded, Pending, Voided]
+- name: fulfillment_status
+  type: select
+  default: All fulfillment statuses
+  options:
+    values: [All fulfillment statuses, Fulfilled, Partial, Unfulfilled]
+
+rows:
+- tab: Executive Brief
+  widgets:
+  - name: Executive brief
+    type: text
+    col: 12
+    content: |
+      # Executive brief
+
+      The demo story: paid social and shoes create most of the profit, while failed campaigns, stockouts, fulfillment gaps, and a product defect create the visible risk signatures.
+
+- tab: Executive Brief
+  widgets:
+  - name: Net revenue
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT CAST(ROUND(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), 0) AS INT64) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+  - name: Contribution profit
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      WITH orders AS (
+        SELECT ROUND(SUM(CASE
+          WHEN payment_status IN ('paid', 'partially_refunded')
+            THEN order_total - COALESCE(cogs_amount, 0) - COALESCE(shipping_cost, 0)
+          ELSE 0
+        END), 2) AS gross_profit
+        FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+        WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+          AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+          AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+      ),
+      spend AS (
+        SELECT ROUND(SUM(total_spend), 2) AS media_spend
+        FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
+        WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND ('{{ filters.channel }}' = 'All channels' OR channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+      )
+      SELECT CAST(ROUND(gross_profit - COALESCE(media_spend, 0), 0) AS INT64) AS value
+      FROM orders
+      CROSS JOIN spend
+
+  - name: Paid social profit
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT CAST(ROUND(SUM(contribution_profit), 0) AS INT64) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
+      WHERE channel = 'paid_ads'
+        AND report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+
+  - name: Exception orders
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT COUNTIF(payment_status IN ('partially_refunded', 'pending', 'voided') OR fulfillment_status IN ('partial', 'unfulfilled')) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+- tab: Executive Brief
+  widgets:
+  - name: Growth engine
+    type: text
+    col: 4
+    content: |
+      ### Growth engine
+
+      Paid social is the clearest growth engine: high revenue scale, positive contribution profit, and enough market detail to demo drill-down workflows.
+
+  - name: Merchandise engine
+    type: text
+    col: 4
+    content: |
+      ### Merchandise engine
+
+      Shoes carry the merchandise economics: high gross profit, high inventory value, and the strongest category margin profile.
+
+  - name: Risk engine
+    type: text
+    col: 4
+    content: |
+      ### Risk engine
+
+      The injected incidents are visible without reading raw rows: failed search burns spend, the outage crushes sessions, and the tote defect spikes refunds.
+
+- tab: Executive Brief
+  widgets:
+  - name: Margin bridge header
+    type: text
+    col: 12
+    content: |
+      # Revenue to contribution profit bridge
+
+      The store is profitable after COGS, shipping, and media spend, but paid acquisition consumes enough gross profit that mix matters.
+
+      **Encoding:** X-axis shows profit bridge stage. Y-axis shows amount (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Executive Brief
+  widgets:
+  - name: Revenue to contribution profit bridge
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/executive_margin_bridge.sql
+    x: stage
+    y: [amount_usd]
+- tab: Executive Brief
+  widgets:
+  - name: Revenue to contribution profit bridge footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders` and `bruin_shop_reports.rpt_marketing_roi`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Synthetic COGS, shipping, and media-spend assumptions are generated for demo reconciliation, not finance reporting.
+- tab: Executive Brief
+  widgets:
+  - name: Channel profit header
+    type: text
+    col: 12
+    content: |
+      # Channel contribution profit share
+
+      Paid social leads contribution profit; organic and email look efficient because they carry no generated media spend.
+
+      **Encoding:** X-axis shows channel. Y-axis shows contribution profit (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Executive Brief
+  widgets:
+  - name: Channel profit stack
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/executive_channel_profit.sql
+    x: channel
+    y:
+    - contribution_profit_usd
+- tab: Executive Brief
+  widgets:
+  - name: Channel profit stack footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_marketing_roi`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Channel attribution is exact inside the generated model and should not be read as real incrementality.
+- tab: Executive Brief
+  widgets:
+  - name: Event impact header
+    type: text
+    col: 12
+    content: |
+      # Event impact ranking
+
+      The failed search test is the worst revenue miss, while successful campaigns produce short, profitable bursts.
+
+      **Encoding:** X-axis shows event. Y-axis shows revenue delta (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Executive Brief
+  widgets:
+  - name: Special event impact ranking
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/executive_event_impact.sql
+    x: event_label
+    y: [revenue_delta_usd]
+- tab: Executive Brief
+  widgets:
+  - name: Special event impact ranking footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_special_event_impact`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Event deltas compare deterministic event windows with generated prior baselines; injected effects are intentionally strong.
+- tab: Executive Brief
+  widgets:
+  - name: Category economics header
+    type: text
+    col: 12
+    content: |
+      # Category gross profit share
+
+      Shoes are the category to defend: they deliver the largest gross-profit pool and the strongest margin profile.
+
+      **Encoding:** X-axis shows category. Y-axis shows gross profit (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Executive Brief
+  widgets:
+  - name: Category economics
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/executive_category_economics.sql
+    x: category
+    y:
+    - gross_profit_usd
+- tab: Executive Brief
+  widgets:
+  - name: Category economics footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_product_performance`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Product economics use primary-product attribution, not full order line-item allocation.
+- tab: Executive Brief
+  widgets:
+  - name: Exception leakage header
+    type: text
+    col: 12
+    content: |
+      # Operational exception leakage
+
+      Partial fulfillment is the largest operational leak, followed by unfulfilled orders and refund-related payment exceptions.
+
+      **Encoding:** X-axis shows exception type. Y-axis shows order share (%). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Executive Brief
+  widgets:
+  - name: Operational exception order share
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/executive_exception_leakage.sql
+    x: exception_type
+    y: [order_share_pct]
+- tab: Executive Brief
+  widgets:
+  - name: Operational exception order share footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Exception categories can overlap; this view is a demo triage summary, not an audited incident count.
+- tab: Executive Brief
+  widgets:
+  - name: Executive methodology
+    type: text
+    col: 12
+    content: |
+      # Methodology
+
+      The executive brief combines `bruin_shop_staging.stg_orders`, `bruin_shop_reports.rpt_marketing_roi`, `bruin_shop_reports.rpt_product_performance`, and `bruin_shop_reports.rpt_special_event_impact`. Revenue means paid and partially refunded Shopify-style order totals. Gross profit subtracts generated COGS and shipping cost. Contribution profit subtracts generated media spend from gross profit. Event deltas compare event windows with generated same-length prior baselines. Product economics use primary-product attribution because full line-item arrays remain out of scope.
+
+- tab: Sales
+  widgets:
+  - name: Sales overview
+    type: text
+    col: 12
+    content: |
+      # Sales
+
+      Synthetic Shopify-style orders are healthy overall, with enough payment exceptions to demo monitoring and reconciliation.
+
+- tab: Sales
+  widgets:
+  - name: Gross revenue
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SUM(order_total), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+  - name: Net revenue
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+  - name: Avg order value
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SAFE_DIVIDE(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), COUNTIF(payment_status IN ('paid', 'partially_refunded'))), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+  - name: Cancellation rate
+    type: metric
+    col: 3
+    column: value
+    suffix: "%"
+    format: number
+    sql: |
+      SELECT ROUND(SAFE_DIVIDE(SUM(cancelled_orders), SUM(total_orders)) * 100, 2) AS value
+      FROM (
+        SELECT
+          COUNT(*) AS total_orders,
+          COUNTIF(cancel_reason IS NOT NULL) AS cancelled_orders
+        FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+        WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+          AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+          AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+      )
+
+- tab: Sales
+  widgets:
+  - name: Revenue quality header
+    type: text
+    col: 12
+    content: |
+      # Gross versus net revenue
+
+      Net revenue tracks close to gross revenue, so payment exceptions are visible but not large enough to distort the main sales trend.
+
+      **Encoding:** X-axis shows date. Y-axis shows gross revenue (USD), net revenue (USD). Line color and legend distinguish the series; the header text remains the fallback legend.
+
+- tab: Sales
+  widgets:
+  - name: Daily gross and net revenue
+    type: chart
+    chart: combo
+    col: 12
+    file: queries/daily_sales_quality.sql
+    x: day_label
+    y: [gross_revenue_usd, net_revenue_usd]
+    lines: [gross_revenue_usd, net_revenue_usd]
+- tab: Sales
+  widgets:
+  - name: Daily gross and net revenue footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Date filters can shorten the generated window; synthetic payment exceptions drive the gross/net gap.
+- tab: Sales
+  widgets:
+  - name: AOV header
+    type: text
+    col: 12
+    content: |
+      # Average order value
+
+      AOV stays stable enough to make event spikes obvious instead of hiding them inside pricing noise.
+
+      **Encoding:** X-axis shows date. Y-axis shows average order value (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Sales
+  widgets:
+  - name: Daily AOV and gross margin
+    type: chart
+    chart: line
+    col: 12
+    file: queries/daily_sales_quality.sql
+    x: day_label
+    y: [avg_order_value_usd]
+- tab: Sales
+  widgets:
+  - name: Daily AOV and gross margin footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** AOV is generated from synthetic apparel baskets and does not represent real pricing behavior.
+- tab: Sales
+  widgets:
+  - name: Payment table header
+    type: text
+    col: 12
+    content: |
+      # Payment status share
+
+      Paid orders dominate, but partially refunded, pending, and voided orders are large enough to test exception dashboards.
+
+      **Encoding:** X-axis shows payment status. Y-axis shows orders (count). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Sales
+  widgets:
+  - name: Payment status order share
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/payment_status_summary.sql
+    x: payment_status
+    y:
+    - orders
+- tab: Sales
+  widgets:
+  - name: Payment status order share footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Payment statuses are synthetic Shopify-style states reconciled to generated Stripe records.
+- tab: Marketing
+  widgets:
+  - name: Marketing overview
+    type: text
+    col: 12
+    content: |
+      # Marketing
+
+      This tab focuses on profitable acquisition: where spend scales, where contribution profit holds, and where the funnel breaks.
+
+- tab: Marketing
+  widgets:
+  - name: Paid spend
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SUM(total_spend), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
+      WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND channel IN ('paid_search', 'paid_ads')
+        AND (
+          '{{ filters.channel }}' = 'All channels'
+          OR channel = CASE '{{ filters.channel }}'
+            WHEN 'Paid social' THEN 'paid_ads'
+            WHEN 'Paid search' THEN 'paid_search'
+            WHEN 'Email' THEN 'email'
+            WHEN 'Organic search' THEN 'organic_search'
+            WHEN 'Direct' THEN 'direct'
+          END
+        )
+
+  - name: Attributed revenue
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SUM(attributed_revenue), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
+      WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND (
+          '{{ filters.channel }}' = 'All channels'
+          OR channel = CASE '{{ filters.channel }}'
+            WHEN 'Paid social' THEN 'paid_ads'
+            WHEN 'Paid search' THEN 'paid_search'
+            WHEN 'Email' THEN 'email'
+            WHEN 'Organic search' THEN 'organic_search'
+            WHEN 'Direct' THEN 'direct'
+          END
+        )
+
+  - name: Paid ROAS
+    type: metric
+    col: 3
+    column: value
+    suffix: "x"
+    format: number
+    sql: |
+      SELECT ROUND(SAFE_DIVIDE(SUM(attributed_revenue), NULLIF(SUM(total_spend), 0)), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
+      WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND channel IN ('paid_search', 'paid_ads')
+        AND (
+          '{{ filters.channel }}' = 'All channels'
+          OR channel = CASE '{{ filters.channel }}'
+            WHEN 'Paid social' THEN 'paid_ads'
+            WHEN 'Paid search' THEN 'paid_search'
+            WHEN 'Email' THEN 'email'
+            WHEN 'Organic search' THEN 'organic_search'
+            WHEN 'Direct' THEN 'direct'
+          END
+        )
+
+  - name: Web sessions
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT SUM(total_sessions) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_web_sessions`
+      WHERE session_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND (
+          '{{ filters.channel }}' = 'All channels'
+          OR channel = CASE '{{ filters.channel }}'
+            WHEN 'Paid social' THEN 'paid_ads'
+            WHEN 'Paid search' THEN 'paid_search'
+            WHEN 'Email' THEN 'email'
+            WHEN 'Organic search' THEN 'organic_search'
+            WHEN 'Direct' THEN 'direct'
+          END
+        )
+
+- tab: Marketing
+  widgets:
+  - name: Paid ROAS header
+    type: text
+    col: 12
+    content: |
+      # Paid media ROAS
+
+      Paid social and paid search both clear profitable ROAS, but paid social produces the larger contribution-profit pool.
+
+      **Encoding:** X-axis shows date. Y-axis shows paid search ROAS (x), paid social ROAS (x). Line color and legend distinguish the series; the header text remains the fallback legend.
+
+- tab: Marketing
+  widgets:
+  - name: Daily paid media ROAS
+    type: chart
+    chart: combo
+    col: 12
+    file: queries/daily_paid_media_roas.sql
+    x: day_label
+    y: [paid_search_roas, paid_social_roas]
+    lines: [paid_search_roas, paid_social_roas]
+- tab: Marketing
+  widgets:
+  - name: Daily paid media ROAS footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_marketing_roi`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** ROAS uses generated attributed revenue and spend; unpaid channels are intentionally excluded.
+- tab: Marketing
+  widgets:
+  - name: Paid social market funnel header
+    type: text
+    col: 12
+    content: |
+      # Paid social market profit, May 2025
+
+      Top markets do not just spend more; they still need contribution profit after COGS, shipping, and media spend.
+
+      **Encoding:** X-axis shows market. Y-axis shows contribution profit (USD), spend (USD). Line color and legend distinguish the series; the header text remains the fallback legend.
+
+- tab: Marketing
+  widgets:
+  - name: Paid social market profit
+    type: chart
+    chart: combo
+    col: 12
+    file: queries/paid_social_market_profit.sql
+    x: market
+    y:
+    - contribution_profit_usd
+    - spend_usd
+    lines:
+    - contribution_profit_usd
+    - spend_usd
+- tab: Marketing
+  widgets:
+  - name: Paid social market profit footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_marketing_roi`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Market-level profit reflects generated geography and campaign assumptions for May 2025 only.
+- tab: Marketing
+  widgets:
+  - name: Web conversion header
+    type: text
+    col: 12
+    content: |
+      # Purchase share by web channel
+
+      Purchase volume concentrates in paid and intent-heavy channels; conversion rates stay out of the pie because rates are not additive.
+
+      **Encoding:** X-axis shows channel. Y-axis shows purchases (count). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Marketing
+  widgets:
+  - name: Web channel conversion rate
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/web_channel_conversion.sql
+    x: channel
+    y:
+    - purchases
+- tab: Marketing
+  widgets:
+  - name: Web channel conversion rate footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_web_sessions`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Purchases reconcile to generated order facts; sessions are synthetic GA4-style rows.
+- tab: Marketing
+  widgets:
+  - name: Channel table header
+    type: text
+    col: 12
+    content: |
+      # Channel profit versus spend
+
+      Contribution profit separates real channel quality from revenue scale; unpaid channels are useful benchmarks but not ROAS peers.
+
+      **Encoding:** X-axis shows channel. Y-axis shows contribution profit (USD), spend (USD). Line color and legend distinguish the series; the header text remains the fallback legend.
+
+- tab: Marketing
+  widgets:
+  - name: Channel profit versus spend
+    type: chart
+    chart: combo
+    col: 12
+    file: queries/channel_performance_table.sql
+    x: channel
+    y:
+    - contribution_profit_usd
+    - spend_usd
+    lines:
+    - contribution_profit_usd
+    - spend_usd
+- tab: Marketing
+  widgets:
+  - name: Channel profit versus spend footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_marketing_roi`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Unpaid channels have zero media spend in the model and are benchmarks, not ROAS peers.
+- tab: Operations
+  widgets:
+  - name: Operations overview
+    type: text
+    col: 12
+    content: |
+      # Operations
+
+      This tab checks whether generated payment, fulfillment, inventory, and Stripe reconciliation signals behave like real operating controls.
+
+- tab: Operations
+  widgets:
+  - name: Paid order share
+    type: metric
+    col: 3
+    column: value
+    suffix: "%"
+    format: number
+    sql: |
+      SELECT ROUND(SAFE_DIVIDE(COUNTIF(payment_status IN ('paid', 'partially_refunded')), COUNT(*)) * 100, 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.payment_status }}' = 'All payment statuses' OR payment_status = CASE '{{ filters.payment_status }}' WHEN 'Paid' THEN 'paid' WHEN 'Partially refunded' THEN 'partially_refunded' WHEN 'Pending' THEN 'pending' WHEN 'Voided' THEN 'voided' END)
+        AND ('{{ filters.fulfillment_status }}' = 'All fulfillment statuses' OR fulfillment_status = CASE '{{ filters.fulfillment_status }}' WHEN 'Fulfilled' THEN 'fulfilled' WHEN 'Partial' THEN 'partial' WHEN 'Unfulfilled' THEN 'unfulfilled' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+  - name: Voided orders
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT COUNTIF(payment_status = 'voided') AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.payment_status }}' = 'All payment statuses' OR payment_status = CASE '{{ filters.payment_status }}' WHEN 'Paid' THEN 'paid' WHEN 'Partially refunded' THEN 'partially_refunded' WHEN 'Pending' THEN 'pending' WHEN 'Voided' THEN 'voided' END)
+        AND ('{{ filters.fulfillment_status }}' = 'All fulfillment statuses' OR fulfillment_status = CASE '{{ filters.fulfillment_status }}' WHEN 'Fulfilled' THEN 'fulfilled' WHEN 'Partial' THEN 'partial' WHEN 'Unfulfilled' THEN 'unfulfilled' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+  - name: Partial fulfillments
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT COUNTIF(fulfillment_status = 'partial') AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.payment_status }}' = 'All payment statuses' OR payment_status = CASE '{{ filters.payment_status }}' WHEN 'Paid' THEN 'paid' WHEN 'Partially refunded' THEN 'partially_refunded' WHEN 'Pending' THEN 'pending' WHEN 'Voided' THEN 'voided' END)
+        AND ('{{ filters.fulfillment_status }}' = 'All fulfillment statuses' OR fulfillment_status = CASE '{{ filters.fulfillment_status }}' WHEN 'Fulfilled' THEN 'fulfilled' WHEN 'Partial' THEN 'partial' WHEN 'Unfulfilled' THEN 'unfulfilled' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+        AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+  - name: Inventory value
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SUM(COALESCE(inventory_value_usd, 0)), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_product_performance` p
+      WHERE '{{ filters.category }}' = 'All categories'
+        OR p.category = '{{ filters.category }}'
+
+- tab: Operations
+  widgets:
+  - name: Fulfillment header
+    type: text
+    col: 12
+    content: |
+      # Fulfillment status share
+
+      Most orders are fulfilled, but the partial and unfulfilled pools are big enough to make operational exceptions visually obvious.
+
+      **Encoding:** X-axis shows fulfillment status. Y-axis shows orders (count). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Operations
+  widgets:
+  - name: Fulfillment status order count
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/fulfillment_status_summary.sql
+    x: fulfillment_status
+    y:
+    - orders
+- tab: Operations
+  widgets:
+  - name: Fulfillment status order count footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Fulfillment status is order-level only; package, carrier, and delivery events are out of scope.
+- tab: Operations
+  widgets:
+  - name: Inventory header
+    type: text
+    col: 12
+    content: |
+      # Inventory value by category
+
+      Inventory cash is concentrated in the same categories that drive margin, making the catalog story coherent for demos.
+
+      **Encoding:** X-axis shows category. Y-axis shows inventory value (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Operations
+  widgets:
+  - name: Inventory value by category
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/category_price_inventory.sql
+    x: category
+    y:
+    - inventory_value_usd
+- tab: Operations
+  widgets:
+  - name: Inventory value by category footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_product_performance`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Inventory is generated at catalog snapshot grain and does not model replenishment timing.
+- tab: Operations
+  widgets:
+  - name: Operations table header
+    type: text
+    col: 12
+    content: |
+      # Operational exception mix
+
+      The biggest operating issue is fulfillment leakage, not payment failure; this is the chart to show when demoing exception triage.
+
+      **Encoding:** X-axis shows exception type. Y-axis shows orders (count). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Operations
+  widgets:
+  - name: Operational exception mix
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/operational_exception_mix.sql
+    x: exception_type
+    y:
+    - orders
+- tab: Operations
+  widgets:
+  - name: Operational exception mix footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Exception buckets are synthetic and may overlap with payment states in other views.
+- tab: Operations
+  widgets:
+  - name: Payment reconciliation header
+    type: text
+    col: 12
+    content: |
+      # Shopify versus Stripe reconciliation gaps
+
+      The generated payment layer reconciles cleanly: successful-order and refund-record gaps should stay pinned at zero.
+
+      **Encoding:** X-axis shows date. Y-axis shows successful order gap (count), refund record gap (count). Line color and legend distinguish the series; the header text remains the fallback legend.
+
+- tab: Operations
+  widgets:
+  - name: Reconciliation gaps by day
+    type: chart
+    chart: line
+    col: 12
+    file: queries/payment_reconciliation_gaps.sql
+    x: report_date
+    y:
+    - successful_order_gap
+    - refund_record_gap
+- tab: Operations
+  widgets:
+  - name: Reconciliation gaps by day footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_payment_reconciliation`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** The generated Stripe layer is designed to reconcile; non-zero values would indicate pipeline drift.
+- tab: Customers and Catalog
+  widgets:
+  - name: Customers overview
+    type: text
+    col: 12
+    content: |
+      # Customers and catalog
+
+      This tab shows repeat behavior, retention decay, and product cash concentration without dumping customer or SKU rows.
+
+- tab: Customers and Catalog
+  widgets:
+  - name: Customers
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT COUNT(*) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_customers`
+
+  - name: Ordering customers
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT COUNT(DISTINCT customer_email) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
+      WHERE payment_status IN ('paid', 'partially_refunded')
+        AND DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+        AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+
+  - name: Active products
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT COUNT(*) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_product_performance`
+      WHERE '{{ filters.category }}' = 'All categories'
+        OR category = '{{ filters.category }}'
+
+  - name: Available units
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT SUM(inventory_units) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_product_performance`
+      WHERE '{{ filters.category }}' = 'All categories'
+        OR category = '{{ filters.category }}'
+
+- tab: Customers and Catalog
+  widgets:
+  - name: Customer distribution header
+    type: text
+    col: 12
+    content: |
+      # Customer order-count distribution
+
+      Most customers buy once in the selected slice, but the repeat tail is large enough to demo customer-frequency analysis.
+
+      **Encoding:** X-axis shows lifetime order bucket. Y-axis shows customers (count). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Customers and Catalog
+  widgets:
+  - name: Customer lifetime order distribution
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/customer_order_distribution.sql
+    x: lifetime_orders
+    y:
+    - customers
+- tab: Customers and Catalog
+  widgets:
+  - name: Customer lifetime order distribution footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_customers`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Customer identity and repeat behavior are deterministic scenario data, not real identity resolution.
+- tab: Customers and Catalog
+  widgets:
+  - name: Daily frequency header
+    type: text
+    col: 12
+    content: |
+      # Paid orders and ordering customers
+
+      Orders and active buyers move together, so demand spikes are volume-driven rather than just repeat-frequency artifacts.
+
+      **Encoding:** X-axis shows date. Y-axis shows paid orders (count), ordering customers (count). Line color and legend distinguish the series; the header text remains the fallback legend.
+
+- tab: Customers and Catalog
+  widgets:
+  - name: Daily paid orders and customers
+    type: chart
+    chart: combo
+    col: 12
+    file: queries/daily_customer_frequency.sql
+    x: day_label
+    y: [paid_orders, ordering_customers]
+    lines: [paid_orders, ordering_customers]
+- tab: Customers and Catalog
+  widgets:
+  - name: Daily paid orders and customers footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Customer counts are distinct emails in generated order rows for the selected slice.
+- tab: Customers and Catalog
+  widgets:
+  - name: Cohort table header
+    type: text
+    col: 12
+    content: |
+      # Cohort retention decay
+
+      Average retention falls sharply after the first month, then flattens into a small long-tail repeat base.
+
+      **Encoding:** X-axis shows months since first purchase. Y-axis shows average retention rate (%). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Customers and Catalog
+  widgets:
+  - name: Average monthly cohort retention
+    type: chart
+    chart: line
+    col: 12
+    file: queries/cohort_retention_curve.sql
+    x: months_since_first
+    y:
+    - avg_retention_rate_pct
+- tab: Customers and Catalog
+  widgets:
+  - name: Average monthly cohort retention footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_customer_cohorts`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Cohorts are generated to demonstrate retention decay and should not be used for forecasting.
+- tab: Customers and Catalog
+  widgets:
+  - name: Inventory table header
+    type: text
+    col: 12
+    content: |
+      # Product profit per inventory dollar
+
+      The best products are not simply the ones with the most stock; profit per inventory dollar exposes where catalog cash works hardest.
+
+      **Encoding:** X-axis shows product. Y-axis shows profit per inventory dollar (ratio). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Customers and Catalog
+  widgets:
+  - name: Product profit per inventory dollar
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/product_profit_inventory_top.sql
+    x: product_label
+    y:
+    - profit_to_inventory_ratio
+- tab: Customers and Catalog
+  widgets:
+  - name: Product profit per inventory dollar footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_product_performance`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Primary-product attribution and generated inventory values simplify SKU-level economics.
+- tab: Special Events
+  widgets:
+  - name: Special events overview
+    type: text
+    col: 12
+    content: |
+      # Special events
+
+      The incidents are deliberately exaggerated so a Bruin demo can show anomaly narratives, recovery windows, and reconciliation checks quickly.
+
+- tab: Special Events
+  widgets:
+  - name: Events in scope
+    type: metric
+    col: 3
+    column: value
+    format: number
+    sql: |
+      SELECT COUNT(*) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_special_event_impact`
+      WHERE event_start_date <= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND event_end_date >= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+        AND (
+          '{{ filters.event_type }}' = 'All event types'
+          OR event_type = CASE '{{ filters.event_type }}'
+            WHEN 'Failed campaign' THEN 'failed_campaign'
+            WHEN 'Stockout campaign' THEN 'stockout_campaign'
+            WHEN 'Website outage' THEN 'website_outage'
+            WHEN 'Successful campaign' THEN 'successful_campaign'
+            WHEN 'Product defect' THEN 'product_defect'
+          END
+        )
+        AND (
+          '{{ filters.channel }}' = 'All channels'
+          OR primary_channel = 'all_channels'
+          OR primary_channel = CASE '{{ filters.channel }}'
+            WHEN 'Paid social' THEN 'paid_ads'
+            WHEN 'Paid search' THEN 'paid_search'
+            WHEN 'Email' THEN 'email'
+            WHEN 'Organic search' THEN 'organic_search'
+            WHEN 'Direct' THEN 'direct'
+          END
+        )
+
+  - name: Event revenue delta
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SUM(revenue_delta_vs_baseline), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_special_event_impact`
+      WHERE event_start_date <= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+        AND event_end_date >= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+
+  - name: Worst refund rate
+    type: metric
+    col: 3
+    column: value
+    suffix: "%"
+    format: number
+    sql: |
+      SELECT ROUND(MAX(refund_rate_pct), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_special_event_impact`
+
+  - name: Stockout waste spend
+    type: metric
+    col: 3
+    column: value
+    prefix: "$"
+    format: number
+    sql: |
+      SELECT ROUND(SUM(spend), 2) AS value
+      FROM `bruin-playground-arsalan.bruin_shop_staging.stg_marketing_spend`
+      WHERE special_event_id = 'instagram_trail_shoe_stockout'
+        AND event_phase = 'stockout_waste'
+
+- tab: Special Events
+  widgets:
+  - name: Event timeline header
+    type: text
+    col: 12
+    content: |
+      # Revenue during event windows
+
+      Winning campaigns lift revenue, the outage suppresses it, and the stockout window shows demand without enough fulfillable product.
+
+      **Encoding:** X-axis shows date. Y-axis shows net revenue (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Special Events
+  widgets:
+  - name: Daily event-window net revenue
+    type: chart
+    chart: line
+    col: 12
+    file: queries/event_daily_revenue_sessions.sql
+    x: day_label
+    y:
+    - net_revenue_usd
+- tab: Special Events
+  widgets:
+  - name: Daily event-window net revenue footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`, `bruin_shop_staging.stg_web_sessions`, `bruin_shop_staging.stg_marketing_spend`, and `bruin_shop_raw.special_events`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** The installed DAC validator does not support the local fork's dual-axis fields, so this chart shows revenue only; session context is analyzed separately in the hourly outage chart.
+- tab: Special Events
+  widgets:
+  - name: Paid efficiency header
+    type: text
+    col: 12
+    content: |
+      # Paid campaign efficiency
+
+      Failed and stockout campaigns break the funnel differently: one loses intent, the other preserves clicks while orders disappear.
+
+      **Encoding:** X-axis shows date. Y-axis shows click-through rate (%), click-to-order rate (%). Line color and legend distinguish the series; the header text remains the fallback legend.
+
+- tab: Special Events
+  widgets:
+  - name: Paid campaign efficiency
+    type: chart
+    chart: combo
+    col: 12
+    file: queries/paid_event_efficiency_daily.sql
+    x: day_label
+    y: [click_through_rate_pct, click_to_order_rate_pct]
+    lines: [click_through_rate_pct, click_to_order_rate_pct]
+- tab: Special Events
+  widgets:
+  - name: Paid campaign efficiency footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_marketing_spend` and `bruin_shop_reports.rpt_special_event_impact`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Rates come from generated clicks and orders; the failed/stockout patterns are injected scenarios.
+- tab: Special Events
+  widgets:
+  - name: Outage header
+    type: text
+    col: 12
+    content: |
+      # Website outage hourly sessions
+
+      Traffic drops near zero during the 12-hour synthetic outage, then rebounds as delayed shoppers return.
+
+      **Encoding:** X-axis shows hour UTC. Y-axis shows sessions (count). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Special Events
+  widgets:
+  - name: Website outage hourly traffic
+    type: chart
+    chart: line
+    col: 12
+    file: queries/website_outage_hourly.sql
+    x: hour_label
+    y: [sessions]
+- tab: Special Events
+  widgets:
+  - name: Website outage hourly traffic footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_raw.ga4_hourly_sessions`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Hourly outage behavior is synthetic and shaped to make monitoring workflows visible.
+- tab: Special Events
+  widgets:
+  - name: Defect header
+    type: text
+    col: 12
+    content: |
+      # Product defect refund rate
+
+      The affected tote bag is intentionally extreme, making the refund spike impossible to miss.
+
+      **Encoding:** X-axis shows product. Y-axis shows refund rate (%). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Special Events
+  widgets:
+  - name: Product defect refund rate
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/product_defect_refund_rate.sql
+    x: product_name
+    y: [refund_rate_pct]
+- tab: Special Events
+  widgets:
+  - name: Product defect refund rate footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_staging.stg_orders`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** The affected product incident is intentionally extreme to exercise refund monitoring.
+- tab: Special Events
+  widgets:
+  - name: Event summary header
+    type: text
+    col: 12
+    content: |
+      # Event impact ranking
+
+      This ranks each injected incident by baseline revenue delta and contribution profit so the worst story appears first.
+
+      **Encoding:** X-axis shows event. Y-axis shows revenue delta (USD). Bar or line length/position encodes the metric; labels remain available in tooltips.
+
+- tab: Special Events
+  widgets:
+  - name: Special event impact ranking
+    type: chart
+    chart: bar
+    col: 12
+    file: queries/special_event_impact_rank.sql
+    x: event_label
+    y:
+    - revenue_delta_usd
+- tab: Special Events
+  widgets:
+  - name: Special event impact ranking footnote
+    type: text
+    col: 12
+    content: |
+      **Sources:** Synthetic Bruin Shop data generated in this repository and materialized in BigQuery from `bruin_shop_reports.rpt_special_event_impact`.
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+      **Limitations:** Event deltas compare deterministic event windows with generated prior baselines; injected effects are intentionally strong.
+- tab: Methodology
+  widgets:
+  - name: Methodology and caveats
+    type: text
+    col: 12
+    content: |
+      # Methodology and caveats
+
+      Purpose: Bruin Shop is a synthetic ecommerce demo for Bruin pipelines and DAC dashboards. The dashboard should highlight generated business patterns, not serve as a public KPI report.
+
+      **Sources:** Fake same-schema Shopify, Stripe, GA4, Meta Ads, Google Ads, Klaviyo, HubSpot, market-calendar, and special-event inputs materialized under `bruin_shop_raw`, `bruin_shop_staging`, and `bruin_shop_reports` in BigQuery.
+
+      **Tools:** **Bruin cli** for assets and validation, **BigQuery** for warehouse execution, and **Bruin dac** for dashboard rendering.
+
+      **Limitations:** Attribution, cohorts, inventory, refunds, outage behavior, and campaign effects are deterministic synthetic scenarios. They are designed to verify data contracts and demo analytical workflows, not to estimate real incrementality, finance-recognized revenue, processor settlement, shipment outcomes, or customer identity behavior.

@@ -1,0 +1,29 @@
+name: bruin_shop_raw.klaviyo_events_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Connection-test asset that ingests Klaviyo events into BigQuery with Bruin's
+  built-in ingestr runner. This table is intentionally suffixed `_test` and is
+  not consumed by the demo staging, report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-klaviyo-test
+  source_table: events
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: datetime
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Klaviyo event identifier.
+  - name: datetime
+    type: TIMESTAMP
+    description: Timestamp when the Klaviyo event occurred.
+  - name: timestamp
+    type: TIMESTAMP
+    description: Event timestamp emitted by Klaviyo, when present.
+  - name: metric_id
+    type: VARCHAR
+    description: Klaviyo metric identifier associated with the event.

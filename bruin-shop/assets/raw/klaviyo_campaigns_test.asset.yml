@@ -1,0 +1,29 @@
+name: bruin_shop_raw.klaviyo_campaigns_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Connection-test asset that ingests Klaviyo campaigns into BigQuery with
+  Bruin's built-in ingestr runner. This table is intentionally suffixed `_test`
+  and is not consumed by the demo staging, report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-klaviyo-test
+  source_table: campaigns
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: updated_at
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Klaviyo campaign identifier.
+  - name: updated_at
+    type: TIMESTAMP
+    description: Timestamp when the Klaviyo campaign was last updated.
+  - name: created_at
+    type: TIMESTAMP
+    description: Timestamp when the Klaviyo campaign was created.
+  - name: name
+    type: VARCHAR
+    description: Klaviyo campaign name.

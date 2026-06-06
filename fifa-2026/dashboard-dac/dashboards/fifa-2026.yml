@@ -15,7 +15,6 @@ rows:
       - name: about
         type: text
         col: 12
-        hideName: true
         content: |
           # FIFA 2026 — three things this World Cup will break
 
@@ -78,7 +77,6 @@ rows:
       - name: heat_intro
         type: text
         col: 12
-        hideName: true
         content: |
           ## The hottest World Cup ever played, by the numbers
 
@@ -185,7 +183,6 @@ rows:
       - name: Sources and limits — Heat
         type: text
         col: 12
-        hideName: true
         content: |
           **Sources:** **[Open-Meteo Historical (ERA5)](https://archive-api.open-meteo.com/v1/archive)** — ERA5 reanalysis 1980-2024 June-July at the 16 venue grid points (free, CC BY 4.0, no auth). **[FIFA 2026 host-venue list](https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup/canadamexicousa2026)** for stadium coordinates, capacities, and roof types.
 
@@ -201,7 +198,6 @@ rows:
       - name: travel_intro
         type: text
         col: 12
-        hideName: true
         content: |
           ## The 26,000 km group-stage lottery
 
@@ -339,7 +335,6 @@ rows:
       - name: Sources and limits — Travel
         type: text
         col: 12
-        hideName: true
         content: |
           **Sources:** FIFA 2026 published match schedule and host-venue coordinates from `fifa_raw.host_venues` (manifest-backed), team home coordinates from `fifa_raw.qualified_teams` (capital-city centroids).
 
@@ -355,7 +350,6 @@ rows:
       - name: market_intro
         type: text
         col: 12
-        hideName: true
         content: |
           ## Polymarket overprices the favourites — and underprices the field
 
@@ -437,7 +431,6 @@ rows:
       - name: Sources and limits — Calibration
         type: text
         col: 12
-        hideName: true
         content: |
           **Sources:** **[Polymarket Gamma API](https://gamma-api.polymarket.com)** — FIFA 2026 winner markets (snapshot, free, no auth). **[FIFA Men's World Ranking](https://inside.fifa.com/fifa-world-ranking/men)** — April 2026 release; numbers in this build are seeded from the April 2025 published values pending live patch.
 

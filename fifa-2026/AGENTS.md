@@ -55,6 +55,11 @@ fifa_world_ranking.py         ─────►  team_ranking_april2026 ─┴�
 historical_wc_matches.py      ─────►  altitude_match_panel    ───►  h4_altitude_scoring
 
 host_venues + city_demographics + (google trends best-effort) ─►  stadium_demand_inputs ─►  h5_capacity_vs_demand
+
+worldcup26.ir /get/games      ─┐
+worldcup26.ir /get/teams      ─┼─► live_matches / live_group_standings ─► live_* reports ─► fifa-2026-live.yml
+worldcup26.ir /get/groups     ─┤       ├─ Current Live Matches tab
+worldcup26.ir /get/stadiums   ─┘       └─ Overall Tournament Summary tab
 ```
 
 ## Things future agents should not do
@@ -64,3 +69,5 @@ host_venues + city_demographics + (google trends best-effort) ─►  stadium_de
 - Do not drop the `methodology_note` column from `match_climatology` — it's load-bearing for the dashboard footnote.
 - Do not commit `.bruin.yml`, `credentials/`, or `.env*` files.
 - Do not re-run a `create+replace` raw asset without explicit `BRUIN_START_DATE` / `BRUIN_END_DATE` env vars — Bruin's default schedule interval is one day, which will overwrite the full historical window with a single day of data.
+- For the live tracker, `live_games` and `live_group_standings` are append-only snapshots; do not change them to create-and-replace unless the dashboard no longer needs status history.
+- The no-key source does not expose true minute-by-minute player/team analysis. `fifa_reports.live_event_feed` is intentionally source-limited and should only become a real event feed after a licensed live-stat source is added.

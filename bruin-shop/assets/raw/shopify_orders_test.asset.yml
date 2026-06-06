@@ -1,0 +1,29 @@
+name: raw.shopify_orders_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Connection-test asset that ingests Shopify orders into BigQuery with Bruin's
+  built-in ingestr runner. This table is intentionally suffixed `_test` and is
+  not consumed by the demo staging, report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-shopify-test
+  source_table: orders
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: updated_at
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Shopify order identifier.
+  - name: updated_at
+    type: TIMESTAMP
+    description: Timestamp when the Shopify order was last updated.
+  - name: created_at
+    type: TIMESTAMP
+    description: Timestamp when the Shopify order was created.
+  - name: name
+    type: VARCHAR
+    description: Human-readable Shopify order name or number.

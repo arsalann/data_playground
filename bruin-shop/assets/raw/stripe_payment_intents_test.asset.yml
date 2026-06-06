@@ -1,0 +1,29 @@
+name: raw.stripe_payment_intents_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Connection-test asset that ingests Stripe payment intents into BigQuery with
+  Bruin's built-in ingestr runner. This table is intentionally suffixed `_test`
+  and is not consumed by the demo staging, report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-stripe-test
+  source_table: payment_intent
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: created
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Stripe payment intent identifier.
+  - name: created
+    type: TIMESTAMP
+    description: Timestamp when the Stripe payment intent was created.
+  - name: amount
+    type: INTEGER
+    description: Payment amount in the smallest currency unit.
+  - name: currency
+    type: VARCHAR
+    description: Three-letter ISO currency code for the payment intent.

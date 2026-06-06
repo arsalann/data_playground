@@ -1,0 +1,29 @@
+name: raw.klaviyo_profiles_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Connection-test asset that ingests Klaviyo profiles into BigQuery with
+  Bruin's built-in ingestr runner. This table is intentionally suffixed `_test`
+  and is not consumed by the demo staging, report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-klaviyo-test
+  source_table: profiles
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: updated
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Klaviyo profile identifier.
+  - name: updated
+    type: TIMESTAMP
+    description: Timestamp when the Klaviyo profile was last updated.
+  - name: email
+    type: VARCHAR
+    description: Klaviyo profile email address, if present.
+  - name: created
+    type: TIMESTAMP
+    description: Timestamp when the Klaviyo profile was created.

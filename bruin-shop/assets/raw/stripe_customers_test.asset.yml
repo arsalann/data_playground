@@ -1,0 +1,29 @@
+name: raw.stripe_customers_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Connection-test asset that ingests Stripe customers into BigQuery with
+  Bruin's built-in ingestr runner. This table is intentionally suffixed `_test`
+  and is not consumed by the demo staging, report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-stripe-test
+  source_table: customer
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: created
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Stripe customer identifier.
+  - name: created
+    type: TIMESTAMP
+    description: Timestamp when the Stripe customer was created.
+  - name: email
+    type: VARCHAR
+    description: Stripe customer email address, if present.
+  - name: livemode
+    type: BOOLEAN
+    description: Whether the record came from Stripe live mode.

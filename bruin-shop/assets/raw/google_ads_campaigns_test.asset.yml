@@ -1,0 +1,37 @@
+name: raw.google_ads_campaigns_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Optional connection-test asset that ingests Google Ads daily campaign
+  performance into BigQuery with Bruin's built-in ingestr runner. This table is
+  intentionally suffixed `_test` and is not consumed by the demo staging,
+  report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-googleads-test
+  source_table: campaign_report_daily
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: date
+
+columns:
+  - name: campaign_id
+    type: VARCHAR
+    primary_key: true
+    description: Google Ads campaign identifier.
+  - name: date
+    type: DATE
+    primary_key: true
+    description: Reporting date for the campaign metrics.
+  - name: campaign_name
+    type: VARCHAR
+    description: Google Ads campaign name.
+  - name: impressions
+    type: INTEGER
+    description: Number of ad impressions.
+  - name: clicks
+    type: INTEGER
+    description: Number of ad clicks.
+  - name: cost_micros
+    type: INTEGER
+    description: Advertising cost in micros of the account currency.

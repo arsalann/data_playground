@@ -1,0 +1,198 @@
+name: Bruin Shop Overview
+description: Executive overview for the Bruin ecommerce template validation dataset.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+filters:
+  - name: date_range
+    type: date-range
+    default: all_time
+  - name: channel
+    type: select
+    default: All channels
+    options:
+      values: [All channels, Paid social, Paid search, Email, Organic search, Direct]
+  - name: category
+    type: select
+    default: All categories
+    options:
+      values: [All categories, T-shirts, Pants, Shoes, Accessories]
+  - name: event_type
+    type: select
+    default: All event types
+    options:
+      values: [All event types, Failed campaign, Stockout campaign, Website outage, Successful campaign, Product defect]
+
+rows:
+  - widgets:
+      - name: Overview
+        type: text
+        col: 12
+        content: |
+          # Bruin Shop ecommerce validation overview
+
+          This dashboard set validates the generated ecommerce model across sales, marketing, web traffic, payments, fulfillment, customers, catalog, inventory, and special events. The current fake-data window runs from **2025-01-01 to 2026-06-05** and contains **680,778 orders**, **$38.7M in net revenue**, **12.8M web sessions**, and **$7.0M in paid-media spend**.
+
+          Use the dashboard navigation to move from this executive overview into the Sales, Marketing, Operations, Customers/Catalog, and Special Events pages.
+
+  - widgets:
+      - name: Net revenue
+        type: metric
+        col: 3
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          SELECT ROUND(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), 2) AS value
+          FROM `bruin-playground-arsalan.staging.stg_orders`
+          WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+              AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+            AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+            AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+      - name: Orders
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.staging.stg_orders`
+          WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+              AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+            AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+            AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+      - name: Avg conversion
+        type: metric
+        col: 3
+        column: value
+        suffix: "%"
+        format: number
+        sql: |
+          SELECT ROUND(SAFE_DIVIDE(SUM(purchase_events), NULLIF(SUM(total_sessions), 0)) * 100, 2) AS value
+          FROM `bruin-playground-arsalan.staging.stg_web_sessions`
+          WHERE session_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+              AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND ('{{ filters.channel }}' = 'All channels' OR channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+            AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+      - name: Avg paid ROAS
+        type: metric
+        col: 3
+        column: value
+        suffix: "x"
+        format: number
+        sql: |
+          SELECT ROUND(SAFE_DIVIDE(SUM(attributed_revenue), NULLIF(SUM(total_spend), 0)), 2) AS value
+          FROM `bruin-playground-arsalan.reports.rpt_marketing_roi`
+          WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+              AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND channel IN ('paid_search', 'paid_ads')
+            AND ('{{ filters.channel }}' = 'All channels' OR channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+
+  - widgets:
+      - name: Revenue header
+        type: text
+        col: 12
+        content: |
+          # Daily net revenue (USD), 2025-01-01 to 2026-06-05
+
+          **Order volume is seasonal rather than flat, and the injected events create visible short-run disturbances: campaign wins lift the revenue line, the outage dents sessions and sales, and the stockout campaign weakens paid-order conversion in its final days.**
+
+          **X-axis:** calendar day. **Y-axis:** net revenue in USD. **Line:** daily net revenue.
+
+  - widgets:
+      - name: Daily revenue and paid orders
+        type: chart
+        chart: line
+        col: 12
+        file: queries/daily_sales_quality.sql
+        x: day_label
+        y: [net_revenue_usd]
+
+  - widgets:
+      - name: Revenue footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** Fake same-schema **Shopify** orders generated by `raw.shopify_orders`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** This is deterministic fake data for template validation, not production Shopify activity. Holiday peaks, channel mix, and product mix are modeled heuristics; they should be treated as realistic test data, not observed business behavior.
+
+  - widgets:
+      - name: Marketing header
+        type: text
+        col: 12
+        content: |
+          # Channel spend and attributed revenue (USD), 2025-01-01 to 2026-06-05
+
+          **Paid social is the largest paid channel at $4.72M of spend and $17.96M of revenue, with 3.80x ROAS and a $15.02 CPA. Paid search is close on efficiency at 3.64x ROAS, while email, direct, and organic revenue carry no media-spend denominator.**
+
+          **X-axis:** channel. **Y-axis:** USD. **Bars:** `total_spend_usd` and `attributed_revenue_usd`; the chart legend and this encoding key identify both series.
+
+  - widgets:
+      - name: Channel spend and revenue
+        type: chart
+        chart: combo
+        col: 12
+        file: queries/channel_roi.sql
+        x: channel
+        y: [total_spend_usd, attributed_revenue_usd]
+
+  - widgets:
+      - name: Marketing footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** Fake same-schema **Meta Ads**, **Google Ads**, **Klaviyo**, **GA4**, and **Shopify** tables generated under `assets/raw/`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Revenue attribution is exact within the generated dataset because orders are created from the same funnel conversions. The model still does not represent real incrementality, user-level paths, or external platform measurement quirks.
+
+  - widgets:
+      - name: Operations header
+        type: text
+        col: 12
+        content: |
+          # Payment and fulfillment status, 2025-01-01 to 2026-06-05
+
+          **The generated order book is mostly clean: 620,046 orders are paid, 22,187 are partially refunded, 12,000 are voided, and 11,243 are pending. Fulfillment is also mostly complete, with 545,635 fulfilled orders and 89,516 partial fulfillments.**
+
+          **X-axis:** status. **Y-axis:** order count. **Bars:** orders by payment status in the first chart; fulfillment status is covered in the Operations page.
+
+  - widgets:
+      - name: Payment status order count
+        type: chart
+        chart: bar
+        col: 12
+        file: queries/payment_status_summary.sql
+        x: payment_status
+        y: [orders]
+
+  - widgets:
+      - name: Operations footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** Fake same-schema **Shopify** order payment and fulfillment fields from `staging.stg_orders`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Shipment-level carrier, tracking, delivery date, and refund transaction facts are not present in this template. Fulfillment status is the only shipment proxy available.
+
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          The `bruin-shop` project was initialized from Bruin's ecommerce template with BigQuery, Shopify Payments, Klaviyo, Facebook Ads, Google Ads, and GA4 selected. External `ingestr` raw connector stubs were replaced with deterministic fake BigQuery SQL assets that preserve the fields consumed by the generated staging and report assets. The synthetic apparel model uses a shared US market and marketing-funnel table, then generates one Shopify-style order per purchase conversion with exact channel, city, item-count, COGS, and shipping fields.
+
+          Raw tables are materialized with `create+replace`; staging assets deduplicate and normalize source rows; report assets aggregate daily revenue, daily KPIs, marketing ROI, customer cohorts, and product context. Marketing ROI joins spend, sessions, and orders on the generated acquisition channel rather than allocating revenue by daily session share. Product performance attributes each order to its generated primary product; full line-item arrays are still out of scope.

@@ -1,0 +1,33 @@
+name: raw.ga4_custom_report_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Connection-test asset that ingests a small GA4 custom report into BigQuery
+  with Bruin's built-in ingestr runner. This table is intentionally suffixed
+  `_test` and is not consumed by the demo staging, report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-googleanalytics-test
+  source_table: custom:date,sessionDefaultChannelGroup:sessions,totalUsers,purchaseRevenue
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: date
+
+columns:
+  - name: date
+    type: DATE
+    primary_key: true
+    description: GA4 report date.
+  - name: sessionDefaultChannelGroup
+    type: VARCHAR
+    primary_key: true
+    description: Default channel group for the GA4 session.
+  - name: sessions
+    type: INTEGER
+    description: Number of GA4 sessions.
+  - name: totalUsers
+    type: INTEGER
+    description: Number of GA4 users.
+  - name: purchaseRevenue
+    type: DOUBLE
+    description: GA4 purchase revenue in the property's reporting currency.

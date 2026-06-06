@@ -1,0 +1,30 @@
+name: raw.facebook_campaigns_test
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Optional connection-test asset that ingests Meta/Facebook Ads campaign
+  metadata into BigQuery with Bruin's built-in ingestr runner. This table is
+  intentionally suffixed `_test` and is not consumed by the demo staging,
+  report, or dashboard assets.
+
+parameters:
+  source_connection: bruin-shop-facebookads-test
+  source_table: campaigns
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: updated_time
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Meta/Facebook Ads campaign identifier.
+  - name: updated_time
+    type: TIMESTAMP
+    description: Timestamp when the campaign was last updated.
+  - name: created_time
+    type: TIMESTAMP
+    description: Timestamp when the campaign was created.
+  - name: name
+    type: VARCHAR
+    description: Meta/Facebook Ads campaign name.

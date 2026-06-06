@@ -1,0 +1,195 @@
+name: Bruin Shop Sales
+description: Sales, revenue quality, discounts, and order-value analysis.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+filters:
+  - name: date_range
+    type: date-range
+    default: all_time
+  - name: channel
+    type: select
+    default: All channels
+    options:
+      values: [All channels, Paid social, Paid search, Email, Organic search, Direct]
+  - name: category
+    type: select
+    default: All categories
+    options:
+      values: [All categories, T-shirts, Pants, Shoes, Accessories]
+  - name: event_type
+    type: select
+    default: All event types
+    options:
+      values: [All event types, Failed campaign, Stockout campaign, Website outage, Successful campaign, Product defect]
+
+rows:
+  - widgets:
+      - name: Sales overview
+        type: text
+        col: 12
+        content: |
+          # Sales performance, 2025-01-01 to 2026-06-05
+
+          This page focuses on revenue quality: gross versus net revenue, paid order volume, discount drag, AOV, gross profit, and cancellation exposure. The generated apparel data includes **521 daily observations** from **2025-01-01** through **2026-06-05**.
+
+  - widgets:
+      - name: Gross revenue
+        type: metric
+        col: 3
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          SELECT ROUND(SUM(order_total), 2) AS value
+          FROM `bruin-playground-arsalan.staging.stg_orders`
+          WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+              AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+            AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+            AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+      - name: Net revenue
+        type: metric
+        col: 3
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          SELECT ROUND(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), 2) AS value
+          FROM `bruin-playground-arsalan.staging.stg_orders`
+          WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+              AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+            AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+            AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+      - name: Avg order value
+        type: metric
+        col: 3
+        column: value
+        prefix: "$"
+        format: number
+        sql: |
+          SELECT ROUND(SAFE_DIVIDE(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), COUNTIF(payment_status IN ('paid', 'partially_refunded'))), 2) AS value
+          FROM `bruin-playground-arsalan.staging.stg_orders`
+          WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+              AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+            AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+            AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+
+      - name: Cancellation rate
+        type: metric
+        col: 3
+        column: value
+        suffix: "%"
+        format: number
+        sql: |
+          SELECT ROUND(SAFE_DIVIDE(SUM(cancelled_orders), SUM(total_orders)) * 100, 2) AS value
+          FROM (
+            SELECT
+              COUNT(*) AS total_orders,
+              COUNTIF(cancel_reason IS NOT NULL) AS cancelled_orders
+            FROM `bruin-playground-arsalan.staging.stg_orders`
+            WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
+                AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+              AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
+              AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
+              AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
+          )
+
+  - widgets:
+      - name: Revenue quality header
+        type: text
+        col: 12
+        content: |
+          # Daily gross and net revenue (USD), 2025-01-01 to 2026-06-05
+
+          **Net revenue stays close to gross revenue because voided orders are a small exception bucket: 12,000 of 665,476 orders are voided. Paid and partially refunded orders account for $37.6M in sales and $18.1M in gross profit after COGS and shipping.**
+
+          **X-axis:** calendar day. **Y-axis:** revenue in USD. **Lines:** gross revenue and net revenue; the legend names both series.
+
+  - widgets:
+      - name: Daily gross and net revenue
+        type: chart
+        chart: combo
+        col: 12
+        file: queries/daily_sales_quality.sql
+        x: day_label
+        y: [gross_revenue_usd, net_revenue_usd]
+        lines: [gross_revenue_usd, net_revenue_usd]
+
+  - widgets:
+      - name: Revenue quality footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** Fake same-schema **Shopify** orders from `raw.shopify_orders`, standardized in `staging.stg_orders`, aggregated in `reports.rpt_daily_revenue`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The fake template has generated item counts, COGS, and shipping cost, but it still has no full order-line arrays, refunds ledger, or payment transaction ledger. Net revenue here means paid and partially refunded Shopify-style order totals, not accounting-recognized net sales.
+
+  - widgets:
+      - name: AOV header
+        type: text
+        col: 12
+        content: |
+          # Average order value (USD), 2025-01-01 to 2026-06-05
+
+          **Daily AOV is plotted by itself to avoid mixing average-order dollars with daily discount totals or margin percentages on one unsupported axis. The event windows create short AOV disturbances without changing the long-run apparel pricing model.**
+
+          **X-axis:** calendar day. **Y-axis:** average order value in USD. **Line:** daily AOV.
+
+  - widgets:
+      - name: Daily AOV and gross margin
+        type: chart
+        chart: line
+        col: 12
+        file: queries/daily_sales_quality.sql
+        x: day_label
+        y: [avg_order_value_usd]
+
+  - widgets:
+      - name: AOV footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** Fake same-schema **Shopify** order subtotal, discount, tax, and total fields from `staging.stg_orders`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Gross margin and discount totals are not overlaid because this DAC binary does not expose dual axes. Real promotion analysis would require discount-code-level attribution and full SKU line items.
+
+  - widgets:
+      - name: Payment table header
+        type: text
+        col: 12
+        content: |
+          # Payment status summary, 2025-01-01 to 2026-06-05
+
+          **Paid orders dominate the dataset with 620,046 orders. The exception buckets are large enough to test dashboards at scale: 22,187 partially refunded, 12,000 voided, and 11,243 pending orders.**
+
+          **Columns:** payment status, orders, gross revenue in USD, average order value in USD, and order share.
+
+  - widgets:
+      - name: Payment status summary
+        type: table
+        col: 12
+        file: queries/payment_status_summary.sql
+        columns:
+          - { name: payment_status, label: Payment status }
+          - { name: orders, label: Orders, format: number }
+          - { name: gross_revenue_usd, label: "Gross revenue (USD)", format: number }
+          - { name: avg_order_value_usd, label: "Avg order value (USD)", format: number }
+          - { name: order_share_pct, label: "Order share (%)", format: number }
+
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          Sales metrics come from `reports.rpt_daily_revenue`, which groups non-test Shopify-style orders by order date. Paid orders include `paid` and `partially_refunded` statuses. Gross revenue sums all non-test order totals; net revenue sums only paid and partially refunded order totals. Gross profit subtracts generated COGS and shipping cost from net revenue. Cancellation rate is cancelled orders divided by total non-test orders.

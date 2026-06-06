@@ -24,7 +24,7 @@ The ecommerce template originally generated external `ingestr` raw assets for Sh
 
 Current generated window: **2025-01-01 through 2026-06-05**. The refreshed model contains **680,778 orders**, **371,000 customer profiles**, **347,765 ordering customer emails**, **342,570 paid customers**, **120 products**, **51 state/district codes**, and **70 city markets**. Daily orders have a **1,292-order median** with deliberate event outliers from **365** orders on the outage low end to **2,667** orders on campaign-spike days; orders contain **1 to 10 items** with a **$58.95 average order value**. The model now includes **$38.7M net revenue**, **12.8M web sessions**, **$7.0M paid-media spend**, **3,760,690 GA4 page/ecommerce event rows**, **680,778 Stripe payment intents**, and **23,705 Stripe refund records**.
 
-Separate ingestr assets have been added for source-connection proofing. Most materialize into BigQuery tables with `_test` suffixes and are intentionally not referenced by staging, reports, or dashboards. HubSpot materializes into permanent raw tables without the `_test` suffix.
+Separate Shopify and HubSpot ingestr assets are active for source-connection proofing because this validation workspace has local connections for those sources. The remaining connector-test definitions are parked as `.asset.yml.tmpl` template files so Bruin excludes them from pipeline discovery until valid local credentials are available.
 
 ## Modeling Contract
 
@@ -32,7 +32,7 @@ The dashboard-ready data is deterministic fake data, but it is generated with ex
 
 - Orders are generated one-for-one from `bruin_shop_raw.marketing_funnel.conversions`, so channel, campaign, market, session, order, revenue, COGS, shipping, and contribution-profit metrics reconcile by date and geography.
 - Customer assignment in `bruin_shop_raw.shopify_orders` is lifecycle-modeled. Each market accumulates new customers over time; repeat orders draw only from previously acquired customers and are biased toward recent, mid-age, and loyal repeat pools.
-- The modeled Shopify SQL assets declare lineage dependencies on the corresponding Shopify `_test` ingestr assets. This keeps connector proofing visible in Bruin lineage, while the dashboard model still generates its analytical rows in SQL rather than reading the small dev-store seed tables.
+- The modeled Shopify SQL assets declare lineage dependencies on the corresponding active Shopify `_test` ingestr assets. This keeps connector proofing visible in Bruin lineage, while the dashboard model still generates its analytical rows in SQL rather than reading the small dev-store seed tables.
 - `bruin_shop_staging.stg_customers.first_seen_at` is anchored to the first paid or partially refunded order when one exists. That keeps paid cohort retention internally consistent: month 0 retention is 100%, and later months show repeat activity rather than first-purchase leakage.
 - GA4 purchase events, checkout/order-confirmation page events, Shopify successful orders, Stripe succeeded payment intents, and Stripe refund records are generated from the same successful-order set.
 - Special-event identifiers flow through ads, sessions, orders, Stripe payments/refunds, reports, and DAC filters, so dashboard slices preserve the scenario context.
@@ -83,14 +83,17 @@ The fake dataset includes deterministic outlier events for dashboard storytellin
 - `bruin_shop_raw.google_ad_insights` and `bruin_shop_raw.google_campaigns` - fake Google Ads facts and metadata.
 - `bruin_shop_raw.klaviyo_campaigns` and `bruin_shop_raw.klaviyo_metrics` - fake Klaviyo campaign and metric data.
 
-External ingestr raw assets:
+Active external ingestr assets:
 
 - `bruin_shop_raw.shopify_orders_test`, `bruin_shop_raw.shopify_products_test`, and `bruin_shop_raw.shopify_customers_test` - Shopify ingestr checks.
-- `bruin_shop_raw.hubspot_contacts`, `bruin_shop_raw.hubspot_companies`, and `bruin_shop_raw.hubspot_deals` - HubSpot ingestr assets.
-- `bruin_shop_raw.stripe_customers_test` and `bruin_shop_raw.stripe_payment_intents_test` - Stripe ingestr checks.
-- `bruin_shop_raw.klaviyo_profiles_test`, `bruin_shop_raw.klaviyo_events_test`, and `bruin_shop_raw.klaviyo_campaigns_test` - Klaviyo ingestr checks.
-- `bruin_shop_raw.ga4_custom_report_test` - GA4 custom-report ingestr check.
-- `bruin_shop_raw.google_ads_campaigns_test` and `bruin_shop_raw.facebook_campaigns_test` - optional ad-platform ingestr checks.
+- `bruin_shop_raw.hubspot_contacts`, `bruin_shop_raw.hubspot_companies`, and `bruin_shop_raw.hubspot_deals` - HubSpot ingestr checks.
+
+Parked external ingestr definitions:
+
+- `stripe_customers_test.asset.yml.tmpl` and `stripe_payment_intents_test.asset.yml.tmpl` - Stripe ingestr checks.
+- `klaviyo_profiles_test.asset.yml.tmpl`, `klaviyo_events_test.asset.yml.tmpl`, and `klaviyo_campaigns_test.asset.yml.tmpl` - Klaviyo ingestr checks.
+- `ga4_custom_report_test.asset.yml.tmpl` - GA4 custom-report ingestr check.
+- `google_ads_campaigns_test.asset.yml.tmpl` and `facebook_campaigns_test.asset.yml.tmpl` - optional ad-platform ingestr checks.
 
 ### Staging
 
@@ -131,7 +134,7 @@ bruin run --config-file .context/bruin-shop.bruin.yml --full-refresh --downstrea
 bruin run --config-file .context/bruin-shop.bruin.yml bruin-shop/assets/raw/shopify_products_test.asset.yml
 ```
 
-Use the `special_events`, `shopify_products`, and `us_markets` roots to refresh the dashboard-ready SQL model. On a brand-new BigQuery project, create the `bruin_shop_raw`, `bruin_shop_staging`, and `bruin_shop_reports` datasets first, then use `--no-validation` for the first materialization pass because upstream tables do not exist yet. Run connector-test assets separately; they require valid source credentials and are not needed by the DAC dashboards.
+Use the `special_events`, `shopify_products`, and `us_markets` roots to refresh the dashboard-ready SQL model. On a brand-new BigQuery project, create the `bruin_shop_raw`, `bruin_shop_staging`, and `bruin_shop_reports` datasets first, then use `--no-validation` for the first materialization pass because upstream tables do not exist yet. Run active Shopify and HubSpot connector-test assets separately; they require valid source credentials and are not needed by the DAC dashboards. Parked `.tmpl` connector definitions should only be restored when valid local credentials are available for that source.
 
 Connection-test credentials are read from environment variables in `.context/bruin-shop.bruin.yml`:
 
@@ -235,4 +238,4 @@ Core reconciliation checks:
 - Special events are deterministic scenario injections for dashboard storytelling and anomaly testing. They are intentionally stronger than normal seasonality and should not be interpreted as observed operational incidents.
 - Product performance attributes each order to one generated primary product; full SKU-level line-item arrays are out of scope.
 - Shipment analysis is limited to Shopify order-level fulfillment status because the template does not include shipment packages, carriers, tracking events, or delivery timestamps.
-- Payment analysis uses generated Shopify financial status plus synthetic Stripe payment intents and refunds. The `_test` Stripe ingestr assets remain source-connection checks and are not consumed by the dashboard-ready modeled layer.
+- Payment analysis uses generated Shopify financial status plus synthetic Stripe payment intents and refunds. The parked `.tmpl` Stripe ingestr definitions remain source-connection checks and are not consumed by the dashboard-ready modeled layer.

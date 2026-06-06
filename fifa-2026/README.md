@@ -2,6 +2,8 @@
 
 Multi-hypothesis broad-survey pipeline for the **2026 FIFA World Cup** (June 11 – July 19, 2026, hosted by USA / Canada / Mexico across 16 cities). Built with Bruin against BigQuery, with a multi-tab Bruin DAC dashboard.
 
+This pipeline now also includes a **FIFA 2026 Live Match Tracker** DAC dashboard backed by free current-state endpoints from `worldcup26.ir`.
+
 The pipeline ingests data covering five investigative angles, leaving the choice of final narrative to be made after looking at what the data shows:
 
 | # | Hypothesis | Data primitives |
@@ -58,6 +60,51 @@ bruin run --tag fifa_reports fifa-2026/
 # Dashboard
 cd fifa-2026 && bruin dac serve --dir . --port 8321
 ```
+
+## Live tracker
+
+The live tracker ingests free no-key endpoints from **[worldcup26.ir](https://worldcup26.ir/api-docs)** and renders two DAC tabs:
+
+- **Current Live Matches** - live/upcoming scoreboard, selected match detail, and source-limited event feed.
+- **Overall Tournament Summary** - tournament progress by stage, group progress, and latest group standings.
+
+- `/get/games` -> `fifa_raw.live_games`: scoreline, status, kickoff, teams, stadium, and scorer strings.
+- `/get/teams` -> `fifa_raw.live_teams`: team names, FIFA codes, flags, and group assignments.
+- `/get/groups` -> `fifa_raw.live_group_standings`: group table points, record, goals for/against, and goal difference.
+- `/get/stadiums` -> `fifa_raw.live_stadiums`: stadium, host city/country, region, and capacity.
+
+Run the live tracker layer:
+
+```bash
+bruin run fifa-2026/assets/fifa_raw/live_teams.py
+bruin run fifa-2026/assets/fifa_raw/live_stadiums.py
+bruin run fifa-2026/assets/fifa_raw/live_games.py
+bruin run fifa-2026/assets/fifa_raw/live_group_standings.py
+bruin run fifa-2026/assets/fifa_staging/live_teams.sql
+bruin run fifa-2026/assets/fifa_staging/live_stadiums.sql
+bruin run fifa-2026/assets/fifa_staging/live_matches.sql
+bruin run fifa-2026/assets/fifa_staging/live_group_standings.sql
+bruin run fifa-2026/assets/fifa_reports/live_overview.sql
+bruin run fifa-2026/assets/fifa_reports/live_current_match_detail.sql
+bruin run fifa-2026/assets/fifa_reports/live_event_feed.sql
+bruin run fifa-2026/assets/fifa_reports/live_match_status_by_day.sql
+bruin run fifa-2026/assets/fifa_reports/live_stage_summary.sql
+bruin run fifa-2026/assets/fifa_reports/live_group_summary.sql
+bruin run fifa-2026/assets/fifa_reports/live_venue_load.sql
+bruin run fifa-2026/assets/fifa_reports/live_group_table.sql
+bruin run fifa-2026/assets/fifa_reports/live_scoreboard.sql
+```
+
+Validate and serve the DAC dashboard:
+
+```bash
+dac validate --dir fifa-2026/dashboard-dac
+dac check --dir fifa-2026/dashboard-dac
+dac serve --dir fifa-2026/dashboard-dac --port 8321
+# open http://localhost:8321
+```
+
+The no-key source provides scores, fixtures, standings, teams, stadiums, and scorer strings. It does **not** expose true row-click drilldowns, detailed in-match statistics, minute-by-minute player actions, possession, shots, cards, lineups, substitutions, or xG. For those fields, add a quota-aware API-Football ingestion asset after configuring a free API key in Bruin secrets.
 
 ## Verified data sources
 

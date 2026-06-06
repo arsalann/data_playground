@@ -1,0 +1,302 @@
+name: FIFA 2026 Live Match Tracker
+description: |
+  Current-match operations view and tournament summary for the 2026 FIFA World
+  Cup using free live endpoints.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+refresh: { interval: "5m" }
+
+rows:
+  - tab: Current Live Matches
+    widgets:
+      - name: current_live_intro
+        type: text
+        col: 12
+        content: |
+          # Current live matches and match detail
+
+          **The free source currently shows the tournament before kickoff: 104 scheduled fixtures, 0 live matches, and 0 completed matches.** During the tournament, this tab sorts live matches first, then upcoming fixtures, then completed fixtures. DAC does not support row-click drilldowns in this installed build, so the detail panel below automatically follows the highest-priority match: first live match, otherwise next scheduled fixture.
+
+          **Encoding key:** Tables show match state. Detail and event-feed panels expose the richest fields currently available from the no-key source.
+
+  - tab: Current Live Matches
+    widgets:
+      - name: Live now
+        type: metric
+        col: 3
+        column: live_matches
+        format: number
+        sql: |
+          SELECT live_matches FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "Fixtures not finished and not scheduled."
+
+      - name: Scheduled
+        type: metric
+        col: 3
+        column: scheduled_matches
+        format: number
+        sql: |
+          SELECT scheduled_matches FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "Fixtures not yet started."
+
+      - name: Completed
+        type: metric
+        col: 3
+        column: completed_matches
+        format: number
+        sql: |
+          SELECT completed_matches FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "Fixtures marked finished by the source."
+
+      - name: Total goals
+        type: metric
+        col: 3
+        column: total_goals
+        format: number
+        sql: |
+          SELECT total_goals FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "Goals across latest match states."
+
+  - tab: Current Live Matches
+    widgets:
+      - name: Live and upcoming match list
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            match_number,
+            FORMAT_DATE('%Y-%m-%d', match_date) AS match_date,
+            stage_label,
+            group_id,
+            matchup,
+            scoreline,
+            match_status,
+            time_elapsed,
+            venue_label
+          FROM `bruin-playground-arsalan.fifa_reports.live_scoreboard`
+          ORDER BY sort_bucket, match_date, match_number
+          LIMIT 32
+        columns:
+          - { name: match_number, label: "Match", format: number }
+          - { name: match_date, label: "Date" }
+          - { name: stage_label, label: "Stage" }
+          - { name: group_id, label: "Group" }
+          - { name: matchup, label: "Matchup" }
+          - { name: scoreline, label: "Score" }
+          - { name: match_status, label: "Status" }
+          - { name: time_elapsed, label: "Elapsed/status" }
+          - { name: venue_label, label: "Venue" }
+
+  - tab: Current Live Matches
+    widgets:
+      - name: selected_detail_header
+        type: text
+        col: 12
+        content: |
+          # Selected match detail and source-limited event feed
+
+          **The detail panel follows the first live match; before kickoff it follows the next scheduled match.** The event feed is intentionally conservative: if the source only exposes status and scorer strings, the dashboard says so rather than inventing player-by-player analysis.
+
+          **Columns:** Detail rows = current selected match fields. Event rows = source scorer strings or explicit source limitation.
+
+  - tab: Current Live Matches
+    widgets:
+      - name: Selected match detail
+        type: table
+        col: 5
+        sql: |
+          SELECT
+            detail_name,
+            detail_value
+          FROM `bruin-playground-arsalan.fifa_reports.live_current_match_detail`
+          ORDER BY detail_order
+        columns:
+          - { name: detail_name, label: "Field" }
+          - { name: detail_value, label: "Value" }
+
+      - name: Minute-by-minute source feed
+        type: table
+        col: 7
+        sql: |
+          SELECT
+            minute,
+            team,
+            event_type,
+            event_detail
+          FROM `bruin-playground-arsalan.fifa_reports.live_event_feed`
+          ORDER BY event_order
+        columns:
+          - { name: minute, label: "Minute/status" }
+          - { name: team, label: "Team" }
+          - { name: event_type, label: "Event type" }
+          - { name: event_detail, label: "Detail" }
+
+  - tab: Current Live Matches
+    widgets:
+      - name: current_live_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[worldcup26.ir](https://worldcup26.ir/api-docs)** free FIFA World Cup 2026 API (`/get/games` and `/get/game/{id}` endpoints tested).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The free source provides fixtures, scores, status, and scorer strings, but not possession, shots, cards, substitutions, lineups, xG, or minute-by-minute player actions. A production version should add API-Football or another licensed live-stats provider for those fields and then wire that source into `live_event_feed`.
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: tournament_summary_intro
+        type: text
+        col: 12
+        content: |
+          # Tournament progress by stage and group
+
+          **The tournament summary separates the 104 fixtures into stage and group progress, so the state of the competition is readable even when multiple matches update at once.** The stage view shows the full bracket shape; the group view focuses on the 72 group-stage fixtures and standings table.
+
+          **Encoding key:** Stacked bars show scheduled, live, and completed fixtures. Group standings table shows rank, record, points, and goal fields.
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: Total fixtures
+        type: metric
+        col: 3
+        column: total_matches
+        format: number
+        sql: |
+          SELECT total_matches FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "All fixtures returned by the live source."
+
+      - name: Next kickoff
+        type: metric
+        col: 3
+        column: next_kickoff
+        sql: |
+          SELECT FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', next_kickoff_local) AS next_kickoff
+          FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "Next scheduled local kickoff string from source data."
+
+      - name: Goals per completed match
+        type: metric
+        col: 3
+        column: goals_per_completed_match
+        format: number
+        sql: |
+          SELECT COALESCE(goals_per_completed_match, 0) AS goals_per_completed_match
+          FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "Average goals per completed fixture."
+
+      - name: Last source update
+        type: metric
+        col: 3
+        column: last_update
+        sql: |
+          SELECT FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', last_source_update_at) AS last_update
+          FROM `bruin-playground-arsalan.fifa_reports.live_overview`
+        description: "Most recent API extraction represented in reports."
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: stage_summary_header
+        type: text
+        col: 12
+        content: |
+          # Fixture status by tournament stage
+
+          **The group stage accounts for 72 of 104 fixtures; every knockout round is already represented in the schedule even though teams are not resolved yet.** This chart is the tournament-wide progress view and should move from scheduled to live to completed as the event unfolds.
+
+          **Encoding key:** X-axis = stage. Y-axis = fixtures. Bar segments = scheduled, live, and completed matches.
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: Fixture status by stage
+        type: chart
+        chart: bar
+        stacked: true
+        col: 12
+        x: stage_label
+        y: [scheduled, live, completed]
+        yMin: "0"
+        sql: |
+          SELECT
+            stage_label,
+            scheduled,
+            live,
+            completed
+          FROM `bruin-playground-arsalan.fifa_reports.live_stage_summary`
+          ORDER BY stage_order
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: group_summary_header
+        type: text
+        col: 12
+        content: |
+          # Group-stage progress and standings
+
+          **Each group has six scheduled fixtures and currently no completed games, so the standings remain tied at zero points before kickoff.** Once matches complete, the group progress chart and standings table update from the same latest source snapshot.
+
+          **Encoding key:** Group chart bars = scheduled, live, completed fixtures. Standings columns use MP, Pts, GF, GA, and GD.
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: Group fixture status
+        type: chart
+        chart: bar
+        stacked: true
+        col: 12
+        x: group_id
+        y: [scheduled, live, completed]
+        yMin: "0"
+        sql: |
+          SELECT
+            group_id,
+            scheduled,
+            live,
+            completed
+          FROM `bruin-playground-arsalan.fifa_reports.live_group_summary`
+          ORDER BY group_id
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: Latest group standings
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            group_id,
+            group_rank,
+            team_name,
+            fifa_code,
+            record,
+            matches_played,
+            points,
+            goals_for,
+            goals_against,
+            goal_difference
+          FROM `bruin-playground-arsalan.fifa_reports.live_group_table`
+          ORDER BY group_id, group_rank
+        columns:
+          - { name: group_id, label: "Group" }
+          - { name: group_rank, label: "Rank", format: number }
+          - { name: team_name, label: "Team" }
+          - { name: fifa_code, label: "Code" }
+          - { name: record, label: "W-D-L" }
+          - { name: matches_played, label: "MP", format: number }
+          - { name: points, label: "Pts", format: number }
+          - { name: goals_for, label: "GF", format: number }
+          - { name: goals_against, label: "GA", format: number }
+          - { name: goal_difference, label: "GD", format: number }
+
+  - tab: Overall Tournament Summary
+    widgets:
+      - name: methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          The live tracker ingests four current-state endpoints from **[worldcup26.ir](https://worldcup26.ir/api-docs)**: matches, teams, groups, and stadiums. Match and standings raw assets append one snapshot per Bruin run so score/status changes can be retained over time; team and stadium reference assets use create-and-replace because they are small reference tables.
+
+          Staging tables deduplicate append snapshots with `ROW_NUMBER() ... ORDER BY extracted_at DESC`, parse local kickoff strings, normalize statuses into `scheduled`, `live`, and `completed`, and join stadium/team labels. Report tables shape the data into current-match detail, source-limited event feed, stage summary, group summary, scoreboard, venue-load, and standings outputs consumed by Bruin dac.
+
+          This dashboard is a free-source prototype, not an official FIFA data product. The current source does not expose true click-through drilldowns, minute-by-minute player events, team possession, shots, cards, substitutions, lineups, or xG. Those fields require adding a licensed live-stat source and extending the raw/staging/report layer.

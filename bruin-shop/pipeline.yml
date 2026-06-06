@@ -4,3 +4,5 @@ start_date: "2025-01-01"
 
 default_connections:
   google_cloud_platform: bruin-playground-arsalan
+  shopify: bruin-shop-shopify-test
+  hubspot: bruin-shop-hubspot-test

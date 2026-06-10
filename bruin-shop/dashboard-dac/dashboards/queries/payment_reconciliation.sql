@@ -11,6 +11,6 @@ SELECT
   refund_record_gap
 FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_payment_reconciliation`
 WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-    AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+    AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
 ORDER BY report_date DESC
 LIMIT 60

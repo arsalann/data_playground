@@ -22,7 +22,7 @@ materialization:
 columns:
   - name: activity_date
     type: DATE
-    description: Synthetic activity date from 2025-01-01 through 2026-06-05.
+    description: Synthetic activity date from 2025-01-01 through 2026-06-08.
     primary_key: true
     nullable: false
   - name: channel
@@ -108,7 +108,7 @@ columns:
 
 WITH calendar AS (
     SELECT activity_date
-    FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2025-01-01', DATE '2026-06-05')) AS activity_date
+    FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2025-01-01', DATE '2026-06-08')) AS activity_date
 ),
 channels AS (
     SELECT *
@@ -145,6 +145,9 @@ base AS (
             WHEN ch.channel = 'paid_search'
                 AND c.activity_date BETWEEN DATE '2026-05-11' AND DATE '2026-05-17'
                 THEN 'google_memorial_day_win'
+            WHEN ch.channel = 'paid_search'
+                AND c.activity_date BETWEEN DATE '2026-06-07' AND DATE '2026-06-08'
+                THEN 'google_summer_sale_search'
         END AS special_event_id,
         CASE
             WHEN c.activity_date = DATE '2026-02-04' THEN 'outage'
@@ -155,6 +158,9 @@ base AS (
             WHEN ch.channel = 'paid_ads'
                 AND c.activity_date BETWEEN DATE '2026-03-18' AND DATE '2026-03-21'
                 THEN 'stockout_waste'
+            WHEN ch.channel = 'paid_search'
+                AND c.activity_date BETWEEN DATE '2026-06-07' AND DATE '2026-06-08'
+                THEN 'campaign'
             WHEN ch.channel IN ('paid_ads', 'paid_search') THEN 'campaign'
         END AS event_phase,
         CASE
@@ -221,6 +227,7 @@ scaled AS (
             WHEN special_event_id = 'instagram_trail_shoe_stockout' THEN 1.58
             WHEN special_event_id = 'instagram_spring_outfit_win' THEN 1.16
             WHEN special_event_id = 'google_memorial_day_win' THEN 1.12
+            WHEN special_event_id = 'google_summer_sale_search' THEN 1.10
             ELSE 1.00
         END AS spend_multiplier,
         CASE
@@ -228,6 +235,7 @@ scaled AS (
             WHEN special_event_id = 'instagram_trail_shoe_stockout' THEN 1.42
             WHEN special_event_id = 'instagram_spring_outfit_win' THEN 1.14
             WHEN special_event_id = 'google_memorial_day_win' THEN 1.10
+            WHEN special_event_id = 'google_summer_sale_search' THEN 1.12
             ELSE 1.00
         END AS impression_multiplier,
         CASE
@@ -236,6 +244,7 @@ scaled AS (
             WHEN special_event_id = 'instagram_trail_shoe_stockout' AND event_phase = 'stockout_waste' THEN 1.20
             WHEN special_event_id = 'instagram_spring_outfit_win' THEN 1.62
             WHEN special_event_id = 'google_memorial_day_win' THEN 1.50
+            WHEN special_event_id = 'google_summer_sale_search' THEN 1.34
             ELSE 1.00
         END AS ctr_multiplier,
         CASE
@@ -246,6 +255,7 @@ scaled AS (
             WHEN special_event_id = 'instagram_trail_shoe_stockout' AND event_phase = 'stockout_waste' THEN 0.01
             WHEN special_event_id = 'instagram_spring_outfit_win' THEN 1.36
             WHEN special_event_id = 'google_memorial_day_win' THEN 1.30
+            WHEN special_event_id = 'google_summer_sale_search' THEN 1.28
             ELSE 1.00
         END AS order_rate_multiplier,
         CASE

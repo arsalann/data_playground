@@ -5,7 +5,7 @@ WITH filtered_spend AS (
     SUM(spend) AS total_spend
   FROM `bruin-playground-arsalan.bruin_shop_staging.stg_marketing_spend`
   WHERE spend_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-      AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+      AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
     AND (
       '{{ filters.channel }}' = 'All channels'
       OR channel = CASE '{{ filters.channel }}'
@@ -40,7 +40,7 @@ filtered_orders AS (
     END) AS gross_profit
   FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
   WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-      AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+      AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
     AND (
       '{{ filters.channel }}' = 'All channels'
       OR source_channel = CASE '{{ filters.channel }}'

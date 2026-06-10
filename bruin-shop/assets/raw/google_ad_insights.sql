@@ -77,8 +77,16 @@ SELECT
     state_name,
     spend,
     impressions,
-    clicks,
-    conversions
+    CASE
+        WHEN special_event_id = 'google_summer_sale_search'
+            THEN CAST(ROUND(clicks * 0.025) AS INT64)
+        ELSE clicks
+    END AS clicks,
+    CASE
+        WHEN special_event_id = 'google_summer_sale_search'
+            THEN CAST(ROUND(conversions * 0.01) AS INT64)
+        ELSE conversions
+    END AS conversions
 FROM bruin_shop_raw.marketing_funnel
 WHERE channel = 'paid_search'
 ORDER BY date, state_code, city

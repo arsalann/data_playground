@@ -155,6 +155,7 @@ enriched AS (
         ABS(MOD(FARM_FINGERPRINT(CONCAT(order_key, '|discount')), 1000)) AS discount_rand,
         ABS(MOD(FARM_FINGERPRINT(CONCAT(order_key, '|time')), 86400)) AS base_seconds_after_midnight,
         ABS(MOD(FARM_FINGERPRINT(CONCAT(order_key, '|time_bucket')), 1000)) AS time_bucket_rand,
+        ABS(MOD(FARM_FINGERPRINT(CONCAT(order_key, '|campaign_attribution')), 1000)) AS campaign_attribution_rand,
         ROW_NUMBER() OVER (
             PARTITION BY market_id
             ORDER BY activity_date, channel, order_index
@@ -369,30 +370,52 @@ SELECT
     CONCAT('synthetic,apparel,', channel, ',', LOWER(state_code), ',', category_slug) AS tags,
     channel AS source_channel,
     platform AS source_platform,
-    campaign_id,
-    campaign_name,
+    CASE
+        WHEN special_event_id = 'google_summer_sale_search'
+            AND campaign_attribution_rand >= 25
+            THEN 'google_search_nonbrand'
+        ELSE campaign_id
+    END AS campaign_id,
+    CASE
+        WHEN special_event_id = 'google_summer_sale_search'
+            AND campaign_attribution_rand >= 25
+            THEN 'Google Search - Nonbrand Apparel'
+        ELSE campaign_name
+    END AS campaign_name,
     CASE
         WHEN product_id = 'prod_accessories_09'
             AND activity_date BETWEEN DATE '2026-02-20' AND DATE '2026-02-24'
             THEN 'black_tote_defect_refunds'
+        WHEN special_event_id = 'google_summer_sale_search'
+            AND campaign_attribution_rand >= 25
+            THEN CAST(NULL AS STRING)
         ELSE special_event_id
     END AS special_event_id,
     CASE
         WHEN product_id = 'prod_accessories_09'
             AND activity_date BETWEEN DATE '2026-02-20' AND DATE '2026-02-24'
             THEN 'product_defect'
+        WHEN special_event_id = 'google_summer_sale_search'
+            AND campaign_attribution_rand >= 25
+            THEN CAST(NULL AS STRING)
         ELSE special_event_type
     END AS special_event_type,
     CASE
         WHEN product_id = 'prod_accessories_09'
             AND activity_date BETWEEN DATE '2026-02-20' AND DATE '2026-02-24'
             THEN 'Black Tote Bag defect refund incident'
+        WHEN special_event_id = 'google_summer_sale_search'
+            AND campaign_attribution_rand >= 25
+            THEN CAST(NULL AS STRING)
         ELSE special_event_name
     END AS special_event_name,
     CASE
         WHEN product_id = 'prod_accessories_09'
             AND activity_date BETWEEN DATE '2026-02-20' AND DATE '2026-02-24'
             THEN 'refund_spike'
+        WHEN special_event_id = 'google_summer_sale_search'
+            AND campaign_attribution_rand >= 25
+            THEN CAST(NULL AS STRING)
         ELSE event_phase
     END AS event_phase,
     city,

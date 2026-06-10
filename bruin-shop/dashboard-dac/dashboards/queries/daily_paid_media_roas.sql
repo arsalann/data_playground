@@ -13,7 +13,7 @@ SELECT
 FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
 WHERE channel IN ('paid_search', 'paid_ads')
   AND report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-    AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+    AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
   AND (
     '{{ filters.channel }}' = 'All channels'
     OR channel = CASE '{{ filters.channel }}'

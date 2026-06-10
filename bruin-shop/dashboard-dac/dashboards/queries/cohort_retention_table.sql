@@ -9,7 +9,7 @@ WITH customer_orders AS (
     ON o.customer_email = c.customer_email
   WHERE o.payment_status IN ('paid', 'partially_refunded')
     AND DATE(o.order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-      AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+      AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
     AND (
       '{{ filters.channel }}' = 'All channels'
       OR o.source_channel = CASE '{{ filters.channel }}'

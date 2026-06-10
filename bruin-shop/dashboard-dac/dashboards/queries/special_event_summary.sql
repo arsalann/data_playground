@@ -1,7 +1,7 @@
 WITH date_bounds AS (
   SELECT
     COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01') AS start_date,
-    COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05') AS end_date
+    COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08') AS end_date
 )
 
 SELECT

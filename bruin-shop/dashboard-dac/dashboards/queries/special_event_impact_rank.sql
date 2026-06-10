@@ -1,7 +1,7 @@
 WITH date_bounds AS (
   SELECT
     COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01') AS start_date,
-    COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05') AS end_date
+    COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08') AS end_date
 )
 
 SELECT
@@ -12,6 +12,7 @@ SELECT
     WHEN event_name = 'Google Memorial Day search campaign win' THEN 'Search win'
     WHEN event_name = 'Instagram trail-shoe launch and stockout' THEN 'Trail stockout'
     WHEN event_name = 'Instagram spring outfit campaign win' THEN 'Spring win'
+    WHEN event_name = 'Google Search - Summer Sale' THEN 'Summer search'
     ELSE event_name
   END AS event_label,
   CASE event_type

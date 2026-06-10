@@ -22,7 +22,7 @@ Do not query the legacy shared `raw`, `staging`, or `reports` datasets for Bruin
 
 The ecommerce template originally generated external `ingestr` raw assets for Shopify, Klaviyo, Facebook Ads, Google Ads, and GA4. Those modeled assets were replaced with same-schema fake BigQuery raw assets so the dashboard-ready project can be validated and run end to end without third-party credentials.
 
-Current generated window: **2025-01-01 through 2026-06-05**. The refreshed model contains **680,778 orders**, **371,000 customer profiles**, **347,765 ordering customer emails**, **342,570 paid customers**, **120 products**, **51 state/district codes**, and **70 city markets**. Daily orders have a **1,292-order median** with deliberate event outliers from **365** orders on the outage low end to **2,667** orders on campaign-spike days; orders contain **1 to 10 items** with a **$58.95 average order value**. The model now includes **$38.7M net revenue**, **12.8M web sessions**, **$7.0M paid-media spend**, **3,760,690 GA4 page/ecommerce event rows**, **680,778 Stripe payment intents**, and **23,705 Stripe refund records**.
+Current generated window: **2025-01-01 through 2026-06-08**. The refreshed model contains **685,313 orders**, **371,000 customer profiles**, **348,382 ordering customer emails**, **343,224 paid customers**, **120 products**, **51 state/district codes**, and **70 city markets**. Daily orders have a **1,288-order median** with deliberate event outliers from **365** orders on the outage low end to **2,667** orders on campaign-spike days; orders contain **1 to 10 items** with a **$58.88 average order value**. The model now includes **$38.9M net revenue**, **12.9M web sessions**, **$7.0M paid-media spend**, **3,784,505 GA4 page/ecommerce event rows**, **685,313 Stripe payment intents**, and **23,864 Stripe refund records**.
 
 Separate Shopify and HubSpot ingestr assets are active for source-connection proofing because this validation workspace has local connections for those sources. The remaining connector-test definitions are parked as `.asset.yml.tmpl` template files so Bruin excludes them from pipeline discovery until valid local credentials are available.
 
@@ -47,11 +47,11 @@ Current customer lifecycle checks:
 
 | Metric | Current value |
 |---|---:|
-| Paid customers | 342,570 |
-| Paid or partially refunded orders | 656,952 |
-| One-order paid customers | 42.90% |
-| Repeat paid customers | 57.10% |
-| Customers with 5+ paid orders | 2.26% |
+| Paid customers | 343,224 |
+| Paid or partially refunded orders | 661,342 |
+| One-order paid customers | 42.57% |
+| Repeat paid customers | 57.43% |
+| Customers with 5+ paid orders | 2.33% |
 | Cohort month-0 retention | 100.00% |
 | January 2025 cohort month-1 retention | 26.84% |
 | January 2025 cohort month-6 retention | 5.64% |
@@ -68,6 +68,7 @@ The fake dataset includes deterministic outlier events for dashboard storytellin
 | Instagram trail-shoe launch and stockout | **2026-03-10 through 2026-03-21** | Paid social promotes `prod_shoes_04` / **Heather Gray Trail Shoes**. The launch phase from **2026-03-10 through 2026-03-17** increases CTR/conversion and forces the shoe as the primary product on many paid-social orders. The stockout phase from **2026-03-18 through 2026-03-21** keeps Instagram spend and clicks running, but the promoted shoe is no longer sold and paid-social orders collapse to near zero. |
 | Instagram spring outfit campaign win | **2026-04-08 through 2026-04-14** | A short successful paid-social campaign with higher CTR and click-to-order conversion, producing a temporary revenue and contribution-profit bump. |
 | Google Memorial Day search campaign win | **2026-05-11 through 2026-05-17** | A successful seasonal paid-search campaign with improved CTR and conversion, producing a short revenue and ROAS lift before the normal Memorial Day demand window. |
+| Google Search - Summer Sale | **2026-06-07 through 2026-06-08** | A short paid-search summer sale campaign with elevated seasonal demand and order volume. Campaign ID: `google_search_summer_sale`. |
 
 ## Assets
 

@@ -121,5 +121,17 @@ FROM UNNEST([
         'google_search_memorial_day_win',
         CAST(NULL AS STRING),
         'Paid search CTR and conversion improve during a short seasonal campaign, lifting revenue and ROAS.'
+    ),
+    STRUCT(
+        'google_summer_sale_search',
+        'Google Search - Summer Sale',
+        'successful_campaign',
+        DATE '2026-06-07',
+        DATE '2026-06-08',
+        'paid_search',
+        'Google Ads',
+        'google_search_summer_sale',
+        CAST(NULL AS STRING),
+        'Short paid-search summer sale campaign with elevated seasonal demand and order volume.'
     )
 ])

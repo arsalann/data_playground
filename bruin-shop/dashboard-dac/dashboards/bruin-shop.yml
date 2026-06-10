@@ -43,7 +43,7 @@ rows:
     content: |
       # Executive brief
 
-      The demo story: paid social and shoes create most of the profit, while failed campaigns, stockouts, fulfillment gaps, and a product defect create the visible risk signatures.
+      The demo story: paid social and shoes create most of the profit, while failed campaigns, stockouts, fulfillment gaps, product defects, and seasonal campaign swings create the visible risk signatures.
 
 - tab: Executive Brief
   widgets:
@@ -57,7 +57,7 @@ rows:
       SELECT CAST(ROUND(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), 0) AS INT64) AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
         AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
@@ -77,7 +77,7 @@ rows:
         END), 2) AS gross_profit
         FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
         WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
           AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
           AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
           AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
@@ -86,7 +86,7 @@ rows:
         SELECT ROUND(SUM(total_spend), 2) AS media_spend
         FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
         WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
           AND ('{{ filters.channel }}' = 'All channels' OR channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
       )
       SELECT CAST(ROUND(gross_profit - COALESCE(media_spend, 0), 0) AS INT64) AS value
@@ -104,7 +104,7 @@ rows:
       FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
       WHERE channel = 'paid_ads'
         AND report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
 
   - name: Exception orders
     type: metric
@@ -115,7 +115,7 @@ rows:
       SELECT COUNTIF(payment_status IN ('partially_refunded', 'pending', 'voided') OR fulfillment_status IN ('partial', 'unfulfilled')) AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
         AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
@@ -144,7 +144,7 @@ rows:
     content: |
       ### Risk engine
 
-      The injected incidents are visible without reading raw rows: failed search burns spend, the outage crushes sessions, and the tote defect spikes refunds.
+      The injected incidents are visible without reading raw rows: failed search burns spend, the outage crushes sessions, the tote defect spikes refunds, and seasonal campaigns change paid-search volume.
 
 - tab: Executive Brief
   widgets:
@@ -340,7 +340,7 @@ rows:
       SELECT ROUND(SUM(order_total), 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
         AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
@@ -355,7 +355,7 @@ rows:
       SELECT ROUND(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
         AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
@@ -370,7 +370,7 @@ rows:
       SELECT ROUND(SAFE_DIVIDE(SUM(CASE WHEN payment_status IN ('paid', 'partially_refunded') THEN order_total ELSE 0 END), COUNTIF(payment_status IN ('paid', 'partially_refunded'))), 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
         AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
@@ -389,7 +389,7 @@ rows:
           COUNTIF(cancel_reason IS NOT NULL) AS cancelled_orders
         FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
         WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+            AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
           AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
           AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
           AND ('{{ filters.event_type }}' = 'All event types' OR special_event_type = CASE '{{ filters.event_type }}' WHEN 'Failed campaign' THEN 'failed_campaign' WHEN 'Stockout campaign' THEN 'stockout_campaign' WHEN 'Website outage' THEN 'website_outage' WHEN 'Successful campaign' THEN 'successful_campaign' WHEN 'Product defect' THEN 'product_defect' END)
@@ -515,7 +515,7 @@ rows:
       SELECT ROUND(SUM(total_spend), 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
       WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND channel IN ('paid_search', 'paid_ads')
         AND (
           '{{ filters.channel }}' = 'All channels'
@@ -538,7 +538,7 @@ rows:
       SELECT ROUND(SUM(attributed_revenue), 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
       WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND (
           '{{ filters.channel }}' = 'All channels'
           OR channel = CASE '{{ filters.channel }}'
@@ -560,7 +560,7 @@ rows:
       SELECT ROUND(SAFE_DIVIDE(SUM(attributed_revenue), NULLIF(SUM(total_spend), 0)), 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_marketing_roi`
       WHERE report_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND channel IN ('paid_search', 'paid_ads')
         AND (
           '{{ filters.channel }}' = 'All channels'
@@ -582,7 +582,7 @@ rows:
       SELECT SUM(total_sessions) AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_web_sessions`
       WHERE session_date BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND (
           '{{ filters.channel }}' = 'All channels'
           OR channel = CASE '{{ filters.channel }}'
@@ -756,7 +756,7 @@ rows:
       SELECT ROUND(SAFE_DIVIDE(COUNTIF(payment_status IN ('paid', 'partially_refunded')), COUNT(*)) * 100, 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.payment_status }}' = 'All payment statuses' OR payment_status = CASE '{{ filters.payment_status }}' WHEN 'Paid' THEN 'paid' WHEN 'Partially refunded' THEN 'partially_refunded' WHEN 'Pending' THEN 'pending' WHEN 'Voided' THEN 'voided' END)
         AND ('{{ filters.fulfillment_status }}' = 'All fulfillment statuses' OR fulfillment_status = CASE '{{ filters.fulfillment_status }}' WHEN 'Fulfilled' THEN 'fulfilled' WHEN 'Partial' THEN 'partial' WHEN 'Unfulfilled' THEN 'unfulfilled' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
@@ -771,7 +771,7 @@ rows:
       SELECT COUNTIF(payment_status = 'voided') AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.payment_status }}' = 'All payment statuses' OR payment_status = CASE '{{ filters.payment_status }}' WHEN 'Paid' THEN 'paid' WHEN 'Partially refunded' THEN 'partially_refunded' WHEN 'Pending' THEN 'pending' WHEN 'Voided' THEN 'voided' END)
         AND ('{{ filters.fulfillment_status }}' = 'All fulfillment statuses' OR fulfillment_status = CASE '{{ filters.fulfillment_status }}' WHEN 'Fulfilled' THEN 'fulfilled' WHEN 'Partial' THEN 'partial' WHEN 'Unfulfilled' THEN 'unfulfilled' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
@@ -786,7 +786,7 @@ rows:
       SELECT COUNTIF(fulfillment_status = 'partial') AS value
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.payment_status }}' = 'All payment statuses' OR payment_status = CASE '{{ filters.payment_status }}' WHEN 'Paid' THEN 'paid' WHEN 'Partially refunded' THEN 'partially_refunded' WHEN 'Pending' THEN 'pending' WHEN 'Voided' THEN 'voided' END)
         AND ('{{ filters.fulfillment_status }}' = 'All fulfillment statuses' OR fulfillment_status = CASE '{{ filters.fulfillment_status }}' WHEN 'Fulfilled' THEN 'fulfilled' WHEN 'Partial' THEN 'partial' WHEN 'Unfulfilled' THEN 'unfulfilled' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
@@ -968,7 +968,7 @@ rows:
       FROM `bruin-playground-arsalan.bruin_shop_staging.stg_orders`
       WHERE payment_status IN ('paid', 'partially_refunded')
         AND DATE(order_date) BETWEEN COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
-          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+          AND COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND ('{{ filters.channel }}' = 'All channels' OR source_channel = CASE '{{ filters.channel }}' WHEN 'Paid social' THEN 'paid_ads' WHEN 'Paid search' THEN 'paid_search' WHEN 'Email' THEN 'email' WHEN 'Organic search' THEN 'organic_search' WHEN 'Direct' THEN 'direct' END)
         AND ('{{ filters.category }}' = 'All categories' OR primary_category = '{{ filters.category }}')
 
@@ -1146,7 +1146,7 @@ rows:
     sql: |
       SELECT COUNT(*) AS value
       FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_special_event_impact`
-      WHERE event_start_date <= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+      WHERE event_start_date <= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND event_end_date >= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
         AND (
           '{{ filters.event_type }}' = 'All event types'
@@ -1179,7 +1179,7 @@ rows:
     sql: |
       SELECT ROUND(SUM(revenue_delta_vs_baseline), 2) AS value
       FROM `bruin-playground-arsalan.bruin_shop_reports.rpt_special_event_impact`
-      WHERE event_start_date <= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-05')
+      WHERE event_start_date <= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.end }}', '') AS DATE), DATE '2026-06-08')
         AND event_end_date >= COALESCE(SAFE_CAST(NULLIF('{{ filters.date_range.start }}', '') AS DATE), DATE '2025-01-01')
 
   - name: Worst refund rate

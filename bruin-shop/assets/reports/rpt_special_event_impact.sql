@@ -131,6 +131,10 @@ marketing AS (
         ON ms.spend_date BETWEEN e.event_start_date AND e.event_end_date
         AND e.event_type != 'product_defect'
         AND (e.primary_channel = 'all_channels' OR ms.channel = e.primary_channel)
+        AND (
+            e.event_type NOT IN ('failed_campaign', 'stockout_campaign', 'successful_campaign')
+            OR ms.special_event_id = e.event_id
+        )
     GROUP BY e.event_id
 ),
 sessions AS (
@@ -142,6 +146,10 @@ sessions AS (
     LEFT JOIN bruin_shop_staging.stg_web_sessions ws
         ON ws.session_date BETWEEN e.event_start_date AND e.event_end_date
         AND (e.primary_channel = 'all_channels' OR ws.channel = e.primary_channel)
+        AND (
+            e.event_type NOT IN ('failed_campaign', 'stockout_campaign', 'successful_campaign')
+            OR ws.special_event_id = e.event_id
+        )
     GROUP BY e.event_id
 ),
 orders AS (
@@ -161,6 +169,10 @@ orders AS (
         ON DATE(o.order_date) BETWEEN e.event_start_date AND e.event_end_date
         AND (e.primary_channel = 'all_channels' OR o.source_channel = e.primary_channel)
         AND (e.affected_product_id IS NULL OR o.primary_product_id = e.affected_product_id)
+        AND (
+            e.event_type NOT IN ('failed_campaign', 'stockout_campaign', 'successful_campaign')
+            OR o.special_event_id = e.event_id
+        )
     GROUP BY e.event_id
 ),
 baseline AS (

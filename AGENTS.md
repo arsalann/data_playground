@@ -399,7 +399,15 @@ bruin connections ping <name>                                # Test a connection
 
 ## DAC CLI Quick Reference
 
-The `dac` binary should already be on `$PATH` at `~/.local/bin/dac` (installed once per machine via the installer in `DAC.md`).
+The `dac` binary lives on `$PATH` at `~/.local/bin/dac`. At the start of every DAC session, upgrade to the latest release and refresh the `create-dashboard` skill — DAC ships breaking schema changes frequently, and the skill ships alongside the CLI:
+
+```bash
+dac upgrade                                              # pulls the latest stable dac into ~/.local/bin
+dac skills install create-dashboard --force              # refreshes .claude/skills/create-dashboard/SKILL.md
+dac version                                              # confirm
+```
+
+Run both commands before touching any dashboard YAML/TSX. If `dac validate` rejects properties that used to work (`hideName`, `yLabel`, `seriesNames`, widget-level `height`, etc.), you are on a stale schema — re-run the two install commands above and consult the updated `SKILL.md`.
 
 ```bash
 dac validate --dir <pipeline>/dashboard-dac              # Schema + reference checks (fast)

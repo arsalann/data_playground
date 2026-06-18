@@ -109,7 +109,6 @@ rows:
         type: chart
         chart: bar
         col: 12
-        hideName: true
         x: subject
         y: [share_with_ai_pct]
         sql: |
@@ -181,20 +180,17 @@ rows:
         type: chart
         chart: line
         col: 12
-        hideName: false
         x: snapshot_label
-        y: [mathematics, society, technology, philosophy_religion]
-        yLabel: "Share of articles with ≥1 AI reference (%)"
-        seriesNames:
-          mathematics: "Mathematics"
-          society: "Society & social sciences"
-          technology: "Technology"
-          philosophy_religion: "Philosophy & religion"
+        y:
+          - mathematics
+          - society_social_sciences
+          - technology
+          - philosophy_religion
         sql: |
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
             ROUND(MAX(CASE WHEN subject = 'Mathematics'                    THEN share_with_ai END) * 100, 2) AS mathematics,
-            ROUND(MAX(CASE WHEN subject = 'Society and social sciences'    THEN share_with_ai END) * 100, 2) AS society,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences'    THEN share_with_ai END) * 100, 2) AS society_social_sciences,
             ROUND(MAX(CASE WHEN subject = 'Technology'                     THEN share_with_ai END) * 100, 2) AS technology,
             ROUND(MAX(CASE WHEN subject = 'Philosophy and religion'        THEN share_with_ai END) * 100, 2) AS philosophy_religion
           FROM `bruin-playground-arsalan.report.wat_category_metrics`
@@ -206,18 +202,15 @@ rows:
         type: chart
         chart: line
         col: 12
-        hideName: false
         x: snapshot_label
-        y: [arts, everyday_life, geography, biology_health, people, physical_sciences, history]
-        yLabel: "Share of articles with ≥1 AI reference (%)"
-        seriesNames:
-          arts: "Arts"
-          everyday_life: "Everyday life"
-          geography: "Geography"
-          biology_health: "Biology & health"
-          people: "People"
-          physical_sciences: "Physical sciences"
-          history: "History"
+        y:
+          - arts
+          - everyday_life
+          - geography
+          - biology_health
+          - people
+          - physical_sciences
+          - history
         sql: |
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
@@ -310,13 +303,13 @@ rows:
           LEFT JOIN first_snap f USING (subject)
           ORDER BY ABS(l.share_last - COALESCE(f.share_first, 0)) DESC
         columns:
-          - { name: "subject", label: "Subject" }
-          - { name: "share_dec_2019_pct", label: "Share Dec-2019 (%)", format: number }
-          - { name: "share_latest_pct", label: "Share latest (%)", format: number }
-          - { name: "change_pp", label: "Change (pp)", format: number }
-          - { name: "n_articles_dec_2019", label: "N articles Dec-2019", format: number }
-          - { name: "n_articles_latest", label: "N articles latest", format: number }
-          - { name: "latest_snapshot", label: "Latest snapshot" }
+          - {name: "subject", label: "Subject"}
+          - {name: "share_dec_2019_pct", label: "Share Dec-2019 (%)", format: number}
+          - {name: "share_latest_pct", label: "Share latest (%)", format: number}
+          - {name: "change_pp", label: "Change (pp)", format: number}
+          - {name: "n_articles_dec_2019", label: "N articles Dec-2019", format: number}
+          - {name: "n_articles_latest", label: "N articles latest", format: number}
+          - {name: "latest_snapshot", label: "Latest snapshot"}
 
   - widgets:
       - name: Growth comparison footnote
@@ -381,7 +374,6 @@ rows:
         type: chart
         chart: bar
         col: 12
-        hideName: true
         x: sub_subject_label
         y: [share_with_ai_pct]
         sql: |
@@ -449,19 +441,16 @@ rows:
         type: chart
         chart: line
         col: 12
-        hideName: false
         x: snapshot_label
-        y: [math_other, tech_engineering, math_statistics, tech_computing, philosophy, society_media, society_psychology, history_aux]
-        yLabel: "Share of articles with ≥1 AI reference (%)"
-        seriesNames:
-          math_other: "Mathematics › Other"
-          tech_engineering: "Technology › Engineering"
-          math_statistics: "Mathematics › Statistics and probability"
-          tech_computing: "Technology › Computing and IT"
-          philosophy: "Philosophy & religion › Philosophy"
-          society_media: "Society › Mass media"
-          society_psychology: "Society › Psychology"
-          history_aux: "History › Auxiliary historical sciences"
+        y:
+          - mathematics_other
+          - technology_engineering
+          - mathematics_statistics_and_probability
+          - technology_computing_and_it
+          - philosophy_religion_philosophy
+          - society_mass_media
+          - society_psychology
+          - history_auxiliary_historical_sciences
         sql: |
           WITH per_snap AS (
             SELECT
@@ -474,14 +463,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN subject = 'Mathematics'                 AND sub_subject = 'Other'                                  THEN share END) * 100, 2) AS math_other,
-            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Engineering'                            THEN share END) * 100, 2) AS tech_engineering,
-            ROUND(MAX(CASE WHEN subject = 'Mathematics'                 AND sub_subject = 'Statistics and probability'             THEN share END) * 100, 2) AS math_statistics,
-            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Computing and information technology'   THEN share END) * 100, 2) AS tech_computing,
-            ROUND(MAX(CASE WHEN subject = 'Philosophy and religion'     AND sub_subject = 'Philosophy'                             THEN share END) * 100, 2) AS philosophy,
-            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Mass media'                             THEN share END) * 100, 2) AS society_media,
+            ROUND(MAX(CASE WHEN subject = 'Mathematics'                 AND sub_subject = 'Other'                                  THEN share END) * 100, 2) AS mathematics_other,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Engineering'                            THEN share END) * 100, 2) AS technology_engineering,
+            ROUND(MAX(CASE WHEN subject = 'Mathematics'                 AND sub_subject = 'Statistics and probability'             THEN share END) * 100, 2) AS mathematics_statistics_and_probability,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Computing and information technology'   THEN share END) * 100, 2) AS technology_computing_and_it,
+            ROUND(MAX(CASE WHEN subject = 'Philosophy and religion'     AND sub_subject = 'Philosophy'                             THEN share END) * 100, 2) AS philosophy_religion_philosophy,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Mass media'                             THEN share END) * 100, 2) AS society_mass_media,
             ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Psychology'                             THEN share END) * 100, 2) AS society_psychology,
-            ROUND(MAX(CASE WHEN subject = 'History'                     AND sub_subject = 'Auxiliary historical sciences'          THEN share END) * 100, 2) AS history_aux
+            ROUND(MAX(CASE WHEN subject = 'History'                     AND sub_subject = 'Auxiliary historical sciences'          THEN share END) * 100, 2) AS history_auxiliary_historical_sciences
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -491,19 +480,16 @@ rows:
         type: chart
         chart: line
         col: 12
-        hideName: false
         x: snapshot_label
-        y: [society_business, society_education, physical_basics, tech_medical, tech_electronics, biology_ecology, tech_navigation, arts_film]
-        yLabel: "Share of articles with ≥1 AI reference (%)"
-        seriesNames:
-          society_business: "Society › Business and economics"
-          society_education: "Society › Education"
-          physical_basics: "Physical sciences › Science basics"
-          tech_medical: "Technology › Medical technology"
-          tech_electronics: "Technology › Electronics"
-          biology_ecology: "Biology & health › Ecology"
-          tech_navigation: "Technology › Navigation and timekeeping"
-          arts_film: "Arts › Film and television"
+        y:
+          - society_business_and_economics
+          - society_education
+          - physical_sciences_science_basics
+          - technology_medical_technology
+          - technology_electronics
+          - biology_health_ecology
+          - technology_navigation_and_timekeeping
+          - arts_film_and_television
         sql: |
           WITH per_snap AS (
             SELECT
@@ -516,14 +502,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Business and economics'                 THEN share END) * 100, 2) AS society_business,
+            ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Business and economics'                 THEN share END) * 100, 2) AS society_business_and_economics,
             ROUND(MAX(CASE WHEN subject = 'Society and social sciences' AND sub_subject = 'Education'                              THEN share END) * 100, 2) AS society_education,
-            ROUND(MAX(CASE WHEN subject = 'Physical sciences'           AND sub_subject = 'Science basics'                         THEN share END) * 100, 2) AS physical_basics,
-            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Medical technology'                     THEN share END) * 100, 2) AS tech_medical,
-            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Electronics'                            THEN share END) * 100, 2) AS tech_electronics,
-            ROUND(MAX(CASE WHEN subject = 'Biology and health sciences' AND sub_subject = 'Ecology'                                THEN share END) * 100, 2) AS biology_ecology,
-            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Navigation and timekeeping'             THEN share END) * 100, 2) AS tech_navigation,
-            ROUND(MAX(CASE WHEN subject = 'Arts'                        AND sub_subject = 'Film and television'                    THEN share END) * 100, 2) AS arts_film
+            ROUND(MAX(CASE WHEN subject = 'Physical sciences'           AND sub_subject = 'Science basics'                         THEN share END) * 100, 2) AS physical_sciences_science_basics,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Medical technology'                     THEN share END) * 100, 2) AS technology_medical_technology,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Electronics'                            THEN share END) * 100, 2) AS technology_electronics,
+            ROUND(MAX(CASE WHEN subject = 'Biology and health sciences' AND sub_subject = 'Ecology'                                THEN share END) * 100, 2) AS biology_health_ecology,
+            ROUND(MAX(CASE WHEN subject = 'Technology'                  AND sub_subject = 'Navigation and timekeeping'             THEN share END) * 100, 2) AS technology_navigation_and_timekeeping,
+            ROUND(MAX(CASE WHEN subject = 'Arts'                        AND sub_subject = 'Film and television'                    THEN share END) * 100, 2) AS arts_film_and_television
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -633,15 +619,15 @@ rows:
           JOIN subj_share s USING (subject)
           ORDER BY s.subj_share DESC
         columns:
-          - { name: "subject", label: "Subject" }
-          - { name: "subject_share_pct", label: "Subject share (%)", format: number }
-          - { name: "n_sub_subjects", label: "Sub-subjects (≥5 articles)", format: number }
-          - { name: "n_articles_eligible", label: "N articles (eligible)", format: number }
-          - { name: "leading_sub_subject", label: "Leading sub-subject" }
-          - { name: "leading_share_pct", label: "Leading share (%)", format: number }
-          - { name: "trailing_sub_subject", label: "Trailing sub-subject" }
-          - { name: "trailing_share_pct", label: "Trailing share (%)", format: number }
-          - { name: "spread_pp", label: "Within-subject spread (pp)", format: number }
+          - {name: "subject", label: "Subject"}
+          - {name: "subject_share_pct", label: "Subject share (%)", format: number}
+          - {name: "n_sub_subjects", label: "Sub-subjects (≥5 articles)", format: number}
+          - {name: "n_articles_eligible", label: "N articles (eligible)", format: number}
+          - {name: "leading_sub_subject", label: "Leading sub-subject"}
+          - {name: "leading_share_pct", label: "Leading share (%)", format: number}
+          - {name: "trailing_sub_subject", label: "Trailing sub-subject"}
+          - {name: "trailing_share_pct", label: "Trailing share (%)", format: number}
+          - {name: "spread_pp", label: "Within-subject spread (pp)", format: number}
 
   # Row 1 of 3 — highest-share subjects
   - widgets:
@@ -649,18 +635,15 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [math_other, math_statistics, math_discrete, math_geometry, math_algebra, math_calculus, math_basics]
-        yLabel: "Share (%)"
-        seriesNames:
-          math_other: "Other"
-          math_statistics: "Statistics and probability"
-          math_discrete: "Discrete mathematics"
-          math_geometry: "Geometry"
-          math_algebra: "Algebra"
-          math_calculus: "Calculus and analysis"
-          math_basics: "Basics"
+        y:
+          - other
+          - statistics_and_probability
+          - discrete_mathematics
+          - geometry
+          - algebra
+          - calculus_and_analysis
+          - basics
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -671,13 +654,13 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Other'                      THEN share END) * 100, 2) AS math_other,
-            ROUND(MAX(CASE WHEN sub_subject = 'Statistics and probability' THEN share END) * 100, 2) AS math_statistics,
-            ROUND(MAX(CASE WHEN sub_subject = 'Discrete mathematics'       THEN share END) * 100, 2) AS math_discrete,
-            ROUND(MAX(CASE WHEN sub_subject = 'Geometry'                   THEN share END) * 100, 2) AS math_geometry,
-            ROUND(MAX(CASE WHEN sub_subject = 'Algebra'                    THEN share END) * 100, 2) AS math_algebra,
-            ROUND(MAX(CASE WHEN sub_subject = 'Calculus and analysis'      THEN share END) * 100, 2) AS math_calculus,
-            ROUND(MAX(CASE WHEN sub_subject = 'Basics'                     THEN share END) * 100, 2) AS math_basics
+            ROUND(MAX(CASE WHEN sub_subject = 'Other'                      THEN share END) * 100, 2) AS other,
+            ROUND(MAX(CASE WHEN sub_subject = 'Statistics and probability' THEN share END) * 100, 2) AS statistics_and_probability,
+            ROUND(MAX(CASE WHEN sub_subject = 'Discrete mathematics'       THEN share END) * 100, 2) AS discrete_mathematics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Geometry'                   THEN share END) * 100, 2) AS geometry,
+            ROUND(MAX(CASE WHEN sub_subject = 'Algebra'                    THEN share END) * 100, 2) AS algebra,
+            ROUND(MAX(CASE WHEN sub_subject = 'Calculus and analysis'      THEN share END) * 100, 2) AS calculus_and_analysis,
+            ROUND(MAX(CASE WHEN sub_subject = 'Basics'                     THEN share END) * 100, 2) AS basics
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -686,19 +669,16 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [soc_media, soc_psych, soc_business, soc_education, soc_companies, soc_language, soc_sociology, soc_society]
-        yLabel: "Share (%)"
-        seriesNames:
-          soc_media: "Mass media"
-          soc_psych: "Psychology"
-          soc_business: "Business and economics"
-          soc_education: "Education"
-          soc_companies: "Companies (extended)"
-          soc_language: "Language"
-          soc_sociology: "Sociology"
-          soc_society: "Society"
+        y:
+          - mass_media
+          - psychology
+          - business_and_economics
+          - education
+          - companies_extended
+          - language
+          - sociology
+          - society
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -709,14 +689,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Mass media'              THEN share END) * 100, 2) AS soc_media,
-            ROUND(MAX(CASE WHEN sub_subject = 'Psychology'              THEN share END) * 100, 2) AS soc_psych,
-            ROUND(MAX(CASE WHEN sub_subject = 'Business and economics'  THEN share END) * 100, 2) AS soc_business,
-            ROUND(MAX(CASE WHEN sub_subject = 'Education'               THEN share END) * 100, 2) AS soc_education,
-            ROUND(MAX(CASE WHEN sub_subject = 'Companies (extended)'    THEN share END) * 100, 2) AS soc_companies,
-            ROUND(MAX(CASE WHEN sub_subject = 'Language'                THEN share END) * 100, 2) AS soc_language,
-            ROUND(MAX(CASE WHEN sub_subject = 'Sociology'               THEN share END) * 100, 2) AS soc_sociology,
-            ROUND(MAX(CASE WHEN sub_subject = 'Society'                 THEN share END) * 100, 2) AS soc_society
+            ROUND(MAX(CASE WHEN sub_subject = 'Mass media'              THEN share END) * 100, 2) AS mass_media,
+            ROUND(MAX(CASE WHEN sub_subject = 'Psychology'              THEN share END) * 100, 2) AS psychology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Business and economics'  THEN share END) * 100, 2) AS business_and_economics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Education'               THEN share END) * 100, 2) AS education,
+            ROUND(MAX(CASE WHEN sub_subject = 'Companies (extended)'    THEN share END) * 100, 2) AS companies_extended,
+            ROUND(MAX(CASE WHEN sub_subject = 'Language'                THEN share END) * 100, 2) AS language,
+            ROUND(MAX(CASE WHEN sub_subject = 'Sociology'               THEN share END) * 100, 2) AS sociology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Society'                 THEN share END) * 100, 2) AS society
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -725,19 +705,16 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [tech_engineering, tech_computing_it, tech_computing_ext, tech_internet, tech_medical, tech_electronics, tech_navigation, tech_media]
-        yLabel: "Share (%)"
-        seriesNames:
-          tech_engineering: "Engineering"
-          tech_computing_it: "Computing and IT"
-          tech_computing_ext: "Computing (extended)"
-          tech_internet: "Internet culture (extended)"
-          tech_medical: "Medical technology"
-          tech_electronics: "Electronics"
-          tech_navigation: "Navigation and timekeeping"
-          tech_media: "Media and communication"
+        y:
+          - engineering
+          - computing_and_it
+          - computing_extended
+          - internet_culture_extended
+          - medical_technology
+          - electronics
+          - navigation_and_timekeeping
+          - media_and_communication
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -748,14 +725,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Engineering'                            THEN share END) * 100, 2) AS tech_engineering,
-            ROUND(MAX(CASE WHEN sub_subject = 'Computing and information technology'   THEN share END) * 100, 2) AS tech_computing_it,
-            ROUND(MAX(CASE WHEN sub_subject = 'Computing (extended)'                   THEN share END) * 100, 2) AS tech_computing_ext,
-            ROUND(MAX(CASE WHEN sub_subject = 'Internet culture (extended)'            THEN share END) * 100, 2) AS tech_internet,
-            ROUND(MAX(CASE WHEN sub_subject = 'Medical technology'                     THEN share END) * 100, 2) AS tech_medical,
-            ROUND(MAX(CASE WHEN sub_subject = 'Electronics'                            THEN share END) * 100, 2) AS tech_electronics,
-            ROUND(MAX(CASE WHEN sub_subject = 'Navigation and timekeeping'             THEN share END) * 100, 2) AS tech_navigation,
-            ROUND(MAX(CASE WHEN sub_subject = 'Media and communication'                THEN share END) * 100, 2) AS tech_media
+            ROUND(MAX(CASE WHEN sub_subject = 'Engineering'                            THEN share END) * 100, 2) AS engineering,
+            ROUND(MAX(CASE WHEN sub_subject = 'Computing and information technology'   THEN share END) * 100, 2) AS computing_and_it,
+            ROUND(MAX(CASE WHEN sub_subject = 'Computing (extended)'                   THEN share END) * 100, 2) AS computing_extended,
+            ROUND(MAX(CASE WHEN sub_subject = 'Internet culture (extended)'            THEN share END) * 100, 2) AS internet_culture_extended,
+            ROUND(MAX(CASE WHEN sub_subject = 'Medical technology'                     THEN share END) * 100, 2) AS medical_technology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Electronics'                            THEN share END) * 100, 2) AS electronics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Navigation and timekeeping'             THEN share END) * 100, 2) AS navigation_and_timekeeping,
+            ROUND(MAX(CASE WHEN sub_subject = 'Media and communication'                THEN share END) * 100, 2) AS media_and_communication
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -764,13 +741,10 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [phil_philosophy, phil_religion]
-        yLabel: "Share (%)"
-        seriesNames:
-          phil_philosophy: "Philosophy"
-          phil_religion: "Religion and spirituality"
+        y:
+          - philosophy
+          - religion_and_spirituality
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -781,8 +755,8 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Philosophy'                THEN share END) * 100, 2) AS phil_philosophy,
-            ROUND(MAX(CASE WHEN sub_subject = 'Religion and spirituality' THEN share END) * 100, 2) AS phil_religion
+            ROUND(MAX(CASE WHEN sub_subject = 'Philosophy'                THEN share END) * 100, 2) AS philosophy,
+            ROUND(MAX(CASE WHEN sub_subject = 'Religion and spirituality' THEN share END) * 100, 2) AS religion_and_spirituality
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -793,18 +767,15 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [arts_film, arts_performing, arts_visual, arts_literature, arts_music, arts_venues, arts_architecture]
-        yLabel: "Share (%)"
-        seriesNames:
-          arts_film: "Film and television"
-          arts_performing: "Performing arts"
-          arts_visual: "Visual arts"
-          arts_literature: "Literature"
-          arts_music: "Music"
-          arts_venues: "Cultural venues"
-          arts_architecture: "Architecture"
+        y:
+          - film_and_television
+          - performing_arts
+          - visual_arts
+          - literature
+          - music
+          - cultural_venues
+          - architecture
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -815,13 +786,13 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Film and television' THEN share END) * 100, 2) AS arts_film,
-            ROUND(MAX(CASE WHEN sub_subject = 'Performing arts'     THEN share END) * 100, 2) AS arts_performing,
-            ROUND(MAX(CASE WHEN sub_subject = 'Visual arts'         THEN share END) * 100, 2) AS arts_visual,
-            ROUND(MAX(CASE WHEN sub_subject = 'Literature'          THEN share END) * 100, 2) AS arts_literature,
-            ROUND(MAX(CASE WHEN sub_subject = 'Music'               THEN share END) * 100, 2) AS arts_music,
-            ROUND(MAX(CASE WHEN sub_subject = 'Cultural venues'     THEN share END) * 100, 2) AS arts_venues,
-            ROUND(MAX(CASE WHEN sub_subject = 'Architecture'        THEN share END) * 100, 2) AS arts_architecture
+            ROUND(MAX(CASE WHEN sub_subject = 'Film and television' THEN share END) * 100, 2) AS film_and_television,
+            ROUND(MAX(CASE WHEN sub_subject = 'Performing arts'     THEN share END) * 100, 2) AS performing_arts,
+            ROUND(MAX(CASE WHEN sub_subject = 'Visual arts'         THEN share END) * 100, 2) AS visual_arts,
+            ROUND(MAX(CASE WHEN sub_subject = 'Literature'          THEN share END) * 100, 2) AS literature,
+            ROUND(MAX(CASE WHEN sub_subject = 'Music'               THEN share END) * 100, 2) AS music,
+            ROUND(MAX(CASE WHEN sub_subject = 'Cultural venues'     THEN share END) * 100, 2) AS cultural_venues,
+            ROUND(MAX(CASE WHEN sub_subject = 'Architecture'        THEN share END) * 100, 2) AS architecture
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -830,19 +801,16 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [el_sports, el_sexuality, el_cooking, el_housing, el_household, el_clothing, el_family, el_stages]
-        yLabel: "Share (%)"
-        seriesNames:
-          el_sports: "Sports and recreation"
-          el_sexuality: "Sexuality and gender"
-          el_cooking: "Cooking, food and drink"
-          el_housing: "Housing"
-          el_household: "Household items"
-          el_clothing: "Clothing and fashion"
-          el_family: "Family, kinship, relationships"
-          el_stages: "Stages of life"
+        y:
+          - sports_and_recreation
+          - sexuality_and_gender
+          - cooking_food_and_drink
+          - housing
+          - household_items
+          - clothing_and_fashion
+          - family_kinship_relationships
+          - stages_of_life
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -853,14 +821,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Sports and recreation'                          THEN share END) * 100, 2) AS el_sports,
-            ROUND(MAX(CASE WHEN sub_subject = 'Sexuality and gender'                           THEN share END) * 100, 2) AS el_sexuality,
-            ROUND(MAX(CASE WHEN sub_subject = 'Cooking, food and drink'                        THEN share END) * 100, 2) AS el_cooking,
-            ROUND(MAX(CASE WHEN sub_subject = 'Housing'                                        THEN share END) * 100, 2) AS el_housing,
-            ROUND(MAX(CASE WHEN sub_subject = 'Household items'                                THEN share END) * 100, 2) AS el_household,
-            ROUND(MAX(CASE WHEN sub_subject = 'Clothing and fashion'                           THEN share END) * 100, 2) AS el_clothing,
-            ROUND(MAX(CASE WHEN sub_subject = 'Family, kinship and interpersonal relationships' THEN share END) * 100, 2) AS el_family,
-            ROUND(MAX(CASE WHEN sub_subject = 'Stages of life'                                 THEN share END) * 100, 2) AS el_stages
+            ROUND(MAX(CASE WHEN sub_subject = 'Sports and recreation'                          THEN share END) * 100, 2) AS sports_and_recreation,
+            ROUND(MAX(CASE WHEN sub_subject = 'Sexuality and gender'                           THEN share END) * 100, 2) AS sexuality_and_gender,
+            ROUND(MAX(CASE WHEN sub_subject = 'Cooking, food and drink'                        THEN share END) * 100, 2) AS cooking_food_and_drink,
+            ROUND(MAX(CASE WHEN sub_subject = 'Housing'                                        THEN share END) * 100, 2) AS housing,
+            ROUND(MAX(CASE WHEN sub_subject = 'Household items'                                THEN share END) * 100, 2) AS household_items,
+            ROUND(MAX(CASE WHEN sub_subject = 'Clothing and fashion'                           THEN share END) * 100, 2) AS clothing_and_fashion,
+            ROUND(MAX(CASE WHEN sub_subject = 'Family, kinship and interpersonal relationships' THEN share END) * 100, 2) AS family_kinship_relationships,
+            ROUND(MAX(CASE WHEN sub_subject = 'Stages of life'                                 THEN share END) * 100, 2) AS stages_of_life
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -869,15 +837,12 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [geo_cities, geo_basics, geo_countries, geo_physical]
-        yLabel: "Share (%)"
-        seriesNames:
-          geo_cities: "Cities"
-          geo_basics: "Basics"
-          geo_countries: "Countries and other regions"
-          geo_physical: "Physical geography"
+        y:
+          - cities
+          - basics
+          - countries_and_other_regions
+          - physical_geography
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -888,10 +853,10 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Cities'                      THEN share END) * 100, 2) AS geo_cities,
-            ROUND(MAX(CASE WHEN sub_subject = 'Basics'                      THEN share END) * 100, 2) AS geo_basics,
-            ROUND(MAX(CASE WHEN sub_subject = 'Countries and other regions' THEN share END) * 100, 2) AS geo_countries,
-            ROUND(MAX(CASE WHEN sub_subject = 'Physical geography'          THEN share END) * 100, 2) AS geo_physical
+            ROUND(MAX(CASE WHEN sub_subject = 'Cities'                      THEN share END) * 100, 2) AS cities,
+            ROUND(MAX(CASE WHEN sub_subject = 'Basics'                      THEN share END) * 100, 2) AS basics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Countries and other regions' THEN share END) * 100, 2) AS countries_and_other_regions,
+            ROUND(MAX(CASE WHEN sub_subject = 'Physical geography'          THEN share END) * 100, 2) AS physical_geography
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -900,19 +865,16 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [bio_ecology, bio_zoology, bio_anatomy, bio_biochem, bio_health, bio_cell, bio_general, bio_organisms]
-        yLabel: "Share (%)"
-        seriesNames:
-          bio_ecology: "Ecology"
-          bio_zoology: "Zoology"
-          bio_anatomy: "Anatomy and morphology"
-          bio_biochem: "Biochemistry & molecular biology"
-          bio_health: "Health, medicine and disease"
-          bio_cell: "Cell biology"
-          bio_general: "Biology & health: General"
-          bio_organisms: "Organisms"
+        y:
+          - ecology
+          - zoology
+          - anatomy_and_morphology
+          - biochemistry_molecular_biology
+          - health_medicine_and_disease
+          - cell_biology
+          - biology_health_general
+          - organisms
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -923,14 +885,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Ecology'                              THEN share END) * 100, 2) AS bio_ecology,
-            ROUND(MAX(CASE WHEN sub_subject = 'Zoology'                              THEN share END) * 100, 2) AS bio_zoology,
-            ROUND(MAX(CASE WHEN sub_subject = 'Anatomy and morphology'               THEN share END) * 100, 2) AS bio_anatomy,
-            ROUND(MAX(CASE WHEN sub_subject = 'Biochemistry and molecular biology'   THEN share END) * 100, 2) AS bio_biochem,
-            ROUND(MAX(CASE WHEN sub_subject = 'Health, medicine and disease'         THEN share END) * 100, 2) AS bio_health,
-            ROUND(MAX(CASE WHEN sub_subject = 'Cell biology'                         THEN share END) * 100, 2) AS bio_cell,
-            ROUND(MAX(CASE WHEN sub_subject = 'Biology and health sciences: General' THEN share END) * 100, 2) AS bio_general,
-            ROUND(MAX(CASE WHEN sub_subject = 'Organisms'                            THEN share END) * 100, 2) AS bio_organisms
+            ROUND(MAX(CASE WHEN sub_subject = 'Ecology'                              THEN share END) * 100, 2) AS ecology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Zoology'                              THEN share END) * 100, 2) AS zoology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Anatomy and morphology'               THEN share END) * 100, 2) AS anatomy_and_morphology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Biochemistry and molecular biology'   THEN share END) * 100, 2) AS biochemistry_molecular_biology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Health, medicine and disease'         THEN share END) * 100, 2) AS health_medicine_and_disease,
+            ROUND(MAX(CASE WHEN sub_subject = 'Cell biology'                         THEN share END) * 100, 2) AS cell_biology,
+            ROUND(MAX(CASE WHEN sub_subject = 'Biology and health sciences: General' THEN share END) * 100, 2) AS biology_health_general,
+            ROUND(MAX(CASE WHEN sub_subject = 'Organisms'                            THEN share END) * 100, 2) AS organisms
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -941,19 +903,16 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [ppl_business, ppl_directors, ppl_sports, ppl_scientists, ppl_entertainers, ppl_philosophers, ppl_writers, ppl_musicians]
-        yLabel: "Share (%)"
-        seriesNames:
-          ppl_business: "Businesspeople"
-          ppl_directors: "Directors, producers, screenwriters"
-          ppl_sports: "Sports figures"
-          ppl_scientists: "Scientists, inventors, mathematicians"
-          ppl_entertainers: "Entertainers"
-          ppl_philosophers: "Philosophers, historians, etc."
-          ppl_writers: "Writers"
-          ppl_musicians: "Musicians and composers"
+        y:
+          - businesspeople
+          - directors_producers_screenwriters
+          - sports_figures
+          - scientists_inventors_mathematicians
+          - entertainers
+          - philosophers_historians_etc
+          - writers
+          - musicians_and_composers
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -964,14 +923,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Businesspeople'                                              THEN share END) * 100, 2) AS ppl_business,
-            ROUND(MAX(CASE WHEN sub_subject = 'Directors, producers and screenwriters'                      THEN share END) * 100, 2) AS ppl_directors,
-            ROUND(MAX(CASE WHEN sub_subject = 'Sports figures'                                              THEN share END) * 100, 2) AS ppl_sports,
-            ROUND(MAX(CASE WHEN sub_subject = 'Scientists, inventors and mathematicians'                    THEN share END) * 100, 2) AS ppl_scientists,
-            ROUND(MAX(CASE WHEN sub_subject = 'Entertainers'                                                THEN share END) * 100, 2) AS ppl_entertainers,
-            ROUND(MAX(CASE WHEN sub_subject = 'Philosophers, historians, political and social scientists'   THEN share END) * 100, 2) AS ppl_philosophers,
-            ROUND(MAX(CASE WHEN sub_subject = 'Writers'                                                     THEN share END) * 100, 2) AS ppl_writers,
-            ROUND(MAX(CASE WHEN sub_subject = 'Musicians and composers'                                     THEN share END) * 100, 2) AS ppl_musicians
+            ROUND(MAX(CASE WHEN sub_subject = 'Businesspeople'                                              THEN share END) * 100, 2) AS businesspeople,
+            ROUND(MAX(CASE WHEN sub_subject = 'Directors, producers and screenwriters'                      THEN share END) * 100, 2) AS directors_producers_screenwriters,
+            ROUND(MAX(CASE WHEN sub_subject = 'Sports figures'                                              THEN share END) * 100, 2) AS sports_figures,
+            ROUND(MAX(CASE WHEN sub_subject = 'Scientists, inventors and mathematicians'                    THEN share END) * 100, 2) AS scientists_inventors_mathematicians,
+            ROUND(MAX(CASE WHEN sub_subject = 'Entertainers'                                                THEN share END) * 100, 2) AS entertainers,
+            ROUND(MAX(CASE WHEN sub_subject = 'Philosophers, historians, political and social scientists'   THEN share END) * 100, 2) AS philosophers_historians_etc,
+            ROUND(MAX(CASE WHEN sub_subject = 'Writers'                                                     THEN share END) * 100, 2) AS writers,
+            ROUND(MAX(CASE WHEN sub_subject = 'Musicians and composers'                                     THEN share END) * 100, 2) AS musicians_and_composers
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -980,17 +939,14 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [phys_basics, phys_earth, phys_physics, phys_measurement, phys_astronomy, phys_chemistry]
-        yLabel: "Share (%)"
-        seriesNames:
-          phys_basics: "Science basics"
-          phys_earth: "Earth science"
-          phys_physics: "Physics"
-          phys_measurement: "Measurement"
-          phys_astronomy: "Astronomy"
-          phys_chemistry: "Chemistry"
+        y:
+          - science_basics
+          - earth_science
+          - physics
+          - measurement
+          - astronomy
+          - chemistry
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -1001,12 +957,12 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Science basics' THEN share END) * 100, 2) AS phys_basics,
-            ROUND(MAX(CASE WHEN sub_subject = 'Earth science'  THEN share END) * 100, 2) AS phys_earth,
-            ROUND(MAX(CASE WHEN sub_subject = 'Physics'        THEN share END) * 100, 2) AS phys_physics,
-            ROUND(MAX(CASE WHEN sub_subject = 'Measurement'    THEN share END) * 100, 2) AS phys_measurement,
-            ROUND(MAX(CASE WHEN sub_subject = 'Astronomy'      THEN share END) * 100, 2) AS phys_astronomy,
-            ROUND(MAX(CASE WHEN sub_subject = 'Chemistry'      THEN share END) * 100, 2) AS phys_chemistry
+            ROUND(MAX(CASE WHEN sub_subject = 'Science basics' THEN share END) * 100, 2) AS science_basics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Earth science'  THEN share END) * 100, 2) AS earth_science,
+            ROUND(MAX(CASE WHEN sub_subject = 'Physics'        THEN share END) * 100, 2) AS physics,
+            ROUND(MAX(CASE WHEN sub_subject = 'Measurement'    THEN share END) * 100, 2) AS measurement,
+            ROUND(MAX(CASE WHEN sub_subject = 'Astronomy'      THEN share END) * 100, 2) AS astronomy,
+            ROUND(MAX(CASE WHEN sub_subject = 'Chemistry'      THEN share END) * 100, 2) AS chemistry
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -1015,19 +971,16 @@ rows:
         type: chart
         chart: line
         col: 3
-        hideName: false
         x: snapshot_label
-        y: [hist_aux, hist_subject, hist_modern, hist_continent, hist_earlymodern, hist_postclassical, hist_country, hist_prehistory]
-        yLabel: "Share (%)"
-        seriesNames:
-          hist_aux: "Auxiliary historical sciences"
-          hist_subject: "History by subject matter"
-          hist_modern: "Modern"
-          hist_continent: "History by continent and region"
-          hist_earlymodern: "Early modern"
-          hist_postclassical: "Post-classical"
-          hist_country: "History by country"
-          hist_prehistory: "Prehistory"
+        y:
+          - auxiliary_historical_sciences
+          - history_by_subject_matter
+          - modern
+          - history_by_continent_and_region
+          - early_modern
+          - post_classical
+          - history_by_country
+          - prehistory
         sql: |
           WITH per_snap AS (
             SELECT snapshot_date, sub_subject,
@@ -1038,14 +991,14 @@ rows:
           )
           SELECT
             FORMAT_DATE('%b %Y', snapshot_date) AS snapshot_label,
-            ROUND(MAX(CASE WHEN sub_subject = 'Auxiliary historical sciences'   THEN share END) * 100, 2) AS hist_aux,
-            ROUND(MAX(CASE WHEN sub_subject = 'History by subject matter'       THEN share END) * 100, 2) AS hist_subject,
-            ROUND(MAX(CASE WHEN sub_subject = 'Modern'                          THEN share END) * 100, 2) AS hist_modern,
-            ROUND(MAX(CASE WHEN sub_subject = 'History by continent and region' THEN share END) * 100, 2) AS hist_continent,
-            ROUND(MAX(CASE WHEN sub_subject = 'Early modern'                    THEN share END) * 100, 2) AS hist_earlymodern,
-            ROUND(MAX(CASE WHEN sub_subject = 'Post-classical'                  THEN share END) * 100, 2) AS hist_postclassical,
-            ROUND(MAX(CASE WHEN sub_subject = 'History by country'              THEN share END) * 100, 2) AS hist_country,
-            ROUND(MAX(CASE WHEN sub_subject = 'Prehistory'                      THEN share END) * 100, 2) AS hist_prehistory
+            ROUND(MAX(CASE WHEN sub_subject = 'Auxiliary historical sciences'   THEN share END) * 100, 2) AS auxiliary_historical_sciences,
+            ROUND(MAX(CASE WHEN sub_subject = 'History by subject matter'       THEN share END) * 100, 2) AS history_by_subject_matter,
+            ROUND(MAX(CASE WHEN sub_subject = 'Modern'                          THEN share END) * 100, 2) AS modern,
+            ROUND(MAX(CASE WHEN sub_subject = 'History by continent and region' THEN share END) * 100, 2) AS history_by_continent_and_region,
+            ROUND(MAX(CASE WHEN sub_subject = 'Early modern'                    THEN share END) * 100, 2) AS early_modern,
+            ROUND(MAX(CASE WHEN sub_subject = 'Post-classical'                  THEN share END) * 100, 2) AS post_classical,
+            ROUND(MAX(CASE WHEN sub_subject = 'History by country'              THEN share END) * 100, 2) AS history_by_country,
+            ROUND(MAX(CASE WHEN sub_subject = 'Prehistory'                      THEN share END) * 100, 2) AS prehistory
           FROM per_snap
           GROUP BY snapshot_date
           ORDER BY snapshot_date
@@ -1133,13 +1086,13 @@ rows:
           ORDER BY (s.share_with_ai - p.subject_share) DESC
           LIMIT 12
         columns:
-          - { name: "subject", label: "Subject" }
-          - { name: "sub_subject", label: "Sub-subject" }
-          - { name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number }
-          - { name: "subject_mean_pct", label: "Subject mean (%)", format: number }
-          - { name: "deviation_pp", label: "Deviation (pp)", format: number }
-          - { name: "n_articles", label: "N articles", format: number }
-          - { name: "articles_with_ai", label: "Articles with AI", format: number }
+          - {name: "subject", label: "Subject"}
+          - {name: "sub_subject", label: "Sub-subject"}
+          - {name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number}
+          - {name: "subject_mean_pct", label: "Subject mean (%)", format: number}
+          - {name: "deviation_pp", label: "Deviation (pp)", format: number}
+          - {name: "n_articles", label: "N articles", format: number}
+          - {name: "articles_with_ai", label: "Articles with AI", format: number}
 
       - name: Sub-subjects with LOWER AI presence than their subject's mean (bottom 12)
         type: table
@@ -1163,13 +1116,13 @@ rows:
           ORDER BY (s.share_with_ai - p.subject_share) ASC
           LIMIT 12
         columns:
-          - { name: "subject", label: "Subject" }
-          - { name: "sub_subject", label: "Sub-subject" }
-          - { name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number }
-          - { name: "subject_mean_pct", label: "Subject mean (%)", format: number }
-          - { name: "deviation_pp", label: "Deviation (pp)", format: number }
-          - { name: "n_articles", label: "N articles", format: number }
-          - { name: "articles_with_ai", label: "Articles with AI", format: number }
+          - {name: "subject", label: "Subject"}
+          - {name: "sub_subject", label: "Sub-subject"}
+          - {name: "sub_subject_ai_share_pct", label: "Sub-subject AI share (%)", format: number}
+          - {name: "subject_mean_pct", label: "Subject mean (%)", format: number}
+          - {name: "deviation_pp", label: "Deviation (pp)", format: number}
+          - {name: "n_articles", label: "N articles", format: number}
+          - {name: "articles_with_ai", label: "Articles with AI", format: number}
 
   - widgets:
       - name: Surprises footnote
@@ -1235,16 +1188,16 @@ rows:
           ORDER BY ai_refs_added DESC
           LIMIT 25
         columns:
-          - { name: "article", label: "Article" }
-          - { name: "subject", label: "Subject" }
-          - { name: "sub_subject", label: "Sub-subject" }
-          - { name: "earliest_snapshot", label: "Earliest snapshot" }
-          - { name: "ai_refs_earliest", label: "AI refs (earliest)", format: number }
-          - { name: "latest_snapshot", label: "Latest snapshot" }
-          - { name: "ai_refs_latest", label: "AI refs (latest)", format: number }
-          - { name: "growth_refs", label: "Growth (Δ refs)", format: number }
-          - { name: "total_wikilinks_latest", label: "Total wikilinks (latest)", format: number }
-          - { name: "ai_link_share_pct", label: "AI-link share (%)", format: number }
+          - {name: "article", label: "Article"}
+          - {name: "subject", label: "Subject"}
+          - {name: "sub_subject", label: "Sub-subject"}
+          - {name: "earliest_snapshot", label: "Earliest snapshot"}
+          - {name: "ai_refs_earliest", label: "AI refs (earliest)", format: number}
+          - {name: "latest_snapshot", label: "Latest snapshot"}
+          - {name: "ai_refs_latest", label: "AI refs (latest)", format: number}
+          - {name: "growth_refs", label: "Growth (Δ refs)", format: number}
+          - {name: "total_wikilinks_latest", label: "Total wikilinks (latest)", format: number}
+          - {name: "ai_link_share_pct", label: "AI-link share (%)", format: number}
 
   - widgets:
       - name: Top growing articles footnote

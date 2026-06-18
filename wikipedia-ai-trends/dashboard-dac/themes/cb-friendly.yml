@@ -1,0 +1,15 @@
+name: cb-friendly
+
+# 8-color qualitative palette designed for protanopia/deuteranopia/tritanopia
+# distinguishability on light backgrounds. Six Wong (2011) hues plus two
+# Paul Tol "muted" hues to round out the set without yellow (poor contrast
+# on white) or pure black (clashes with axis text).
+tokens:
+  chart-1: "#0072B2"  # Wong blue
+  chart-2: "#D55E00"  # Wong vermillion
+  chart-3: "#009E73"  # Wong bluish green
+  chart-4: "#CC79A7"  # Wong reddish purple
+  chart-5: "#E69F00"  # Wong orange
+  chart-6: "#56B4E9"  # Wong sky blue
+  chart-7: "#882255"  # Tol muted wine
+  chart-8: "#117733"  # Tol muted dark green

@@ -76,7 +76,6 @@ rows:
         type: chart
         chart: bar
         col: 12
-        hideName: false
         stacked: true
         x: subject
         y: [with_ai_refs, no_ai_refs]
@@ -146,7 +145,6 @@ rows:
         type: chart
         chart: bar
         col: 12
-        hideName: false
         stacked: true
         x: sub_subject_label
         y: [with_ai_refs, no_ai_refs]
@@ -216,6 +214,123 @@ rows:
           The top-25 cut is for legibility — the underlying table has 100
           rows; query `wat_subcategory_metrics` directly to inspect the
           tail.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Radar — share of AI-referenced articles by subject
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Radar header
+        type: text
+        col: 12
+        content: |
+          ## AI-reference share (%) by subject — radar view (latest snapshot)
+
+          **Description.** Each of the 11 top-level subjects occupies one
+          spoke on the radar. The distance from the centre encodes the share
+          of that subject's articles that link to at least one AI-topic
+          article at the May-2026 snapshot. A balanced polygon would mean
+          every subject has the same AI-reference penetration; a spiky
+          polygon (Technology pulled far from the centre) shows the share is
+          concentrated in a few subjects.
+
+          **Encoding key.** **Angular axis:** subject (11 spokes).
+          **Radial axis:** `share_with_ai_pct` (0% at centre, 7%+ at the
+          outer edge). One polygon, filled at low opacity. Hover any vertex
+          for the exact share.
+
+  - widgets:
+      - name: Share of AI-referenced articles by subject (radar)
+        type: chart
+        chart: radar
+        col: 12
+        x: subject
+        y: [share_with_ai_pct]
+        sql: |
+          WITH latest AS (
+            SELECT MAX(snapshot_date) AS d
+            FROM `bruin-playground-arsalan.report.wat_category_metrics`
+          )
+          SELECT
+            c.subject                                                AS subject,
+            ROUND(c.share_with_ai * 100, 2)                          AS share_with_ai_pct
+          FROM `bruin-playground-arsalan.report.wat_category_metrics` c, latest
+          WHERE c.snapshot_date = latest.d
+            AND c.cohort = 'all'
+          ORDER BY c.subject
+
+  - widgets:
+      - name: Radar footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Subject-level shares from
+          `bruin-playground-arsalan.report.wat_category_metrics`
+          (cohort = `all`, latest snapshot).
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** A radar makes ratios easy to compare across
+          subjects but flattens the absolute counts behind each spoke. A
+          subject with 50% AI-share over 6 articles and a subject with 7%
+          over 3,500 articles will look like the small subject "wins" here;
+          pair this view with the absolute-count treemap below.
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Treemap — absolute AI-referenced article counts by sub-subject
+  # ─────────────────────────────────────────────────────────────────────────────
+  - widgets:
+      - name: Treemap header
+        type: text
+        col: 12
+        content: |
+          ## AI-referenced article counts by sub-subject — treemap view (top 40, latest snapshot)
+
+          **Description.** Each rectangle is one sub-subject; the area of
+          the rectangle is proportional to the count of articles in that
+          sub-subject that link to at least one AI-topic article at the
+          May-2026 snapshot. The biggest rectangles correspond to
+          sub-subjects where AI references are most numerous in absolute
+          terms, not share — the inverse view of the radar above.
+
+          **Encoding key.** **Rectangle size:** `articles_with_ai` (count of
+          AI-referenced articles). **Label:** `subject › sub-subject`,
+          truncated when the rectangle is small. Hover any rectangle for
+          the full label and exact count.
+
+  - widgets:
+      - name: AI-referenced article counts by sub-subject (treemap, top 40)
+        type: chart
+        chart: treemap
+        col: 12
+        label: sub_subject_label
+        value: articles_with_ai
+        sql: |
+          SELECT
+            CONCAT(subject, ' › ', sub_subject)                      AS sub_subject_label,
+            articles_with_ai                                          AS articles_with_ai
+          FROM `bruin-playground-arsalan.report.wat_subcategory_metrics`
+          WHERE cohort = 'all'
+            AND articles_with_ai > 0
+          ORDER BY articles_with_ai DESC
+          LIMIT 40
+
+  - widgets:
+      - name: Treemap footnote
+        type: text
+        col: 12
+        content: |
+          **Sources.** Sub-subject AI-reference counts from
+          `bruin-playground-arsalan.report.wat_subcategory_metrics`
+          (cohort = `all`, latest snapshot).
+
+          **Tools.** **Bruin cli**, **BigQuery**, **Bruin dac**.
+
+          **Limitations.** Sub-subjects with 0 AI references are excluded
+          (the rectangle would have zero area). Sub-subjects with fewer than
+          5 articles are not present in `wat_subcategory_metrics`. Labels
+          are truncated when a rectangle is too small to fit them; hover
+          to see the full `subject › sub-subject` name. The top-40 cut is
+          for legibility — the underlying table has 100 rows.
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Distribution of articles by AI reference count

@@ -1,0 +1,193 @@
+name: Toronto Crime Dashboard
+description: Community Safety Indicator trends, neighbourhood rates, and time patterns for Toronto.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+refresh:
+  interval: "5m"
+
+rows:
+  - widgets:
+      - name: Total CSI rows
+        type: metric
+        file: queries/kpi_total_crimes.sql
+        column: value
+        format: number
+        suffix: " rows"
+        col: 3
+      - name: Latest complete year CSI rows
+        type: metric
+        file: queries/kpi_latest_year.sql
+        column: value
+        format: number
+        suffix: " rows"
+        col: 3
+      - name: Year-over-year change
+        type: metric
+        file: queries/kpi_yoy_change.sql
+        column: value
+        format: number
+        suffix: "%"
+        col: 3
+      - name: Citywide CSI rate
+        type: metric
+        file: queries/kpi_citywide_rate.sql
+        column: value
+        format: number
+        suffix: " / 1k residents"
+        col: 3
+  - widgets:
+      - name: Toronto population denominator
+        type: metric
+        file: queries/kpi_toronto_population.sql
+        column: value
+        format: number
+        suffix: " residents"
+        col: 6
+      - name: Toronto CSI per capita
+        type: metric
+        file: queries/kpi_citywide_rate_100k.sql
+        column: value
+        format: number
+        suffix: " / 100k residents"
+        col: 6
+
+  - widgets:
+      - name: Annual category trend header
+        type: text
+        col: 12
+        content: |
+          # Annual Community Safety Indicator rows by category, Toronto, 2014-present
+
+          **This chart separates long-run category movement instead of hiding it in a single total. The latest complete year is used for comparisons so partial current-year publishing does not distort the trend.**
+
+          **Encoding key:** Each line is one CSI category. **X-axis:** occurrence year. **Y-axis:** offence/victim-level CSI rows.
+  - widgets:
+      - name: Annual CSI rows by category
+        type: chart
+        chart: combo
+        col: 12
+        file: queries/category_trends.sql
+        x: occurrence_year
+        y: [assault, auto_theft, break_and_enter, robbery, theft_over_5k]
+        lines: [assault, auto_theft, break_and_enter, robbery, theft_over_5k]
+  - widgets:
+      - name: Annual category trend footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Toronto Police Service Community Safety Indicators](https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/Major_Crime_Indicators_Open_Data/FeatureServer/0)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Rows are offence/victim-level records, not guaranteed unique incidents. The categories shown are Assault, Auto Theft, Break and Enter, Robbery, and Theft Over $5k; sexual violations are excluded by the source dataset.
+
+  - widgets:
+      - name: Neighbourhood rates header
+        type: text
+        col: 12
+        content: |
+          # Highest reported CSI rates by neighbourhood, latest complete year
+
+          **Population-adjusted rates make small high-intensity neighbourhoods visible next to large high-count neighbourhoods. The vertical bars focus on the top 10 and use short axis labels so every tick remains visible; the table below keeps full neighbourhood names, raw counts, population, and land area next to the chart.**
+
+          **Encoding key:** Vertical bars show CSI rows per 1,000 residents, sorted descending. **X-axis:** rank and neighbourhood. **Y-axis:** CSI rows per 1,000 residents.
+  - widgets:
+      - name: Highest-rate neighbourhoods
+        type: chart
+        chart: bar
+        col: 12
+        file: queries/neighbourhood_rankings.sql
+        x: rank_label
+        y: [crime_count_per_1000_people]
+  - widgets:
+      - name: Neighbourhood rates footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Toronto Police Service Community Safety Indicators](https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/Major_Crime_Indicators_Open_Data/FeatureServer/0)**, **[City of Toronto Neighbourhood Profiles](https://open.toronto.ca/dataset/neighbourhood-profiles/)**, **[City of Toronto Neighbourhoods](https://open.toronto.ca/dataset/neighbourhoods/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Rankings use the 158-neighbourhood model and exclude NSA/unknown neighbourhoods. Current-model profile land area is filled from official boundary geometry where the profile sheet does not publish land area.
+  - widgets:
+      - name: Count vs rate ranking table
+        type: table
+        col: 12
+        file: queries/neighbourhood_table.sql
+
+  - widgets:
+      - name: Category mix header
+        type: text
+        col: 12
+        content: |
+          # CSI category mix in the ten highest-rate neighbourhoods, latest complete year
+
+          **The highest-rate areas can have different category compositions even when their total rates are similar. This stacked view shows whether a neighbourhood's rate is driven mostly by assault, auto theft, break and enter, robbery, or theft over $5k rows.**
+
+          **Encoding key:** Stacked bar segments encode CSI categories. **X-axis:** top-rate neighbourhood. **Y-axis:** offence/victim-level CSI rows.
+  - widgets:
+      - name: Category mix in top neighbourhoods
+        type: chart
+        chart: bar
+        stacked: true
+        col: 12
+        file: queries/neighbourhood_category_mix.sql
+        x: neighbourhood_name
+        y: [assault, auto_theft, break_and_enter, robbery, theft_over_5k]
+  - widgets:
+      - name: Category mix footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Toronto Police Service Community Safety Indicators](https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/Major_Crime_Indicators_Open_Data/FeatureServer/0)**, **[City of Toronto Neighbourhood Profiles](https://open.toronto.ca/dataset/neighbourhood-profiles/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The chart only includes the ten highest-rate neighbourhoods from the latest complete year and uses row counts, not distinct incidents. Category labels are normalized in staging; source category drift is checked by Bruin column checks.
+
+  - widgets:
+      - name: Temporal pattern header
+        type: text
+        col: 12
+        content: |
+          # Reported CSI rows by day of week and hour, latest complete year
+
+          **The heatmap highlights repeated weekly timing patterns that are hard to see in annual totals. Use the brightest cells to identify the day/hour combinations with the largest share of latest-year rows.**
+
+          **Encoding key:** Columns are hour of day. Rows are day of week. Color intensity encodes CSI row count.
+  - widgets:
+      - name: Day and hour heatmap
+        type: chart
+        chart: heatmap
+        col: 12
+        file: queries/temporal_heatmap.sql
+        x: hour_label
+        y: [day_of_week]
+        value: crime_count
+  - widgets:
+      - name: Temporal pattern footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Toronto Police Service Community Safety Indicators](https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/Major_Crime_Indicators_Open_Data/FeatureServer/0)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Occurrence hour is published by the source and may reflect reporting or data-entry conventions for some rows. This view aggregates all CSI categories and should not be interpreted as exact street-level risk.
+
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          The pipeline ingests Toronto Police Community Safety Indicator rows from the public ArcGIS FeatureServer, City of Toronto neighbourhood profile resources from CKAN, and City of Toronto neighbourhood boundary GeoJSON. Raw CSI rows are appended and staging deduplicates by `objectid`, keeping the latest `extracted_at` row. Profile and boundary reference assets are rebuilt with `create+replace`.
+
+          The dashboard defaults to the current 158-neighbourhood model. Unknown or `NSA` neighbourhoods are retained in citywide counts but excluded from neighbourhood rankings and rate charts. Location points are privacy-offset by the source; spatial fields and radius summaries are approximate and must not be read as exact addresses.
+
+          Toronto-level per-capita rates use the sum of the 2021 City of Toronto 158-neighbourhood profile populations: 2,761,290 residents. That denominator matches the CSI geography in scope: City of Toronto/Toronto Police neighbourhood geography, not the Greater Toronto Area. Citywide CSI counts retain unknown or `NSA` rows because they are in the source's Toronto-wide CSI extract; neighbourhood ranking charts exclude them because they cannot be assigned to a named neighbourhood.
+
+          Rates use `crime_count_per_1000_people = crime_count / population * 1000`, `crime_count_per_100k_people = crime_count / population * 100000`, and `crime_count_per_km2 = crime_count / land_area_km2`. Current-model profile land area is filled from official boundary geometry when the profile workbook does not publish a land-area field. The latest complete year is the most recent occurrence year before the current calendar year when available.
+
+          Tooling: **Bruin cli** for ingestion, staging, report assets, and checks; **BigQuery** for warehouse SQL and geography functions; **Bruin dac** for the dashboard at `http://localhost:8321`.

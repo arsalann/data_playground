@@ -1,0 +1,6 @@
+name: toronto-crime
+schedule: daily
+start_date: "2014-01-01"
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"

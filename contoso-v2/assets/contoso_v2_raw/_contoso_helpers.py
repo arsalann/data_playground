@@ -980,6 +980,9 @@ def _build_sales_lines() -> pd.DataFrame:
         "currency_code": out_currency[:cursor],
         "exchange_rate": out_xrate[:cursor],
     })
+    # BigQuery load jobs reject Arrow TIMESTAMP_NANOS; keep timestamp columns at microsecond precision.
+    df["order_date"] = df["order_date"].astype("datetime64[us]")
+    df["delivery_date"] = df["delivery_date"].astype("datetime64[us]")
     return df
 
 

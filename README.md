@@ -23,6 +23,18 @@ A collection of data pipelines for exploring public datasets, built with Bruin, 
    pip install -r requirements.txt
    ```
 
+#### Socrata connections
+
+The local `.bruin.yml` can include Bruin `socrata` source connections for open-data portals. Bruin requires one Socrata connection per portal domain, so use the named connection that matches the dataset host:
+
+- `socrata-nyc-open-data` → `data.cityofnewyork.us`
+- `socrata-chicago-open-data` → `data.cityofchicago.org`
+- `socrata-seattle-open-data` → `data.seattle.gov`
+- `socrata-ny-health` → `health.data.ny.gov`
+- `socrata-cdc` → `data.cdc.gov`
+
+For new portals, add another `socrata` connection in local `.bruin.yml` with `domain`, `app_token`, and, when needed, `username`/`password`. Do not commit `.bruin.yml`.
+
 ### Secrets
 
 **No secrets, API keys, or credentials are stored in this repository.** All sensitive configuration is managed locally:
@@ -112,6 +124,15 @@ streamlit run berlin-weather/assets/reports/streamlit_app.py
 ## Dataset Discovery
 
 - **[Mobus](https://www.mobus.ai/)** — Open-source MCP server that searches 21 dataset repositories (Kaggle, Hugging Face, Zenodo, arXiv, NASA Earthdata, WHO, data.gov, World Bank, AWS Open Data, Eurostat, Census.gov, SEC EDGAR, Harvard Dataverse, and more) from a single conversational interface. Use it to scout datasets for new pipelines.
+- **[Socrata Discovery API](https://api.us.socrata.com/api/catalog/v1)** — Catalog search for Socrata-powered civic open-data portals. Good starting points for future Bruin ingestr pipelines:
+  - NYC 311 Service Requests from 2020 to Present (`data.cityofnewyork.us`, dataset `erm2-nwe9`)
+  - NYC Motor Vehicle Collisions - Crashes (`data.cityofnewyork.us`, `h9gi-nx95`)
+  - Chicago Crimes - 2001 to Present (`data.cityofchicago.org`, `ijzp-q8t2`)
+  - CTA Ridership - Daily Boarding Totals (`data.cityofchicago.org`, `6iiy-9s97`)
+  - CTA Ridership - L Station Entries - Daily Totals (`data.cityofchicago.org`, `5neh-572f`)
+  - Seattle Building Permits (`data.seattle.gov`, `76t5-zqzr`)
+  - NY Hospital-Acquired Infections: Beginning 2008 (`health.data.ny.gov`, `utrt-zdsi`)
+  - CDC Nutrition, Physical Activity, and Obesity - BRFSS (`data.cdc.gov`, `hn4x-zwk7`)
 
 ## Data Sources
 
@@ -126,5 +147,6 @@ streamlit run berlin-weather/assets/reports/streamlit_app.py
 - Open-Meteo API
 - OpenStreetMap (via OSMnx Overpass API) — street network graphs for urban form analysis
 - Polymarket API — prediction market data
+- Socrata-powered open-data portals — civic service requests, permits, transportation, public safety, and public health datasets
 - Stack Exchange API
 - World Bank Open Data API — development indicators, demographics, economics (217 countries, 1960-2024)

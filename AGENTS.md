@@ -159,6 +159,47 @@ When fetching from external APIs:
 - **Log progress**: Log each chunk/batch with counts so you can monitor long-running ingestions.
 - **Environment variables for testing**: Use env vars like `STOCK_TICKER_LIMIT` to limit scope during development, so you don't need to fetch all 500+ tickers every test run.
 
+#### Socrata Ingestion
+
+Bruin supports Socrata through `type: ingestr` assets. Use this for Socrata-powered open-data portals before writing custom Python ingestion, unless you need API behavior that ingestr cannot express.
+
+The local `.bruin.yml` may define these Socrata source connections:
+
+| Connection | Domain | Example datasets |
+|---|---|---|
+| `socrata-nyc-open-data` | `data.cityofnewyork.us` | NYC 311 (`erm2-nwe9`), motor vehicle collisions (`h9gi-nx95`) |
+| `socrata-chicago-open-data` | `data.cityofchicago.org` | Chicago crimes (`ijzp-q8t2`), CTA ridership (`6iiy-9s97`, `5neh-572f`) |
+| `socrata-seattle-open-data` | `data.seattle.gov` | Building permits (`76t5-zqzr`), trade permits (`c87v-5hwh`) |
+| `socrata-ny-health` | `health.data.ny.gov` | Hospital-acquired infections (`utrt-zdsi`), maternity information (`net3-iygw`) |
+| `socrata-cdc` | `data.cdc.gov` | Nutrition/obesity BRFSS (`hn4x-zwk7`), policy/environment data (`k8w5-7ju6`) |
+
+Socrata connections are domain-specific. For a new portal, add a new `socrata` entry to local `.bruin.yml` with `domain`, `app_token`, and, if needed, `username`/`password`. Never commit `.bruin.yml` or paste Socrata credentials into tracked files.
+
+Use `.asset.yml` for Socrata ingestr assets:
+
+```yaml
+name: raw.<table_name>
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Ingests <dataset title> from <Socrata domain> dataset <dataset_id>.
+
+parameters:
+  source_connection: socrata-nyc-open-data
+  source_table: "erm2-nwe9"
+  destination: bigquery
+  incremental_strategy: merge
+  incremental_key: updated_at
+
+columns:
+  - name: id
+    type: VARCHAR
+    primary_key: true
+    description: Socrata row identifier or stable natural key.
+```
+
+Only set `incremental_strategy` and `incremental_key` after verifying the dataset has a stable timestamp or monotonically increasing column. If no reliable incremental key exists, load with replace/default behavior and deduplicate downstream in staging.
+
 #### Secrets
 
 When an asset needs API credentials, declare them in the Bruin header under `secrets`. The keys must match the secret names in `.bruin.yml`:

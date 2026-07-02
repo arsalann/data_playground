@@ -5,6 +5,31 @@
 ## Dataset Discovery Tools
 
 - **Mobus** (https://www.mobus.ai/) — Open-source MCP server that aggregates 21 dataset repositories (Kaggle, Hugging Face, Zenodo, arXiv, NASA Earthdata, WHO, Google Scholar, Crossref, data.gov, World Bank, AWS Open Data, UCI ML Repository, Eurostat, Census.gov, SEC EDGAR, Harvard Dataverse, Papers with Code, …) into a single conversational search interface. MIT-licensed, hosted or self-hostable. Useful for scouting new pipeline ideas without hopping between portals.
+- **Socrata Discovery API** (https://api.us.socrata.com/api/catalog/v1) — Search Socrata-powered civic open-data portals by domain and keyword. Bruin supports Socrata through `type: ingestr` assets, with one source connection per portal domain.
+
+## Socrata Dataset Shortlist
+
+The local Bruin config can use these Socrata connection names. Dataset IDs are the `source_table` values for Bruin ingestr assets.
+
+| Theme | Dataset | Domain | Dataset ID | Analytics angle |
+|---|---|---|---|---|
+| City operations | NYC 311 Service Requests from 2020 to Present | `data.cityofnewyork.us` | `erm2-nwe9` | Complaint mix, response-time equity, seasonal service demand, agency SLA performance |
+| Street safety | NYC Motor Vehicle Collisions - Crashes | `data.cityofnewyork.us` | `h9gi-nx95` | Vision Zero trend tracking, injury hot spots, weather/seasonality joins |
+| Public safety | Chicago Crimes - 2001 to Present | `data.cityofchicago.org` | `ijzp-q8t2` | Long-run crime mix shifts, neighborhood concentration, clearance/arrest patterns |
+| Transit demand | CTA Ridership - Daily Boarding Totals | `data.cityofchicago.org` | `6iiy-9s97` | Pandemic recovery, weekday/weekend rebound, demand vs weather/events |
+| Transit demand | CTA Ridership - L Station Entries - Daily Totals | `data.cityofchicago.org` | `5neh-572f` | Station-level recovery, downtown vs neighborhood travel, service disruption impact |
+| Housing and development | Seattle Building Permits | `data.seattle.gov` | `76t5-zqzr` | Construction pipeline, permit cycle times, neighborhood growth pressure |
+| Housing and development | Seattle Trade Permits | `data.seattle.gov` | `c87v-5hwh` | Renovation activity, small-project demand, permitting seasonality |
+| Public health quality | NY Hospital-Acquired Infections: Beginning 2008 | `health.data.ny.gov` | `utrt-zdsi` | Facility benchmarking, infection-rate trends, volume-adjusted outliers |
+| Maternal health | NY Hospital Maternity Information: Beginning 2008 | `health.data.ny.gov` | `net3-iygw` | Birth outcomes, hospital comparisons, geography and care access |
+| Public health behavior | CDC Nutrition, Physical Activity, and Obesity - BRFSS | `data.cdc.gov` | `hn4x-zwk7` | State obesity/activity trends, demographic gaps, policy association analysis |
+| Public health policy | CDC Nutrition, Physical Activity, and Obesity - Policy and Environmental Data | `data.cdc.gov` | `k8w5-7ju6` | Policy environment vs health outcomes, state comparisons, lagged effects |
+
+Potential Socrata pipeline ideas:
+
+- **Civic Pulse** — combine NYC 311, Chicago crime, and Seattle permits into a cross-city operations dashboard. Keep metrics city-specific where definitions differ; compare patterns, not raw counts.
+- **Transit Recovery Scorecard** — use CTA daily ridership and station entries, then join weather, events, and downtown office indicators if available.
+- **Hospital Quality Watch** — use NY health Socrata datasets to surface facility-level outliers with careful volume denominators and methodology notes.
 
 # Pipeline Ideas
 

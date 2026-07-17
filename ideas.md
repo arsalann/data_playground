@@ -2,6 +2,10 @@
 
 - Google's Jobs API
 
+## Project Discovery
+
+Before proposing or starting a new pipeline, review this file for existing project ideas, source notes, and known data limitations. Then check [Awesome Public Datasets](https://github.com/awesomedata/awesome-public-datasets) for complementary public data sources and new project ideas. Verify each candidate source's license, update cadence, coverage, access method, and suitability for reproducible analysis before committing to an implementation.
+
 ## Dataset Discovery Tools
 
 - **Mobus** (https://www.mobus.ai/) — Open-source MCP server that aggregates 21 dataset repositories (Kaggle, Hugging Face, Zenodo, arXiv, NASA Earthdata, WHO, Google Scholar, Crossref, data.gov, World Bank, AWS Open Data, UCI ML Repository, Eurostat, Census.gov, SEC EDGAR, Harvard Dataverse, Papers with Code, …) into a single conversational search interface. MIT-licensed, hosted or self-hostable. Useful for scouting new pipeline ideas without hopping between portals.

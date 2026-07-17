@@ -8,6 +8,10 @@ This repository contains data pipelines built with **Bruin**, warehoused in **Bi
 
 **Visualization rule:** Every chart in every dashboard MUST strictly follow `VISUALIZATIONS.md` at the repo root. That document is the single source of truth for chart structure, color/accessibility, truthful axes, encoding discipline, labels, layout, and framework-specific rules (DAC, Altair, Matplotlib polar). Violations are bugs.
 
+## Project Discovery
+
+Before proposing, scoping, or creating a new pipeline, read [`ideas.md`](ideas.md). It is the repository's source-of-truth catalog for data sources, project ideas, existing work, and known limitations. Use it to avoid duplicate work, identify viable source combinations, and select a project with an appropriate analytical angle. Follow its instructions to evaluate additional public datasets before committing to a new project.
+
 ## Repository Structure
 
 ```

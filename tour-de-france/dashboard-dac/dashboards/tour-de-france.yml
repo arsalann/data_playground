@@ -1,0 +1,172 @@
+name: "Tour de France 2026: Race for Yellow"
+description: |
+  Live general-classification dynamics for the 2026 men's Tour de France, based
+  on the latest completed-stage results published by ProCyclingStats.
+connection: bruin-playground-arsalan
+
+rows:
+  - widgets:
+      - name: Completed stages
+        type: metric
+        sql: |
+          SELECT completed_stages AS value
+          FROM `bruin-playground-arsalan.report.race_kpis`
+        value: { field: value, type: number, format: ",.0f" }
+        col: 3
+      - name: Completed distance (km)
+        type: metric
+        sql: |
+          SELECT completed_distance_km AS value
+          FROM `bruin-playground-arsalan.report.race_kpis`
+        value: { field: value, type: number, format: ",.1f" }
+        col: 3
+      - name: Yellow-to-second gap (seconds)
+        type: metric
+        sql: |
+          SELECT gc_margin_to_second_seconds AS value
+          FROM `bruin-playground-arsalan.report.race_kpis`
+        value: { field: value, type: number, format: ",.0f" }
+        col: 3
+      - name: Unique stage winners
+        type: metric
+        sql: |
+          SELECT unique_stage_winners AS value
+          FROM `bruin-playground-arsalan.report.race_kpis`
+        value: { field: value, type: number, format: ",.0f" }
+        col: 3
+
+  - widgets:
+      - name: GC-gap story header
+        type: text
+        col: 12
+        content: |
+          # The yellow-jersey lead is 3:36 after Stage 12, built mainly on Stages 4, 6, and 10
+
+          The gap to second moved from 8 seconds after Stage 1 to 216 seconds after Stage 12. Stage 6 delivered the largest single widening (+134 seconds); the top-five gaps have been unchanged since Stage 10.
+
+          **Encoding:** each solid line is one standing after every completed stage — `gap_to_second_s`, `gap_to_third_s`, and `gap_to_fifth_s`. **Y-axis:** gap to yellow jersey, seconds. **X-axis:** completed stage number.
+  - widgets:
+      - name: GC gaps after each completed stage
+        type: chart
+        chart: line
+        sql: |
+          SELECT
+            stage_label,
+            gap_rank_2_seconds AS gap_to_second_s,
+            gap_rank_3_seconds AS gap_to_third_s,
+            gap_rank_5_seconds AS gap_to_fifth_s
+          FROM `bruin-playground-arsalan.report.gc_gaps_by_stage`
+          ORDER BY stage_number
+        x: { field: stage_label, type: category, title: Completed stage }
+        y:
+          field: [gap_to_second_s, gap_to_third_s, gap_to_fifth_s]
+          type: number
+          title: Gap to yellow jersey (seconds)
+          format: ",.0f"
+        col: 12
+  - widgets:
+      - name: GC-gap story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** [ProCyclingStats](https://www.procyclingstats.com/race/tour-de-france/2026). **Tools:** Bruin CLI, BigQuery, and Bruin DAC. **Limitations:** results and classifications may be revised after publication; the chart uses only the newest saved PCS snapshot for each completed stage, and it excludes unreported or unfinished stages.
+
+  - widgets:
+      - name: Yellow-margin story header
+        type: text
+        col: 12
+        content: |
+          # Only three completed stages materially changed yellow's margin to second
+
+          Stage 6 widened the lead by 134 seconds, following a 28-second widening on Stage 4 and a further 54 seconds on Stage 10. All other completed stages changed the margin by six seconds or less.
+
+          **Encoding:** each bar is the change in the GC gap to second after that stage. Bars above the zero line widen yellow's lead; bars below it tighten the race. **Y-axis:** change in seconds. **X-axis:** completed stage.
+  - widgets:
+      - name: Change in yellow-to-second margin by stage
+        type: chart
+        chart: bar
+        sql: |
+          SELECT
+            stage_label,
+            margin_change_seconds
+          FROM `bruin-playground-arsalan.report.yellow_margin_change`
+          WHERE margin_change_seconds IS NOT NULL
+          ORDER BY stage_number
+        x: { field: stage_label, type: category, title: Completed stage }
+        y:
+          field: [margin_change_seconds]
+          type: number
+          title: Change in yellow's margin (seconds)
+          format: ",.0f"
+        col: 12
+  - widgets:
+      - name: Yellow-margin story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** [ProCyclingStats](https://www.procyclingstats.com/race/tour-de-france/2026). **Tools:** Bruin CLI, BigQuery, and Bruin DAC. **Limitations:** the zero baseline is intentional; a positive bar means the leader gained time on second and a negative bar means second gained time. Time bonuses and later PCS revisions can alter a published margin.
+
+  - widgets:
+      - name: Current GC table header
+        type: text
+        col: 12
+        content: |
+          ## Latest published GC top 10
+
+          Gap values are seconds behind yellow; positive rank change means a rider moved up since the previous completed stage.
+  - widgets:
+      - name: Current GC top 10
+        type: table
+        sql: |
+          SELECT
+            gc_rank AS rank,
+            rider_name AS rider,
+            team_name AS team,
+            gap_to_leader_seconds AS gap_s,
+            rank_movement AS rank_change
+          FROM `bruin-playground-arsalan.report.current_gc_top10`
+          ORDER BY rank
+        columns:
+          - { name: rank, label: Rank }
+          - { name: rider, label: Rider }
+          - { name: team, label: Team }
+          - { name: gap_s, label: Gap to yellow (s), format: ",.0f" }
+          - { name: rank_change, label: Rank change, format: "+,.0f" }
+        col: 12
+
+  - widgets:
+      - name: Completed-stage outcomes header
+        type: text
+        col: 12
+        content: |
+          ## Completed-stage winners and result shapes
+
+          `candidate_breakaway` is a reproducible result-shape heuristic: the winner finished more than 10 seconds ahead of second place. It is not an official tactical classification.
+  - widgets:
+      - name: Completed-stage outcomes
+        type: table
+        sql: |
+          SELECT
+            stage_number AS stage,
+            winner_name AS winner,
+            winner_team_name AS winner_team,
+            winner_gap_to_second_seconds AS winner_gap_s,
+            outcome_shape
+          FROM `bruin-playground-arsalan.report.stage_outcomes`
+          ORDER BY stage
+        columns:
+          - { name: stage, label: Stage }
+          - { name: winner, label: Winner }
+          - { name: winner_team, label: Team }
+          - { name: winner_gap_s, label: Winner gap (s), format: ",.0f" }
+          - { name: outcome_shape, label: Result shape }
+        col: 12
+
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          ## Methodology
+
+          The raw asset fetches the published PCS result and GC tabs for all scheduled 2026 men's Tour stages, at least 0.5 seconds apart, with exponential backoff for transient failures. It appends complete source snapshots and never overwrites history. Staging selects the latest snapshot per stage, normalizes the stage result and top-30 GC payloads, converts displayed time gaps to seconds, and derives rank movement. Dashboard metrics and charts use completed stages only. No historical-edition or Tour de France Femmes data is included.

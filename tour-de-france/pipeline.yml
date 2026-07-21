@@ -1,0 +1,8 @@
+name: tour-de-france
+schedule: "30 19 4-26 7 *"
+start_date: "2026-07-04"
+retries: 5
+concurrency: 1
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"

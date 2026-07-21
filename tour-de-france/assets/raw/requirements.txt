@@ -1,0 +1,3 @@
+pandas
+curl-cffi
+procyclingstats

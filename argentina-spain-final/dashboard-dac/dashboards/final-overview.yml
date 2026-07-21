@@ -1,0 +1,240 @@
+name: "Argentina–Spain 2026 World Cup Final: Overview"
+description: The proper pre-final baseline from FIFA match reports, official squads, and the full senior-men's head-to-head record.
+connection: bruin-playground-arsalan
+
+filters:
+  - name: team
+    type: select
+    default: Argentina
+    options:
+      values: [Argentina, Spain]
+
+rows:
+  - widgets:
+      - name: overview_intro
+        type: text
+        col: 12
+        content: |
+          # Argentina–Spain World Cup final: the pre-final record
+
+          **Before anyone gets carried away with a final prediction, here is the proper baseline: seven completed FIFA reports per team, the current 26-player squad lists, and all 14 senior men's meetings.** This refreshes with the sources. It is context, not a call on the starting XI or the result.
+
+          **Encoding:** Argentina is the first series; Spain is the second. Legends, bar positions, labels, and tooltips identify each series as well as colour.
+
+  - widgets:
+      - name: Argentina average xG differential (xG per match)
+        type: metric
+        col: 3
+        sql: |
+          SELECT xg_differential_per_match AS value
+          FROM `bruin-playground-arsalan.final_reports.team_kpis`
+          WHERE team_name = 'Argentina'
+        value: { field: value, type: number, format: "+.2f" }
+        description: FIFA xG created minus FIFA xG conceded, per completed pre-final match.
+      - name: Spain average xG differential (xG per match)
+        type: metric
+        col: 3
+        sql: |
+          SELECT xg_differential_per_match AS value
+          FROM `bruin-playground-arsalan.final_reports.team_kpis`
+          WHERE team_name = 'Spain'
+        value: { field: value, type: number, format: "+.2f" }
+        description: FIFA xG created minus FIFA xG conceded, per completed pre-final match.
+      - name: Argentina goals per pre-final match
+        type: metric
+        col: 3
+        sql: |
+          SELECT goals_per_match AS value
+          FROM `bruin-playground-arsalan.final_reports.team_kpis`
+          WHERE team_name = 'Argentina'
+        value: { field: value, type: number, format: ".2f" }
+        description: Goals scored per completed pre-final match.
+      - name: Spain goals per pre-final match
+        type: metric
+        col: 3
+        sql: |
+          SELECT goals_per_match AS value
+          FROM `bruin-playground-arsalan.final_reports.team_kpis`
+          WHERE team_name = 'Spain'
+        value: { field: value, type: number, format: ".2f" }
+        description: Goals scored per completed pre-final match.
+
+  - widgets:
+      - name: xg_differential_header
+        type: text
+        col: 12
+        content: |
+          # xG differential by pre-final match, Argentina and Spain
+
+          **Spain averaged +1.79 xG per match and Argentina +1.60; both finished all seven reports above zero.** Spain's edge is real but not huge, which is about as honest as this seven-match sample lets us be.
+
+          **Encoding:** x-axis = each team's chronological pre-final match number. y-axis = FIFA xG created minus xG conceded. Blue line = Argentina; vermillion line = Spain.
+  - widgets:
+      - name: xG differential by pre-final match
+        type: chart
+        chart: combo
+        col: 12
+        lines: [argentina, spain]
+        yMin: "0"
+        sql: |
+          SELECT
+            match_number,
+            MAX(IF(team_name = 'Argentina', xg_differential, NULL)) AS argentina,
+            MAX(IF(team_name = 'Spain', xg_differential, NULL)) AS spain
+          FROM `bruin-playground-arsalan.final_reports.xg_trends`
+          GROUP BY match_number
+          ORDER BY match_number
+        x: { field: match_number, type: number }
+        y: { field: [argentina, spain], type: number, format: "+.2f" }
+  - widgets:
+      - name: xg_differential_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA Training Centre](https://www.fifatrainingcentre.com/)** public post-match reports (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The teams faced different opponents. This is a descriptive seven-match comparison, not an opponent-adjusted model or a final forecast.
+
+  - widgets:
+      - name: match_components_header
+        type: text
+        col: 12
+        content: |
+          # Goals, xG, and xG conceded by pre-final match
+
+          **Argentina scored 19 goals from 15.37 xG; Spain scored 13 from 14.96 xG.** The selector lets you look at where each scoreline and chance-quality estimate did, or did not, line up.
+
+          **Encoding:** x-axis = reported match for the selected team. y-axis = goals or expected goals, both count-equivalent. Grouped bars and the legend distinguish goals scored, xG, and xG conceded.
+  - widgets:
+      - name: Goals and expected goals by match
+        type: chart
+        chart: combo
+        col: 12
+        yMin: "0"
+        sql: |
+          SELECT
+            match_label,
+            goals AS goals_scored,
+            xg AS expected_goals,
+            xg_conceded AS expected_goals_conceded
+          FROM `bruin-playground-arsalan.final_reports.goals_xg_match`
+          WHERE team_name = '{{ filters.team }}'
+          ORDER BY match_number
+        x: { field: match_label, type: category }
+        y: { field: [goals_scored, expected_goals, expected_goals_conceded], type: number, format: ".2f" }
+  - widgets:
+      - name: match_components_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA Training Centre](https://www.fifatrainingcentre.com/)** public post-match reports (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Goals and xG share a count scale, but xG is a modelled chance-quality estimate. It does not forecast the next score or the final result.
+
+  - widgets:
+      - name: squads_header
+        type: text
+        col: 12
+        content: |
+          # Official 26-player squads and pre-final starts
+
+          **Both lists contain 26 players.** The starts column is useful context from the seven completed reports, but it is not a final-lineup prediction. Football does not work that neatly.
+  - widgets:
+      - name: Official squad table
+        type: table
+        col: 12
+        sql: |
+          SELECT squad_number, player_name, position, club, tournament_starts, coach, source_version
+          FROM `bruin-playground-arsalan.final_reports.official_squads`
+          WHERE team_name = '{{ filters.team }}'
+          ORDER BY squad_number
+        columns:
+          - { name: squad_number, label: "No.", format: ".0f" }
+          - { name: player_name, label: "Player" }
+          - { name: position, label: "Position" }
+          - { name: club, label: "Club" }
+          - { name: tournament_starts, label: "Pre-final starts", format: ".0f" }
+          - { name: coach, label: "Head coach" }
+          - { name: source_version, label: "FIFA source version" }
+  - widgets:
+      - name: squads_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA](https://www.fifa.com/)** official squad-list PDFs (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Club, caps, goals, and squad status are values in the published PDF version. FIFA can revise them after this snapshot.
+
+  - widgets:
+      - name: h2h_header
+        type: text
+        col: 12
+        content: |
+          # Senior men's Argentina–Spain record: 14 matches, Argentina 6–2–6
+
+          **The record is perfectly split: six Argentina wins, two draws, and six Spain wins.** That history goes back decades, so it belongs here as context, not evidence about these squads.
+
+          **Encoding:** each row is one match. Results are from Argentina's perspective: W = win, D = draw, L = loss.
+  - widgets:
+      - name: Historical head-to-head results
+        type: table
+        col: 12
+        sql: |
+          SELECT FORMAT_DATE('%d %b %Y', match_date) AS match_date, fixture, competition, venue, scoreline, argentina_outcome
+          FROM `bruin-playground-arsalan.final_reports.h2h_history`
+          ORDER BY match_date
+        columns:
+          - { name: match_date, label: "Date" }
+          - { name: fixture, label: "Fixture" }
+          - { name: competition, label: "Competition" }
+          - { name: venue, label: "Venue" }
+          - { name: scoreline, label: "Score" }
+          - { name: argentina_outcome, label: "Argentina result" }
+  - widgets:
+      - name: h2h_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[11v11](https://www.11v11.com/)** public historical match records (secondary source; use subject to 11v11 website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Venue availability and competition labels come from 11v11. Historical results are context, not evidence about the current squads.
+
+  - widgets:
+      - name: takeaways_header
+        type: text
+        col: 12
+        content: |
+          # Findings that made it past the data checks
+
+          **These are the numbers that survived the proper checks.** The table stays empty unless both teams have all seven reports and the core metrics are there. No finding is prewritten to fit a story.
+  - widgets:
+      - name: Evidence-based findings
+        type: table
+        col: 12
+        sql: |
+          SELECT evidence_area, finding, caveat
+          FROM `bruin-playground-arsalan.final_reports.evidence_findings`
+          ORDER BY finding_order
+        columns:
+          - { name: evidence_area, label: "Evidence area" }
+          - { name: finding, label: "Computed finding" }
+          - { name: caveat, label: "Caveat" }
+
+  - widgets:
+      - name: methodology
+        type: text
+        col: 12
+        content: |
+          ## Methodology
+
+          FIFA provides the current match reports and squad lists. The pipeline finds the public group and knockout report hubs, excludes the final if it appears, hashes each PDF, parses typed facts, and keeps the latest raw fact in BigQuery. 11v11 provides the historical series and stays labelled as a secondary source.
+
+          FIFA phase values can overlap, so this dashboard never adds them into a fake 100% total. Everything here is a pre-final descriptive record, not a model, betting advice, or a shortcut around watching the matches.

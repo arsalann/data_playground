@@ -1,0 +1,246 @@
+name: "Argentina–Spain 2026 World Cup Final: Hidden Insights"
+description: The tactical, progression, shooting, and passing patterns that seven completed FIFA reports can actually support.
+connection: bruin-playground-arsalan
+
+filters:
+  - name: team
+    type: select
+    default: Argentina
+    options:
+      values: [Argentina, Spain]
+
+rows:
+  - widgets:
+      - name: insights_intro
+        type: text
+        col: 12
+        content: |
+          # What seven FIFA reports can actually support
+
+          **Seven matches are enough to spot patterns. They are not enough to declare a footballing truth.** These views stay close to what FIFA publishes: phase shares, progression rates, shot outcomes, and its top passing connections. The findings table only appears after the full seven-report sample clears the data checks.
+
+          **Encoding:** Argentina is the first series; Spain is the second. Legends, bar positions, labels, and tooltips identify each series as well as colour.
+
+  - widgets:
+      - name: in_possession_header
+        type: text
+        col: 12
+        content: |
+          # In-possession phase shares, seven pre-final reports
+
+          **The biggest gap is Build Up Unopposed: Argentina averaged 44.7% and Spain 36.9%, a 7.9 percentage-point gap.** FIFA's phase shares overlap, so grouped bars are the honest version here, not a 100% stack.
+
+          **Encoding:** x-axis = FIFA in-possession phase. y-axis = average reported phase share (%). Paired bars and the legend distinguish Argentina and Spain; bars are grouped because phases overlap.
+  - widgets:
+      - name: In-possession phase shares
+        type: chart
+        chart: combo
+        col: 12
+        yMin: "0"
+        sql: |
+          SELECT
+            phase_name,
+            MAX(IF(team_name = 'Argentina', mean_phase_share_pct, NULL)) AS argentina,
+            MAX(IF(team_name = 'Spain', mean_phase_share_pct, NULL)) AS spain
+          FROM `bruin-playground-arsalan.final_reports.phase_mix`
+          WHERE phase_group = 'in_possession'
+          GROUP BY phase_name
+          ORDER BY CASE phase_name
+            WHEN 'Build Up Unopposed' THEN 1 WHEN 'Build Up Opposed' THEN 2
+            WHEN 'Progression' THEN 3 WHEN 'Final Third' THEN 4
+            WHEN 'Long Ball' THEN 5 WHEN 'Attacking Transition' THEN 6
+            WHEN 'Counter Attack' THEN 7 WHEN 'Set Piece' THEN 8 END
+        x: { field: phase_name, type: category }
+        y: { field: [argentina, spain], type: number, format: ".1f" }
+  - widgets:
+      - name: in_possession_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA Training Centre](https://www.fifatrainingcentre.com/)** public phase-of-play reports (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** These are FIFA-defined, overlapping phase shares. Grouped bars keep the percentages independent and start at zero; they are not a possession-adjusted tactical forecast.
+
+  - widgets:
+      - name: out_of_possession_header
+        type: text
+        col: 12
+        content: |
+          # Out-of-possession phase shares, seven pre-final reports
+
+          **Argentina's reported Low Block share averaged 24.6% versus Spain's 13.0%, the largest defensive-phase gap at 11.6 percentage points.** Again, these measures overlap, so stacking them would make up a total FIFA does not report.
+
+          **Encoding:** x-axis = FIFA out-of-possession phase. y-axis = average reported phase share (%). Paired bars and the legend distinguish Argentina and Spain; phases are grouped, never stacked.
+  - widgets:
+      - name: Out-of-possession phase shares
+        type: chart
+        chart: combo
+        col: 12
+        yMin: "0"
+        sql: |
+          SELECT
+            phase_name,
+            MAX(IF(team_name = 'Argentina', mean_phase_share_pct, NULL)) AS argentina,
+            MAX(IF(team_name = 'Spain', mean_phase_share_pct, NULL)) AS spain
+          FROM `bruin-playground-arsalan.final_reports.phase_mix`
+          WHERE phase_group = 'out_of_possession'
+          GROUP BY phase_name
+          ORDER BY CASE phase_name
+            WHEN 'High Press' THEN 1 WHEN 'Mid Press' THEN 2 WHEN 'Low Press' THEN 3
+            WHEN 'High Block' THEN 4 WHEN 'Mid Block' THEN 5 WHEN 'Low Block' THEN 6
+            WHEN 'Recovery' THEN 7 WHEN 'Defensive Transition' THEN 8 WHEN 'Counter-press' THEN 9 END
+        x: { field: phase_name, type: category }
+        y: { field: [argentina, spain], type: number, format: ".1f" }
+  - widgets:
+      - name: out_of_possession_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA Training Centre](https://www.fifatrainingcentre.com/)** public phase-of-play reports (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** A phase share is a FIFA-defined descriptive measure, not a possession-adjusted pressure metric or a tactical forecast.
+
+  - widgets:
+      - name: progression_header
+        type: text
+        col: 12
+        content: |
+          # Progression actions per 100 passes, seven pre-final reports
+
+          **Spain recorded 21.3 completed line breaks and 4.7 ball progressions per 100 passes; Argentina recorded 17.0 and 3.5.** Normalizing by total passes is not magic, but it gives us a fairer read than raw counts with different passing volumes.
+
+          **Encoding:** x-axis = team. y-axis = actions per 100 passes. Grouped bars and the legend distinguish completed line breaks from ball progressions.
+  - widgets:
+      - name: Progression rates per 100 passes
+        type: chart
+        chart: combo
+        col: 12
+        yMin: "0"
+        sql: |
+          SELECT
+            team_name,
+            completed_line_breaks_per_100_passes,
+            ball_progressions_per_100_passes
+          FROM `bruin-playground-arsalan.final_reports.progression_per_100_passes`
+          ORDER BY team_name
+        x: { field: team_name, type: category }
+        y: { field: [completed_line_breaks_per_100_passes, ball_progressions_per_100_passes], type: number, format: ".1f" }
+  - widgets:
+      - name: progression_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA Training Centre](https://www.fifatrainingcentre.com/)** public key-statistics reports (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The rate controls for passing volume, but it still reflects opponents, game state, and FIFA's event definitions.
+
+  - widgets:
+      - name: shots_header
+        type: text
+        col: 12
+        content: |
+          # Shot outcomes by delivery type for the selected team
+
+          **Passes created the most parsed shots for both teams: 42 for Argentina and 53 for Spain.** Each stack is a real event count because the outcome groups are mutually exclusive.
+
+          **Encoding:** x-axis = FIFA delivery type for the selected team. y-axis = parsed shot events (count). Stack segments and the legend = mutually exclusive shot outcomes.
+  - widgets:
+      - name: Shot outcomes by delivery
+        type: chart
+        chart: bar
+        stacked: true
+        col: 12
+        yMin: "0"
+        sql: |
+          SELECT
+            delivery_type,
+            outcome_group,
+            shot_count
+          FROM `bruin-playground-arsalan.final_reports.shot_outcomes`
+          WHERE team_name = '{{ filters.team }}'
+          ORDER BY delivery_type, outcome_group
+        x: { field: delivery_type, type: category }
+        y: { field: [shot_count], type: number, format: ".0f" }
+        color: { field: outcome_group }
+  - widgets:
+      - name: shots_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA Training Centre](https://www.fifatrainingcentre.com/)** public Attempts at Goal tables (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** FIFA outcome labels are grouped for readability. The source PDF does not expose stable shot coordinates in its text layer, so this does not show shot location or xG.
+
+  - widgets:
+      - name: passing_header
+        type: text
+        col: 12
+        content: |
+          # Recurring FIFA top-five passing connections
+
+          **Rodri → Aymeric Laporte is the most repeated published link: it appears in four reports and averages 3.6% of Spain's passes when listed.** FIFA only publishes five links per report, so a table is more honest than pretending this is a complete network.
+  - widgets:
+      - name: Repeated top passing connections
+        type: table
+        col: 12
+        sql: |
+          SELECT source_player, destination_player, appearances_in_top_five, mean_team_pass_share_pct, max_team_pass_share_pct
+          FROM `bruin-playground-arsalan.final_reports.top_passing_connections`
+          WHERE team_name = '{{ filters.team }}'
+          ORDER BY appearances_in_top_five DESC, mean_team_pass_share_pct DESC, source_player, destination_player
+        columns:
+          - { name: source_player, label: "Passes from" }
+          - { name: destination_player, label: "Passed to" }
+          - { name: appearances_in_top_five, label: "Top-five appearances", format: ".0f" }
+          - { name: mean_team_pass_share_pct, label: "Mean share of team passes (%)", format: ".1f" }
+          - { name: max_team_pass_share_pct, label: "Peak share (%)", format: ".1f" }
+  - widgets:
+      - name: passing_footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[FIFA Training Centre](https://www.fifatrainingcentre.com/)** public Passing Networks pages (use subject to FIFA website terms).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Shares are of team passes only when a link ranks in FIFA's top five. A missing link in this table does not mean the pass never happened.
+
+  - widgets:
+      - name: evidence_header
+        type: text
+        col: 12
+        content: |
+          # Findings that survived the data checks
+
+          **The table only writes a finding when both teams have all seven reports and the core metrics.** That is a boring gate, but it is the right one.
+  - widgets:
+      - name: Computed findings with caveats
+        type: table
+        col: 12
+        sql: |
+          SELECT evidence_area, finding, caveat
+          FROM `bruin-playground-arsalan.final_reports.evidence_findings`
+          ORDER BY finding_order
+        columns:
+          - { name: evidence_area, label: "Evidence area" }
+          - { name: finding, label: "Finding" }
+          - { name: caveat, label: "Caveat" }
+
+  - widgets:
+      - name: methodology
+        type: text
+        col: 12
+        content: |
+          ## Methodology
+
+          FIFA is the primary source. The pipeline finds public group and knockout hubs, retrieves completed Argentina and Spain reports, hashes each PDF, and rejects a parse missing its core metrics, phase rows, or 11 starters. The final stays out of the sample.
+
+          These are evidence-led descriptive views. Opponent quality, game state, and FIFA's own tactical definitions put a hard limit on what seven reports can tell us.

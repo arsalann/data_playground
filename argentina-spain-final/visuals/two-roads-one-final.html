@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Two Roads, One Final: Argentina v Spain</title>
+  <style>
+    :root {
+      --ink: #eef5ff;
+      --muted: #aebdcd;
+      --muted-strong: #d0dbe7;
+      --ground: #061321;
+      --panel: #0b1d31;
+      --grid: #274158;
+      --argentina: #0072b2;
+      --spain: #d55e00;
+      --gold: #f0e442;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      background:
+        radial-gradient(circle at 14% 6%, rgb(0 114 178 / 18%), transparent 27rem),
+        radial-gradient(circle at 88% 10%, rgb(213 94 0 / 15%), transparent 25rem),
+        var(--ground);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(100%, 1500px);
+      margin: 0 auto;
+      padding: clamp(1.5rem, 4vw, 4.5rem) clamp(1rem, 3vw, 2.5rem) 3rem;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.7rem;
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 18ch;
+      margin: 0;
+      font-size: clamp(2.5rem, 7vw, 6.5rem);
+      font-weight: 850;
+      letter-spacing: -0.07em;
+      line-height: 0.88;
+    }
+
+    h1 span {
+      color: var(--gold);
+    }
+
+    .standfirst {
+      max-width: 70ch;
+      margin: 1.5rem 0 2.1rem;
+      color: var(--muted-strong);
+      font-size: clamp(1rem, 1.6vw, 1.27rem);
+      line-height: 1.6;
+    }
+
+    .visual-card {
+      overflow: hidden;
+      border: 1px solid rgb(174 189 205 / 25%);
+      border-radius: 1.5rem;
+      background: rgb(11 29 49 / 82%);
+      box-shadow: 0 1.75rem 5rem rgb(0 0 0 / 28%);
+    }
+
+    figure {
+      margin: 0;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    figcaption {
+      display: grid;
+      gap: 0.85rem;
+      padding: 1.25rem 1.5rem 1.45rem;
+      border-top: 1px solid rgb(174 189 205 / 18%);
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    figcaption strong {
+      color: var(--ink);
+    }
+
+    .source {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .route {
+      opacity: 1;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .route {
+        opacity: 0;
+        animation: reveal-route 0.7s ease-out forwards;
+      }
+
+      .route-spain {
+        animation-delay: 0.14s;
+      }
+
+      @keyframes reveal-route {
+        to {
+          opacity: 1;
+        }
+      }
+    }
+
+    .marker {
+      cursor: help;
+    }
+
+    .marker:focus {
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">FIFA World Cup 2026 · seven completed reports before the final</p>
+    <h1>Two roads.<br><span>One final.</span></h1>
+    <p class="standfirst">
+      At the same point in their separate paths, Spain led by 2.23 cumulative xG after match 2. Argentina cut that to 0.30
+      after the round of 16. Spain reached the final at <strong>+1.33 cumulative xG</strong>. Two very good seven-match runs,
+      against different opponents, so please don't turn this into a prediction.
+    </p>
+
+    <section class="visual-card" aria-label="Annotated cumulative expected-goals differential race">
+      <figure>
+        <svg viewBox="0 0 1600 980" role="img" aria-labelledby="chart-title chart-description">
+          <title id="chart-title">Argentina and Spain cumulative xG differential through seven matches before the 2026 World Cup final</title>
+          <desc id="chart-description">
+            Argentina is a blue solid route with square markers. Spain is a vermillion dashed route with circle markers.
+            Spain finishes at plus 12.52 cumulative xG differential and Argentina at plus 11.19.
+          </desc>
+          <defs>
+            <pattern id="gap-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="12" height="12" fill="#b9c7d5" opacity="0.09"/>
+              <line x1="0" y1="0" x2="0" y2="12" stroke="#d9e4ee" stroke-width="3" opacity="0.18"/>
+            </pattern>
+            <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="6" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <rect width="1600" height="980" fill="#0b1d31"/>
+          <rect x="108" y="182" width="565" height="565" rx="28" fill="#0072b2" opacity="0.055"/>
+          <rect x="673" y="182" width="770" height="565" rx="28" fill="#d55e00" opacity="0.04"/>
+
+          <text x="150" y="85" fill="#f0e442" font-size="18" font-weight="800" letter-spacing="2.8">SEVEN-MATCH CUMULATIVE xG</text>
+          <text x="150" y="122" fill="#eef5ff" font-size="28" font-weight="750">Running xG differential, all values in xG</text>
+          <text x="150" y="154" fill="#aebdcd" font-size="17">Same tournament step, different opponents. The hatched ribbon shows the gap between routes.</text>
+
+          <rect x="1035" y="73" width="14" height="14" fill="#0072b2" stroke="#eef5ff" stroke-width="2"/>
+          <line x1="1058" y1="80" x2="1100" y2="80" stroke="#0072b2" stroke-width="5"/>
+          <text x="1110" y="87" fill="#eef5ff" font-size="17" font-weight="750">ARGENTINA</text>
+          <circle cx="1267" cy="80" r="8" fill="#d55e00" stroke="#eef5ff" stroke-width="2"/>
+          <line x1="1281" y1="80" x2="1323" y2="80" stroke="#d55e00" stroke-width="5" stroke-dasharray="12 7"/>
+          <text x="1333" y="87" fill="#eef5ff" font-size="17" font-weight="750">SPAIN</text>
+
+          <text x="52" y="486" fill="#aebdcd" font-size="16" font-weight="750" letter-spacing="1.6" transform="rotate(-90 52 486)">CUMULATIVE xG DIFFERENTIAL</text>
+
+          <g fill="none">
+            <line x1="150" y1="710" x2="1380" y2="710" stroke="#274158" stroke-width="2"/>
+            <line x1="150" y1="606.7" x2="1380" y2="606.7" stroke="#274158" opacity="0.7"/>
+            <line x1="150" y1="503.3" x2="1380" y2="503.3" stroke="#274158" opacity="0.7"/>
+            <line x1="150" y1="400" x2="1380" y2="400" stroke="#274158" opacity="0.7"/>
+            <line x1="150" y1="296.7" x2="1380" y2="296.7" stroke="#274158" opacity="0.7"/>
+          </g>
+          <g fill="#aebdcd" font-size="16" text-anchor="end">
+            <text x="126" y="716">0</text>
+            <text x="126" y="612.7">+3</text>
+            <text x="126" y="509.3">+6</text>
+            <text x="126" y="406">+9</text>
+            <text x="126" y="302.7">+12</text>
+          </g>
+
+          <text x="385" y="207" fill="#84a4bf" font-size="15" font-weight="800" letter-spacing="2" text-anchor="middle">GROUP STAGE</text>
+          <line x1="150" y1="218" x2="610" y2="218" stroke="#52718a" stroke-width="2"/>
+          <text x="1035" y="207" fill="#84a4bf" font-size="15" font-weight="800" letter-spacing="2" text-anchor="middle">KNOCKOUTS</text>
+          <line x1="655" y1="218" x2="1380" y2="218" stroke="#52718a" stroke-width="2"/>
+
+          <path d="M 245 669.7 L 425 606.9 L 605 553.3 L 785 477.2 L 965 412.7 L 1145 359.4 L 1325 324.7 L 1325 278.8 L 1145 338.8 L 965 402.7 L 785 430.6 L 605 499.2 L 425 530.2 L 245 636.6 Z" fill="url(#gap-hatch)"/>
+
+          <path class="route" d="M 155 710 L 245 669.7 L 425 606.9 L 605 553.3 L 785 477.2 L 965 412.7 L 1145 359.4 L 1325 324.7" fill="none" stroke="#0072b2" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+          <path class="route route-spain" d="M 155 710 L 245 636.6 L 425 530.2 L 605 499.2 L 785 430.6 L 965 402.7 L 1145 338.8 L 1325 278.8" fill="none" stroke="#d55e00" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="14 9" filter="url(#glow)"/>
+
+          <g stroke="#7190aa" stroke-width="2">
+            <line x1="245" y1="710" x2="245" y2="720"/>
+            <line x1="425" y1="710" x2="425" y2="720"/>
+            <line x1="605" y1="710" x2="605" y2="720"/>
+            <line x1="785" y1="710" x2="785" y2="720"/>
+            <line x1="965" y1="710" x2="965" y2="720"/>
+            <line x1="1145" y1="710" x2="1145" y2="720"/>
+            <line x1="1325" y1="710" x2="1325" y2="720"/>
+          </g>
+          <g text-anchor="middle">
+            <text x="245" y="754" fill="#eef5ff" font-size="17" font-weight="800">G1</text><text x="245" y="780" fill="#aebdcd" font-size="14">MATCH 1</text>
+            <text x="425" y="754" fill="#eef5ff" font-size="17" font-weight="800">G2</text><text x="425" y="780" fill="#aebdcd" font-size="14">MATCH 2</text>
+            <text x="605" y="754" fill="#eef5ff" font-size="17" font-weight="800">G3</text><text x="605" y="780" fill="#aebdcd" font-size="14">MATCH 3</text>
+            <text x="785" y="754" fill="#eef5ff" font-size="17" font-weight="800">R32</text><text x="785" y="780" fill="#aebdcd" font-size="14">MATCH 4</text>
+            <text x="965" y="754" fill="#eef5ff" font-size="17" font-weight="800">R16</text><text x="965" y="780" fill="#aebdcd" font-size="14">MATCH 5</text>
+            <text x="1145" y="754" fill="#eef5ff" font-size="17" font-weight="800">QF</text><text x="1145" y="780" fill="#aebdcd" font-size="14">MATCH 6</text>
+            <text x="1325" y="754" fill="#eef5ff" font-size="17" font-weight="800">SF</text><text x="1325" y="780" fill="#aebdcd" font-size="14">MATCH 7</text>
+          </g>
+
+          <g fill="none" stroke="#d0dbe7" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.85">
+            <path d="M 425 568.5 L 482 388"/>
+            <path d="M 965 407.7 L 825 345"/>
+            <path d="M 1325 301.8 L 1120 505"/>
+          </g>
+          <g fill="#f0e442">
+            <circle cx="425" cy="568.5" r="4"/>
+            <circle cx="965" cy="407.7" r="4"/>
+            <circle cx="1325" cy="301.8" r="4"/>
+          </g>
+          <g>
+            <text x="482" y="380" fill="#f0e442" font-size="15" font-weight="850" letter-spacing="1.5">SPAIN GETS OUT EARLY</text>
+            <text x="482" y="406" fill="#eef5ff" font-size="17" font-weight="700">+2.23 xG after match 2</text>
+            <text x="482" y="430" fill="#aebdcd" font-size="16">Most of the final gap starts here.</text>
+            <text x="825" y="337" fill="#f0e442" font-size="15" font-weight="850" letter-spacing="1.5">ARGENTINA REELS IT IN</text>
+            <text x="825" y="363" fill="#eef5ff" font-size="17" font-weight="700">Gap shrinks to just +0.30</text>
+            <text x="825" y="387" fill="#aebdcd" font-size="16">After match 5, the round of 16.</text>
+            <text x="1120" y="497" fill="#f0e442" font-size="15" font-weight="850" letter-spacing="1.5">BEFORE THE FINAL</text>
+            <text x="1120" y="523" fill="#eef5ff" font-size="17" font-weight="700">Spain ahead by +1.33 xG</text>
+            <text x="1120" y="547" fill="#aebdcd" font-size="16">Different opponents, so no forecast here.</text>
+          </g>
+
+          <g class="marker" tabindex="0" aria-label="Argentina, Group 1 against Algeria: plus 1.17 match xG differential and plus 1.17 cumulative">
+            <title>Argentina · 16 Jun · Group 1 v Algeria: +1.17 match xG differential; +1.17 cumulative.</title><rect x="235" y="659.7" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Argentina, Group 2 against Austria: plus 1.82 match xG differential and plus 2.99 cumulative">
+            <title>Argentina · 22 Jun · Group 2 v Austria: +1.82 match xG differential; +2.99 cumulative.</title><rect x="415" y="596.9" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Argentina, Group 3 against Jordan: plus 1.56 match xG differential and plus 4.55 cumulative">
+            <title>Argentina · 27 Jun · Group 3 v Jordan: +1.56 match xG differential; +4.55 cumulative.</title><rect x="595" y="543.3" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Argentina, Round of 32 against Cabo Verde: plus 2.21 match xG differential and plus 6.76 cumulative">
+            <title>Argentina · 03 Jul · Round of 32 v Cabo Verde: +2.21 match xG differential; +6.76 cumulative.</title><rect x="775" y="467.2" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Argentina, Round of 16 against Egypt: plus 1.87 match xG differential and plus 8.63 cumulative">
+            <title>Argentina · 07 Jul · Round of 16 v Egypt: +1.87 match xG differential; +8.63 cumulative.</title><rect x="955" y="402.7" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Argentina, quarter-final against Switzerland: plus 1.55 match xG differential and plus 10.18 cumulative">
+            <title>Argentina · 11 Jul · Quarter-final v Switzerland: +1.55 match xG differential; +10.18 cumulative.</title><rect x="1135" y="349.4" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Argentina, semi-final against England: plus 1.01 match xG differential and plus 11.19 cumulative">
+            <title>Argentina · 15 Jul · Semi-final v England: +1.01 match xG differential; +11.19 cumulative.</title><rect x="1315" y="314.7" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+
+          <g class="marker" tabindex="0" aria-label="Spain, Group 1 against Cabo Verde: plus 2.13 match xG differential and plus 2.13 cumulative">
+            <title>Spain · 15 Jun · Group 1 v Cabo Verde: +2.13 match xG differential; +2.13 cumulative.</title><circle cx="245" cy="636.6" r="11" fill="#d55e00" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Spain, Group 2 against Saudi Arabia: plus 3.09 match xG differential and plus 5.22 cumulative">
+            <title>Spain · 21 Jun · Group 2 v Saudi Arabia: +3.09 match xG differential; +5.22 cumulative.</title><circle cx="425" cy="530.2" r="11" fill="#d55e00" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Spain, Group 3 against Uruguay: plus 0.90 match xG differential and plus 6.12 cumulative">
+            <title>Spain · 26 Jun · Group 3 v Uruguay: +0.90 match xG differential; +6.12 cumulative.</title><circle cx="605" cy="499.2" r="11" fill="#d55e00" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Spain, Round of 32 against Austria: plus 2.00 match xG differential and plus 8.12 cumulative">
+            <title>Spain · 02 Jul · Round of 32 v Austria: +2.00 match xG differential; +8.12 cumulative.</title><circle cx="785" cy="430.6" r="11" fill="#d55e00" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Spain, Round of 16 against Portugal: plus 0.81 match xG differential and plus 8.93 cumulative">
+            <title>Spain · 06 Jul · Round of 16 v Portugal: +0.81 match xG differential; +8.93 cumulative.</title><circle cx="965" cy="402.7" r="11" fill="#d55e00" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Spain, quarter-final against Belgium: plus 1.86 match xG differential and plus 10.79 cumulative">
+            <title>Spain · 10 Jul · Quarter-final v Belgium: +1.86 match xG differential; +10.79 cumulative.</title><circle cx="1145" cy="338.8" r="11" fill="#d55e00" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+          <g class="marker" tabindex="0" aria-label="Spain, semi-final against France: plus 1.73 match xG differential and plus 12.52 cumulative">
+            <title>Spain · 14 Jul · Semi-final v France: +1.73 match xG differential; +12.52 cumulative.</title><circle cx="1325" cy="278.8" r="11" fill="#d55e00" stroke="#eef5ff" stroke-width="3"/>
+          </g>
+
+          <g>
+            <rect x="1350" y="253" width="190" height="52" rx="11" fill="#061321" stroke="#d55e00" stroke-width="2"/>
+            <text x="1365" y="275" fill="#d55e00" font-size="15" font-weight="850" letter-spacing="1.4">SPAIN</text>
+            <text x="1365" y="294" fill="#eef5ff" font-size="18" font-weight="800">+12.52 xG</text>
+            <rect x="1350" y="356" width="190" height="52" rx="11" fill="#061321" stroke="#0072b2" stroke-width="2"/>
+            <text x="1365" y="378" fill="#0072b2" font-size="15" font-weight="850" letter-spacing="1.4">ARGENTINA</text>
+            <text x="1365" y="397" fill="#eef5ff" font-size="18" font-weight="800">+11.19 xG</text>
+          </g>
+
+          <text x="150" y="858" fill="#f0e442" font-size="14" font-weight="850" letter-spacing="1.8">WHAT THIS SHOWS</text>
+          <text x="150" y="894" fill="#eef5ff" font-size="24" font-weight="750">Both teams got here with more than +11 cumulative xG.</text>
+          <text x="150" y="925" fill="#aebdcd" font-size="19">Spain's early group-stage stretch explains its +1.33 xG edge, but this is a path comparison, not a final forecast.</text>
+        </svg>
+        <figcaption>
+          <div>
+            <strong>How to read it:</strong> Each point is the running total of FIFA-reported xG created minus xG conceded
+            after that team's first through seventh pre-final match. A steeper section means a larger positive xG differential
+            in that match. Hover a marker for the exact fixture context.
+          </div>
+          <div class="source">
+            <strong>Sources:</strong> FIFA Training Centre public post-match reports (use subject to FIFA website terms).
+          </div>
+          <div class="source">
+            <strong>Tools:</strong> Python/pdfplumber, Bruin cli, BigQuery, and SVG.
+          </div>
+          <div class="source">
+            <strong>Limitations:</strong> The teams faced different opponents, so this describes their tournament paths rather than
+            an opponent-adjusted forecast. Static snapshot rendered 16 July 2026 from the pipeline's cumulative_xg_differential report table.
+          </div>
+        </figcaption>
+      </figure>
+    </section>
+  </main>
+</body>
+</html>

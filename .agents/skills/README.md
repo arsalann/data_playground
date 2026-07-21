@@ -8,6 +8,7 @@ This directory contains flat skill folders discovered by the agent runtime. Keep
 
 ## Individual Skills
 
+- [humanizer](humanizer/SKILL.md) - Rewrite Bruin content in Arsalan's, Burak's, or Sabri's voice while removing AI-writing patterns; defaults to Arsalan.
 - [create-dashboard](create-dashboard/SKILL.md) - Create, modify, review, or understand Bruin DAC dashboards, widgets, filters, SQL queries, semantic models, and validation workflows.
 - [pipeline-triage](pipeline-triage/SKILL.md) - Entry point for self-healing pipeline state scans and issue routing.
 - [pipeline-diagnose](pipeline-diagnose/SKILL.md) - Single-asset Bruin Cloud failure forensics.

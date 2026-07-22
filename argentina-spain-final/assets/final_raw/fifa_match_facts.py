@@ -5,10 +5,10 @@ image: python:3.11
 connection: bruin-playground-arsalan
 description: |
   Typed long-form match facts parsed from FIFA Training Centre's public World
-  Cup 2026 post-match summary reports for completed Argentina and Spain matches.
-  It retains source URLs and hashes, then extracts team metrics, phases of play,
-  starters, shot events, player line breaks, and top passing connections. The
-  final itself is excluded so these remain pre-final reports.
+  Cup 2026 post-match summary reports for Argentina and Spain. It retains
+  source URLs and hashes, then extracts team metrics, phases of play, starters,
+  shot events, player line breaks, and top passing connections, including the
+  completed Spain–Argentina final.
 
   Sources:
   https://www.fifatrainingcentre.com/en/fifa-world-cup-2026/match-report-hub.php
@@ -31,7 +31,7 @@ columns:
     description: Local match date reported by FIFA.
   - name: stage
     type: VARCHAR
-    description: FIFA stage label, excluding Final.
+    description: FIFA tournament stage label.
   - name: home_team
     type: VARCHAR
     description: Home team from the FIFA report cover.
@@ -106,6 +106,8 @@ HUB_URLS = (
     "https://www.fifatrainingcentre.com/en/fifa-world-cup-2026/match-report-hub-knockout-stage.php",
 )
 TARGET_TEAMS = {"Argentina", "Spain"}
+EXPECTED_MATCHES_PER_TEAM = 8
+MINIMUM_TARGET_REPORT_URLS = 15
 MAX_RETRIES = 5
 REQUEST_TIMEOUT_SECONDS = 60
 IN_POSSESSION_PHASES = (
@@ -157,8 +159,8 @@ def discover_report_urls() -> list[str]:
             tokens = re.split(r"[-_.]", urlparse(url).path.upper())
             if url.lower().endswith(".pdf") and ({"ARG", "ESP"} & set(tokens)):
                 urls.add(url)
-    if len(urls) < 14:
-        raise ValueError(f"Expected at least 14 Argentina/Spain FIFA reports, discovered {len(urls)}")
+    if len(urls) < MINIMUM_TARGET_REPORT_URLS:
+        raise ValueError(f"Expected at least {MINIMUM_TARGET_REPORT_URLS} Argentina/Spain FIFA reports, discovered {len(urls)}")
     return sorted(urls)
 
 
@@ -375,12 +377,15 @@ def _passing_connections(page_text: str, words: list[dict[str, Any]]) -> tuple[s
     return title.group(1), rows
 
 
+def is_target_match(match: dict[str, Any]) -> bool:
+    """Return whether a FIFA report includes either team in scope, final included."""
+    return bool({match["home_team"], match["away_team"]} & TARGET_TEAMS)
+
+
 def parse_report(pdf_bytes: bytes) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     pages = _pdf_pages(pdf_bytes)
     match = parse_match_info(pages[0][0])
-    if match["stage"].strip().lower() == "final":
-        return match, []
-    if not ({match["home_team"], match["away_team"]} & TARGET_TEAMS):
+    if not is_target_match(match):
         return match, []
 
     facts: list[dict[str, Any]] = []
@@ -432,7 +437,7 @@ def materialize():
         source_hash = hashlib.sha256(pdf_bytes).hexdigest()
         match, facts = parse_report(pdf_bytes)
         if not facts:
-            logger.info("Skipped final or non-target report %s", source_url)
+            logger.info("Skipped non-target report %s", source_url)
             continue
         for team_name in TARGET_TEAMS & {match["home_team"], match["away_team"]}:
             included_reports[team_name] += 1
@@ -441,7 +446,8 @@ def materialize():
             key = "|".join((source_hash, match["match_id"], fact["team_name"], fact["fact_type"], str(fact["entity_name"]), str(fact["related_entity_name"]), fact["metric_name"], str(fact["event_minute"]), str(sequence)))
             rows.append({"fact_id": hashlib.sha256(key.encode()).hexdigest(), **match, **fact, "opponent_name": opponent_name, "source_url": source_url, "source_hash": source_hash, "extracted_at": extracted_at})
         logger.info("Parsed match %s (%s): %d facts", match["match_id"], match["report_title"], len(facts))
-    if included_reports != {"Argentina": 7, "Spain": 7}:
-        raise ValueError(f"Expected seven pre-final reports per team, got {included_reports}")
-    logger.info("Returning %d typed FIFA facts from %d pre-final reports", len(rows), sum(included_reports.values()))
+    expected_reports = {team: EXPECTED_MATCHES_PER_TEAM for team in TARGET_TEAMS}
+    if included_reports != expected_reports:
+        raise ValueError(f"Expected {EXPECTED_MATCHES_PER_TEAM} FIFA reports per team, got {included_reports}")
+    logger.info("Returning %d typed FIFA facts from %d completed reports", len(rows), sum(included_reports.values()))
     return pd.DataFrame(rows)

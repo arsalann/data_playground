@@ -54,6 +54,10 @@ Time Player Outcome Body Part Delivery Type
 
 
 class FifaMatchFactParserTest(unittest.TestCase):
+    def test_keeps_the_completed_final_in_scope(self):
+        final = {"home_team": "Spain", "away_team": "Argentina", "stage": "Final"}
+        self.assertTrue(fifa_match_facts.is_target_match(final))
+
     def test_parses_core_key_statistics(self):
         values = fifa_match_facts._metric_values(KEY_STATS_TEXT)
         self.assertEqual(values["goals"], (3.0, 1.0))

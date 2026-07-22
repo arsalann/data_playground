@@ -3,8 +3,8 @@ name: final_reports.team_kpis
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Pre-final tournament KPIs for Argentina and Spain, calculated only from the
-  seven completed FIFA reports per team.
+  Tournament KPIs for Argentina and Spain, calculated from all eight completed
+  FIFA reports per team, including the final.
 
 depends:
   - final_staging.team_match_metrics
@@ -20,7 +20,7 @@ columns:
     primary_key: true
   - name: completed_matches
     type: INTEGER
-    description: Number of completed pre-final FIFA reports.
+    description: Number of completed FIFA reports included.
   - name: goals_per_match
     type: DOUBLE
     description: Average goals scored per completed match.
@@ -68,5 +68,5 @@ SELECT
   MAX(source_extracted_at) AS source_as_of
 FROM with_opponents
 GROUP BY team_name
-HAVING completed_matches = 7
+HAVING completed_matches = 8
 ORDER BY team_name

@@ -3,8 +3,8 @@ name: final_reports.xg_trends
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Match-by-match xG, xG conceded, and xG differential for the two finalists'
-  seven completed pre-final reports.
+  Match-by-match xG, xG conceded, and xG differential for Argentina and Spain
+  across their eight completed FIFA reports, including the final.
 
 depends:
   - final_staging.team_match_metrics
@@ -24,7 +24,7 @@ columns:
     primary_key: true
   - name: match_number
     type: INTEGER
-    description: Sequential pre-final match number for each team.
+    description: Sequential tournament match number for each team.
   - name: match_label
     type: VARCHAR
     description: Date, stage, and opponent label for chart tooltip.

@@ -4,7 +4,7 @@ type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Completed line breaks and ball progressions per 100 attempted passes across
-  the seven completed pre-final reports for each finalist.
+  all eight completed reports for each finalist, including the final.
 
 depends:
   - final_staging.team_match_metrics
@@ -26,7 +26,7 @@ columns:
     description: Ball progressions per 100 total passes.
   - name: completed_matches
     type: INTEGER
-    description: Completed pre-final reports included.
+    description: Completed FIFA reports included.
 
 @bruin */
 
@@ -38,5 +38,5 @@ SELECT
 FROM `bruin-playground-arsalan.final_staging.team_match_metrics`
 WHERE team_name IN ('Argentina', 'Spain')
 GROUP BY team_name
-HAVING completed_matches = 7
+HAVING completed_matches = 8
 ORDER BY team_name

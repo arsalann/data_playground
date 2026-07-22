@@ -3,8 +3,8 @@ name: final_staging.starters
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Official FIFA starting lineups for Argentina and Spain in completed pre-final
-  reports. Each team-match must retain exactly 11 starters.
+  Official FIFA starting lineups for Argentina and Spain in completed reports,
+  including the final. Each team-match must retain exactly 11 starters.
 
 depends:
   - final_raw.fifa_match_facts

@@ -1,0 +1,5 @@
+pandas
+requests
+pyyaml
+google-cloud-bigquery
+db-dtypes

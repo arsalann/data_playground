@@ -3,7 +3,8 @@ name: final_reports.goals_xg_match
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Goals, xG, and xG conceded for each Argentina and Spain pre-final match.
+  Goals, xG, and xG conceded for each Argentina and Spain tournament match,
+  including the final.
 
 depends:
   - final_reports.xg_trends
@@ -24,7 +25,7 @@ columns:
     primary_key: true
   - name: match_number
     type: INTEGER
-    description: Sequential pre-final match number.
+    description: Sequential tournament match number.
   - name: match_label
     type: VARCHAR
     description: Date, stage, and opponent label.

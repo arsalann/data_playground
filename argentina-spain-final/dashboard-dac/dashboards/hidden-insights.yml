@@ -1,11 +1,11 @@
 name: "Argentina–Spain 2026 World Cup Final: Hidden Insights"
-description: The tactical, progression, shooting, and passing patterns that seven completed FIFA reports can actually support.
+description: The tactical, progression, shooting, and passing patterns across eight completed FIFA reports, including the final.
 connection: bruin-playground-arsalan
 
 filters:
   - name: team
     type: select
-    default: Argentina
+    default: Spain
     options:
       values: [Argentina, Spain]
 
@@ -15,9 +15,9 @@ rows:
         type: text
         col: 12
         content: |
-          # What seven FIFA reports can actually support
+          # What eight FIFA reports can actually support
 
-          **Seven matches are enough to spot patterns. They are not enough to declare a footballing truth.** These views stay close to what FIFA publishes: phase shares, progression rates, shot outcomes, and its top passing connections. The findings table only appears after the full seven-report sample clears the data checks.
+          **Eight matches are enough to describe the tournament, not to declare a footballing truth.** These views stay close to what FIFA publishes: phase shares, progression rates, shot outcomes, and its top passing connections. The findings table only appears after the complete eight-report sample clears the data checks.
 
           **Encoding:** Argentina is the first series; Spain is the second. Legends, bar positions, labels, and tooltips identify each series as well as colour.
 
@@ -26,9 +26,9 @@ rows:
         type: text
         col: 12
         content: |
-          # In-possession phase shares, seven pre-final reports
+          # In-possession phase shares, eight tournament reports
 
-          **The biggest gap is Build Up Unopposed: Argentina averaged 44.7% and Spain 36.9%, a 7.9 percentage-point gap.** FIFA's phase shares overlap, so grouped bars are the honest version here, not a 100% stack.
+          **The biggest gap is still Build Up Unopposed: Argentina averaged 42.6% and Spain 37.4%, a 5.3 percentage-point gap.** FIFA's phase shares overlap, so grouped bars are the honest version here, not a 100% stack.
 
           **Encoding:** x-axis = FIFA in-possession phase. y-axis = average reported phase share (%). Paired bars and the legend distinguish Argentina and Spain; bars are grouped because phases overlap.
   - widgets:
@@ -68,9 +68,9 @@ rows:
         type: text
         col: 12
         content: |
-          # Out-of-possession phase shares, seven pre-final reports
+          # Out-of-possession phase shares, eight tournament reports
 
-          **Argentina's reported Low Block share averaged 24.6% versus Spain's 13.0%, the largest defensive-phase gap at 11.6 percentage points.** Again, these measures overlap, so stacking them would make up a total FIFA does not report.
+          **Argentina's reported Low Block share averaged 25.6% versus Spain's 12.4%, the largest defensive-phase gap at 13.3 percentage points.** Again, these measures overlap, so stacking them would make up a total FIFA does not report.
 
           **Encoding:** x-axis = FIFA out-of-possession phase. y-axis = average reported phase share (%). Paired bars and the legend distinguish Argentina and Spain; phases are grouped, never stacked.
   - widgets:
@@ -109,9 +109,9 @@ rows:
         type: text
         col: 12
         content: |
-          # Progression actions per 100 passes, seven pre-final reports
+          # Progression actions per 100 passes, eight tournament reports
 
-          **Spain recorded 21.3 completed line breaks and 4.7 ball progressions per 100 passes; Argentina recorded 17.0 and 3.5.** Normalizing by total passes is not magic, but it gives us a fairer read than raw counts with different passing volumes.
+          **Spain recorded 21.2 completed line breaks and 4.6 ball progressions per 100 passes; Argentina recorded 17.1 and 3.6.** Normalizing by total passes is not magic, but it gives us a fairer read than raw counts with different passing volumes.
 
           **Encoding:** x-axis = team. y-axis = actions per 100 passes. Grouped bars and the legend distinguish completed line breaks from ball progressions.
   - widgets:
@@ -147,7 +147,7 @@ rows:
         content: |
           # Shot outcomes by delivery type for the selected team
 
-          **Passes created the most parsed shots for both teams: 42 for Argentina and 53 for Spain.** Each stack is a real event count because the outcome groups are mutually exclusive.
+          **Passes created the most parsed shots for both teams: 44 for Argentina and 66 for Spain.** Each stack is a real event count because the outcome groups are mutually exclusive.
 
           **Encoding:** x-axis = FIFA delivery type for the selected team. y-axis = parsed shot events (count). Stack segments and the legend = mutually exclusive shot outcomes.
   - widgets:
@@ -220,7 +220,7 @@ rows:
         content: |
           # Findings that survived the data checks
 
-          **The table only writes a finding when both teams have all seven reports and the core metrics.** That is a boring gate, but it is the right one.
+          **The table only writes a finding when both teams have all eight reports and the core metrics.** That is a boring gate, but it is the right one.
   - widgets:
       - name: Computed findings with caveats
         type: table
@@ -241,6 +241,6 @@ rows:
         content: |
           ## Methodology
 
-          FIFA is the primary source. The pipeline finds public group and knockout hubs, retrieves completed Argentina and Spain reports, hashes each PDF, and rejects a parse missing its core metrics, phase rows, or 11 starters. The final stays out of the sample.
+          FIFA is the primary source. The pipeline finds public group and knockout hubs, retrieves all eight completed Argentina and Spain reports including the final, hashes each PDF, and rejects a parse missing its core metrics, phase rows, or 11 starters.
 
-          These are evidence-led descriptive views. Opponent quality, game state, and FIFA's own tactical definitions put a hard limit on what seven reports can tell us.
+          These are evidence-led descriptive views. Opponent quality, game state, and FIFA's own tactical definitions put a hard limit on what eight reports can tell us.

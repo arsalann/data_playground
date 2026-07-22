@@ -6,8 +6,8 @@ connection: bruin-playground-arsalan
 description: |
   Senior men's Argentina–Spain historical head-to-head matches as listed by
   11v11. The asset reads the public source directly and falls back only when
-  11v11's Cloudflare page blocks automated retrieval; the cited source URLs
-  remain the 11v11 record and individual-match pages.
+  11v11 blocks or errors on automated retrieval; the cited source URLs remain
+  the 11v11 record and individual-match pages.
 
   Source: https://www.11v11.com/teams/argentina/tab/opposingTeams/opposition/Spain/
 
@@ -108,10 +108,14 @@ def _get(url: str) -> str:
 
 
 def _public_page(url: str) -> str:
-    direct = _get(url)
-    if "Just a moment" not in direct and "cf-chl" not in direct.lower():
-        return direct
-    logger.warning("11v11 returned a bot-check page; using its public reader representation for this retrieval")
+    try:
+        direct = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT_SECONDS)
+        direct.raise_for_status()
+        if "Just a moment" not in direct.text and "cf-chl" not in direct.text.lower():
+            return direct.text
+        logger.warning("11v11 returned a bot-check page; using its public reader representation for this retrieval")
+    except requests.RequestException as exc:
+        logger.warning("11v11 direct retrieval failed for %s: %s; using its public reader representation", url, exc)
     return _get(f"{JINA_PREFIX}{url.removeprefix('https://').removeprefix('http://')}")
 
 

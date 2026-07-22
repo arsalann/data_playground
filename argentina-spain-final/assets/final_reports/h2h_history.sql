@@ -3,8 +3,8 @@ name: final_reports.h2h_history
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Presentation-ready complete 11v11 senior-men’s historical Argentina–Spain
-  series, retaining the secondary-source provenance.
+  Presentation-ready senior-men's Argentina–Spain historical series, retaining
+  11v11 secondary-source provenance and FIFA's primary final-report provenance.
 
 depends:
   - final_staging.h2h_history
@@ -23,7 +23,7 @@ columns:
     description: Home versus away fixture label.
   - name: competition
     type: VARCHAR
-    description: 11v11 competition label.
+    description: Competition label from the cited match source.
   - name: venue
     type: VARCHAR
     description: Venue and city.

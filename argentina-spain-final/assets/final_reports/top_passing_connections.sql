@@ -4,7 +4,7 @@ type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   Repeated top-five FIFA passing connections, ranked by mean share of team
-  passes across completed pre-final reports.
+  passes across completed reports, including the final.
 
 depends:
   - final_staging.passing_links

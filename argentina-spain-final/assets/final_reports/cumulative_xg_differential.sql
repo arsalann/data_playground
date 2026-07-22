@@ -3,9 +3,9 @@ name: final_reports.cumulative_xg_differential
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Cumulative expected-goals differential along each finalist's chronological
-  seven-match pre-final path. This supports a descriptive path comparison,
-  not an opponent-adjusted forecast.
+  Cumulative expected-goals differential along Argentina and Spain's
+  chronological eight-match tournament paths, including the final. This is a
+  descriptive path comparison, not an opponent-adjusted model.
 
 depends:
   - final_reports.xg_trends
@@ -25,7 +25,7 @@ columns:
     primary_key: true
   - name: match_number
     type: INTEGER
-    description: Chronological pre-final match number for the team.
+    description: Chronological tournament match number for the team.
   - name: match_label
     type: VARCHAR
     description: Date, stage, and opponent label from the FIFA report.

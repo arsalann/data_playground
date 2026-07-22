@@ -1,152 +1,129 @@
-# data_playground
+# Bruin Demo Pipelines
 
-A collection of data pipelines for exploring public datasets, built with Bruin, warehoused in BigQuery, and visualized with Bruin DAC dashboards.
+This repository is a collection of example [Bruin](https://getbruin.com/) data pipelines. They demonstrate ingestion from public APIs and datasets, transformations in SQL and Python, data-quality checks, and dashboards. Most examples use BigQuery; a few use DuckDB, MotherDuck, or source-specific connections.
 
-## Getting Started
+Each top-level pipeline directory contains a `pipeline.yml` file and its assets. Read the pipeline-level README before running an example: it documents its data sources, required credentials, and any limitations.
 
-### Prerequisites
+## Quick start
 
-1. **Python 3.10+** — install via [python.org](https://www.python.org/downloads/) or `brew install python`
-2. **Bruin CLI** — install with:
-   ```bash
-   curl -LsSf https://getbruin.com/install/cli | sh
-   ```
-3. **Bruin DAC** — install with:
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/bruin-data/dac/main/install.sh | bash
-   ```
-   This installs the `dac` binary to `~/.local/bin/dac`. See `DAC.md` for the local fork build steps (used for line-chart legends and dual y-axis).
-4. **Google Cloud credentials** — place your service account key at `credentials/playground_key.json` (this directory is gitignored), and run `gcloud auth application-default login` once for DAC's BigQuery access.
-5. **Bruin config** — create `.bruin.yml` at the repo root with your connection credentials (this file is gitignored — see `AGENTS.md` for the expected structure)
-6. **Python dependencies** — install from the repo root:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-#### Socrata connections
-
-The local `.bruin.yml` can include Bruin `socrata` source connections for open-data portals. Bruin requires one Socrata connection per portal domain, so use the named connection that matches the dataset host:
-
-- `socrata-nyc-open-data` → `data.cityofnewyork.us`
-- `socrata-chicago-open-data` → `data.cityofchicago.org`
-- `socrata-seattle-open-data` → `data.seattle.gov`
-- `socrata-ny-health` → `health.data.ny.gov`
-- `socrata-cdc` → `data.cdc.gov`
-
-For new portals, add another `socrata` connection in local `.bruin.yml` with `domain`, `app_token`, and, when needed, `username`/`password`. Do not commit `.bruin.yml`.
-
-### Secrets
-
-**No secrets, API keys, or credentials are stored in this repository.** All sensitive configuration is managed locally:
-
-- `.bruin.yml` — Bruin connection credentials (gitignored)
-- `credentials/` — GCP service account JSON files (gitignored)
-- `**/secrets.toml` — legacy Streamlit dashboard credentials (gitignored). New DAC dashboards do not use this — they query through `bruin query` against the connection in `.bruin.yml`.
-
-See `AGENTS.md` for full secrets management guidelines.
-
-### Running a Pipeline
-
-Each subdirectory is a self-contained Bruin pipeline. Here's how to run the `berlin-weather` pipeline as an example:
+### 1. Install Bruin
 
 ```bash
-# validate the pipeline
+curl -LsSf https://getbruin.com/install/cli | sh
+bruin version
+```
+
+The official [installation guide](https://getbruin.com/docs/bruin/getting-started/introduction/installation) has platform-specific troubleshooting.
+
+### 2. Configure `.bruin.yml`
+
+Bruin reads connections and secrets from a `.bruin.yml` file at the repository root. The file is gitignored: keep credentials out of version control.
+
+For the BigQuery-based demos, authenticate with Google Application Default Credentials:
+
+```bash
+gcloud auth application-default login
+```
+
+Then create `.bruin.yml` with a connection name that matches the pipeline's `default_connections` entry. Most BigQuery examples use `bruin-playground-arsalan`:
+
+```yaml
+default_environment: default
+environments:
+  default:
+    connections:
+      google_cloud_platform:
+        - name: bruin-playground-arsalan
+          project_id: YOUR_GCP_PROJECT_ID
+          location: US
+          use_application_default_credentials: true
+```
+
+Use the connection name, project, and region appropriate to your environment. To add any new connection interactively, run the Bruin connection wizard; it writes the selected connection to `.bruin.yml`:
+
+```bash
+bruin connections add
+```
+
+Some pipelines require an additional connection or API secret; follow their own README and the [Bruin connection documentation](https://getbruin.com/docs/bruin/core-concepts/connections.html). Check the configuration before a run:
+
+```bash
+bruin connections list
+bruin connections test --name bruin-playground-arsalan
+```
+
+### 3. Validate and run a pipeline
+
+Install an asset layer's Python dependencies when that pipeline includes a `requirements.txt`, then validate before executing it:
+
+```bash
+pip install -r berlin-weather/assets/raw/requirements.txt
+
+# Validate definitions and connection references.
 bruin validate berlin-weather/
 
-# run the full pipeline (ingest → staging → reports)
-bruin run berlin-weather/
+# Develop with a small, bounded run of one asset.
+bruin run --start-date 2024-01-01 --end-date 2024-01-03 \
+  berlin-weather/assets/raw/weather_raw.py
 
-# run just the raw ingest asset
-bruin run berlin-weather/assets/raw/weather_raw.py
-
-# run just the staging transformation
-bruin run berlin-weather/assets/staging/weather_daily.sql
+# Run a complete pipeline once its prerequisites are configured.
+bruin run --start-date 2024-01-01 --end-date 2024-01-07 berlin-weather/
 ```
 
-### Launching a Dashboard
-
-All new dashboards are Bruin DAC projects under `<pipeline>/dashboard-dac/`. Use the `polymarket-weather/dashboard-dac/` project as the reference implementation.
+Use the same pattern for another example, substituting its directory and asset paths. A dashboard-enabled pipeline can be served locally with Bruin DAC:
 
 ```bash
-# validate dashboard YAML + references (fast)
 dac validate --dir polymarket-weather/dashboard-dac
-
-# validate + execute every query end-to-end
-dac check --dir polymarket-weather/dashboard-dac
-
-# live-reload dev server
 dac serve --dir polymarket-weather/dashboard-dac --port 8321
-# → open http://localhost:8321
 ```
 
-When you start `dac serve`, always check `http://localhost:8321` (or whichever `--port` you pick) in the browser. See `DAC.md` for the full CLI cheat sheet, quirks, and fork-only fields (`yLabel`, `yRight`, `yRightLabel`, `seriesNames`, `hideName`).
-
-For dashboard-authoring conventions (widget structure, color palette, accessibility, methodology section), see `VISUALIZATIONS.md` at the repo root. DAC mechanics and quirks live in `DAC.md`. Widget syntax reference: the `create-dashboard` skill in `.claude/skills/create-dashboard/`.
-
-#### Legacy: Streamlit
-
-A handful of pre-DAC pipelines still ship a `streamlit_app.py` in `assets/reports/`. Those continue to work but should not be extended. New dashboards must use DAC. To launch a legacy Streamlit dashboard:
-
-```bash
-streamlit run berlin-weather/assets/reports/streamlit_app.py
-```
+Open the dashboard at [http://localhost:8321](http://localhost:8321).
 
 ## Pipelines
 
-- **ai-price-wars** — AI model pricing vs quality analysis
-- **baby-bust** — Global fertility decline vs economic development (World Bank, 217 countries, 1960-2024)
-- **berlin-weather** — Historical weather data for Berlin
-- **chess-analytics** — Chess game analytics
-- **chess-dot-com** — Chess.com game analytics
-- **city-pulse** — Urban form analysis: street network fingerprints, building heights, and city design metrics (GHSL + OSMnx, 10K cities + 20 analyzed)
-- **contoso** — Contoso sample data
-- **epias-energy** — Turkish energy market data (EPIAS)
-- **flightradar24** — Flight tracking data
-- **ga_sample** — Google Analytics sample data
-- **google-takeout** — Google Takeout data analysis
-- **google-trends** — Google search trends analysis
-- **hormuz-effect** — Strait of Hormuz oil crisis impact on markets (FRED + S&P 500)
-- **nyc-taxi** — NYC taxi trip data
-- **pension-crisis** — Global retirement and pension crisis (38 OECD countries; UN WPP 2024 + OECD Pensions at a Glance + Mercer CFA GPI 2025)
-- **polymarket-insights** — Prediction market analysis (Polymarket)
-- **stackoverflow-trends** — Stack Overflow activity trends (2008-present)
-- **stock-market** — S&P 500 stock market data (FMP API)
+| Pipeline | Overview |
+| --- | --- |
+| `ai-economy` | Examines AI adoption, task exposure, and labour-market context using Anthropic and public economic data. |
+| `ai-energy-paradox` | Relates AI and data-centre electricity demand to generation, prices, emissions, and EV demand. |
+| `ai-price-wars` | Tracks the relationship between AI model pricing, provider offerings, and benchmark quality. |
+| `argentina-spain-final` | Analyses the Argentina–Spain football final with match events, expected goals, squads, and head-to-head history. |
+| `baby-bust` | Explores long-term fertility decline and its economic and demographic context across countries. |
+| `berlin-weather` | Ingests and analyses historical weather observations for Berlin. |
+| `bruin-shop` | Demonstrates a multi-source commerce and marketing pipeline using advertising, web analytics, CRM, and ecommerce data. |
+| `chess-analytics` | Builds player- and game-level chess performance statistics from Chess.com data. |
+| `chess-dot-com` | Analyses Chess.com games, ratings, openings, results, and player activity patterns. |
+| `city-pulse` | Compares global cities through urban form, street networks, building heights, and demographic measures. |
+| `contoso` | Loads the Contoso sample business dataset into BigQuery for finance, sales, and operational analysis. |
+| `contoso-dac` | Presents the Contoso sample business dataset through a Bruin DAC dashboard workflow. |
+| `contoso-v2` | Provides a second Contoso sample-data implementation for BigQuery-based analytics. |
+| `epias-energy` | Analyses Turkish electricity generation, prices, demand forecasts, weather, and macroeconomic context. |
+| `fifa-2026` | Tracks the 2026 FIFA World Cup schedule, teams, venues, travel, heat risk, and prediction markets. |
+| `flightradar24` | Summarises flight-tracking data and compares airport-hub activity. |
+| `ga_sample` | Provides a minimal Google Analytics sample-data pipeline. |
+| `google-takeout` | Analyses a personal Google Takeout search-history export over time. |
+| `google-trends` | Studies global and US Google search trends around AI-related terms. |
+| `hormuz-effect` | Examines the market and macroeconomic effects of disruption in the Strait of Hormuz. |
+| `ingestr-cli-v1` | Demonstrates ingesting order data through the Ingestr CLI. |
+| `jose-ingestr` | Demonstrates loading order data into DuckDB through Ingestr assets. |
+| `nyc-taxi` | Analyses New York City taxi trips, fares, tips, timing, and zone-level patterns. |
+| `pension-crisis` | Assesses population ageing, pension adequacy, and fiscal pressure across OECD countries. |
+| `pension-crisis-dac` | Supplies a Bruin DAC dashboard companion for the pension-crisis analysis. |
+| `polymarket-insights` | Analyses prediction-market activity, topic trends, price movements, and headline events. |
+| `polymarket-weather` | Evaluates Polymarket weather contracts against forecasts and observed station weather. |
+| `public-transit` | Provides a starting point for public-transit pipeline development. |
+| `public-transit-analysis` | Compares US transit agencies and metro areas on ridership recovery and operating efficiency. |
+| `public-transit-hk` | Analyses Hong Kong GTFS and MTR data, including routes, stops, fares, and service patterns. |
+| `public-transit-istanbul` | Analyses Istanbul ridership, rail, ferry, traffic, stations, and passenger demographics. |
+| `santiago-dac` | Provides a Bruin DAC dashboard example focused on Santiago data. |
+| `self-heal-iot` | Demonstrates data-quality and recovery patterns for IoT sensor readings. |
+| `self-heal-shop` | Demonstrates self-healing pipeline patterns for orders, products, and revenue. |
+| `self-heal-webevents` | Demonstrates self-healing pipeline patterns for web pageview data. |
+| `stackoverflow-trends` | Tracks Stack Overflow questions, tags, and activity trends over time. |
+| `stock-market` | Loads S&amp;P 500 prices and company financial statements for market analysis. |
+| `toronto-crime` | Analyses Toronto crime events by category, neighbourhood, time, and spatial patterns. |
+| `tour-de-france` | Tracks Tour de France stage results, general-classification standings, and time gaps. |
+| `wikipedia-ai-trends` | Measures the growth and structure of AI-related articles across Wikipedia. |
 
-## Stack
+## More help
 
-- **[Bruin CLI](https://github.com/bruin-data/bruin)** — Pipeline orchestration, data quality, and materialization
-- **BigQuery** — Data warehouse (+ public datasets)
-- **Python / Pandas** — Raw data ingestion from APIs
-- **SQL** — Staging transformations and aggregations
-- **[Bruin DAC](https://github.com/bruin-data/dac)** — Dashboard-as-Code: YAML/TSX dashboards served by a React/Recharts frontend, queries routed through `bruin query`. See `DAC.md`.
-- **Streamlit / Altair** _(legacy)_ — Pre-DAC dashboards in some pipelines. Not used for new work.
-
-## Dataset Discovery
-
-- **[Mobus](https://www.mobus.ai/)** — Open-source MCP server that searches 21 dataset repositories (Kaggle, Hugging Face, Zenodo, arXiv, NASA Earthdata, WHO, data.gov, World Bank, AWS Open Data, Eurostat, Census.gov, SEC EDGAR, Harvard Dataverse, and more) from a single conversational interface. Use it to scout datasets for new pipelines.
-- **[Socrata Discovery API](https://api.us.socrata.com/api/catalog/v1)** — Catalog search for Socrata-powered civic open-data portals. Good starting points for future Bruin ingestr pipelines:
-  - NYC 311 Service Requests from 2020 to Present (`data.cityofnewyork.us`, dataset `erm2-nwe9`)
-  - NYC Motor Vehicle Collisions - Crashes (`data.cityofnewyork.us`, `h9gi-nx95`)
-  - Chicago Crimes - 2001 to Present (`data.cityofchicago.org`, `ijzp-q8t2`)
-  - CTA Ridership - Daily Boarding Totals (`data.cityofchicago.org`, `6iiy-9s97`)
-  - CTA Ridership - L Station Entries - Daily Totals (`data.cityofchicago.org`, `5neh-572f`)
-  - Seattle Building Permits (`data.seattle.gov`, `76t5-zqzr`)
-  - NY Hospital-Acquired Infections: Beginning 2008 (`health.data.ny.gov`, `utrt-zdsi`)
-  - CDC Nutrition, Physical Activity, and Obesity - BRFSS (`data.cdc.gov`, `hn4x-zwk7`)
-
-## Data Sources
-
-- BigQuery public datasets (Stack Overflow, Google Trends, Google Analytics)
-- Chess.com API
-- EPIAS (Turkish energy market)
-- Flightradar24
-- FMP (Financial Modeling Prep) API — S&P 500 stock data
-- FRED API — Federal Reserve economic data (oil prices, CPI, unemployment, yield curve)
-- GHSL Urban Centre Database (European Commission JRC) — 10K+ global urban centers with population, GDP, building height, climate
-- NYC TLC trip record data
-- Open-Meteo API
-- OpenStreetMap (via OSMnx Overpass API) — street network graphs for urban form analysis
-- Polymarket API — prediction market data
-- Socrata-powered open-data portals — civic service requests, permits, transportation, public safety, and public health datasets
-- Stack Exchange API
-- World Bank Open Data API — development indicators, demographics, economics (217 countries, 1960-2024)
+Run `bruin --help` or `bruin <command> --help` to see command options. The [Bruin documentation](https://getbruin.com/docs/bruin/) covers assets, connections, scheduling, and deployment.

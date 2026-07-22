@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>England and France: two routes to the bronze final</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #061321;
+      --panel: #0b1d31;
+      --ink: #eef5ff;
+      --muted: #aebdcd;
+      --grid: #274158;
+      --england: #0072b2;
+      --france: #009e73;
+      --accent: #f0e442;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(100%, 1180px);
+      margin: 0 auto;
+      padding: clamp(28px, 5vw, 72px) clamp(18px, 4vw, 44px) 64px;
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 850;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(2.45rem, 7.5vw, 5.8rem);
+      line-height: 0.91;
+      letter-spacing: -0.065em;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .standfirst {
+      max-width: 800px;
+      margin: 28px 0 38px;
+      color: var(--muted);
+      font-size: clamp(1.02rem, 2vw, 1.23rem);
+      line-height: 1.6;
+    }
+
+    .standfirst strong { color: var(--ink); }
+
+    .visual-card {
+      overflow: hidden;
+      border: 1px solid #28445c;
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: 0 28px 68px rgb(0 0 0 / 0.22);
+    }
+
+    figure { margin: 0; }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--panel);
+    }
+
+    .route {
+      animation: reveal-route 1.1s ease-out both;
+      transform-origin: 155px 700px;
+    }
+
+    .route-france { animation-delay: 0.11s; }
+
+    .marker { cursor: help; }
+    .marker:focus { outline: none; }
+
+    figcaption {
+      display: grid;
+      gap: 14px;
+      padding: 24px clamp(20px, 4vw, 38px) 28px;
+      border-top: 1px solid #28445c;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    figcaption strong { color: var(--ink); }
+    .source { font-size: 0.84rem; }
+
+    @keyframes reveal-route {
+      from { opacity: 0; transform: scaleY(0.02); }
+      to { opacity: 1; transform: scaleY(1); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">FIFA World Cup 2026 · eight completed reports each</p>
+    <h1>Two routes.<br><span>One bronze final.</span></h1>
+    <p class="standfirst">
+      England owned the early route. France passed them in the round of 16 and finished at
+      <strong>+8.70 cumulative xG differential</strong>, against England's <strong>+5.17</strong>.
+      England won their bronze final 6–4, but France created more xG in that match: 2.99 to 2.34.
+      This is the completed tournament record, not an opponent-adjusted rating.
+    </p>
+
+    <section class="visual-card" aria-label="Annotated cumulative expected-goals differential comparison for England and France">
+      <figure>
+        <svg viewBox="0 0 1600 980" role="img" aria-labelledby="chart-title chart-description">
+          <title id="chart-title">England and France cumulative xG differential through all eight completed matches of the 2026 World Cup</title>
+          <desc id="chart-description">
+            England is a blue solid route with square markers. France is a green dashed route with circle markers.
+            France finishes at plus 8.70 cumulative xG differential and England at plus 5.17, after England won their bronze final 6–4.
+          </desc>
+          <defs>
+            <pattern id="gap-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="12" height="12" fill="#b9c7d5" opacity="0.09"/>
+              <line x1="0" y1="0" x2="0" y2="12" stroke="#d9e4ee" stroke-width="3" opacity="0.18"/>
+            </pattern>
+            <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="6" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <rect width="1600" height="980" fill="#0b1d31"/>
+          <rect x="108" y="182" width="558" height="530" rx="28" fill="#0072b2" opacity="0.055"/>
+          <rect x="666" y="182" width="777" height="530" rx="28" fill="#009e73" opacity="0.045"/>
+
+          <text x="150" y="85" fill="#f0e442" font-size="18" font-weight="800" letter-spacing="2.8">EIGHT-MATCH CUMULATIVE xG DIFFERENTIAL</text>
+          <text x="150" y="122" fill="#eef5ff" font-size="28" font-weight="750">Running cumulative xG differential, in xG</text>
+          <text x="150" y="154" fill="#aebdcd" font-size="17">Different opponent paths. The hatched ribbon shows the gap at each tournament step.</text>
+
+          <rect x="1005" y="73" width="14" height="14" fill="#0072b2" stroke="#eef5ff" stroke-width="2"/>
+          <line x1="1028" y1="80" x2="1070" y2="80" stroke="#0072b2" stroke-width="5"/>
+          <text x="1080" y="87" fill="#eef5ff" font-size="17" font-weight="750">ENGLAND</text>
+          <circle cx="1248" cy="80" r="8" fill="#009e73" stroke="#eef5ff" stroke-width="2"/>
+          <line x1="1262" y1="80" x2="1304" y2="80" stroke="#009e73" stroke-width="5" stroke-dasharray="12 7"/>
+          <text x="1314" y="87" fill="#eef5ff" font-size="17" font-weight="750">FRANCE</text>
+
+          <text x="52" y="461" fill="#aebdcd" font-size="16" font-weight="750" letter-spacing="1.6" transform="rotate(-90 52 461)">CUMULATIVE xG DIFFERENTIAL</text>
+
+          <g fill="none">
+            <line x1="150" y1="700" x2="1460" y2="700" stroke="#274158" stroke-width="2"/>
+            <line x1="150" y1="604" x2="1460" y2="604" stroke="#274158" opacity="0.7"/>
+            <line x1="150" y1="508" x2="1460" y2="508" stroke="#274158" opacity="0.7"/>
+            <line x1="150" y1="412" x2="1460" y2="412" stroke="#274158" opacity="0.7"/>
+            <line x1="150" y1="316" x2="1460" y2="316" stroke="#274158" opacity="0.7"/>
+            <line x1="150" y1="220" x2="1460" y2="220" stroke="#274158" opacity="0.7"/>
+          </g>
+          <g fill="#aebdcd" font-size="16" text-anchor="end">
+            <text x="126" y="706">0</text><text x="126" y="610">+2</text><text x="126" y="514">+4</text>
+            <text x="126" y="418">+6</text><text x="126" y="322">+8</text><text x="126" y="226">+10</text>
+          </g>
+
+          <text x="385" y="207" fill="#84a4bf" font-size="15" font-weight="800" letter-spacing="2" text-anchor="middle">GROUP STAGE</text>
+          <line x1="150" y1="218" x2="610" y2="218" stroke="#52718a" stroke-width="2"/>
+          <text x="1035" y="207" fill="#84a4bf" font-size="15" font-weight="800" letter-spacing="2" text-anchor="middle">KNOCKOUTS + BRONZE FINAL</text>
+          <line x1="655" y1="218" x2="1460" y2="218" stroke="#52718a" stroke-width="2"/>
+
+          <path d="M 235 579.5 L 415 510.4 L 595 467.7 L 775 414.4 L 955 409.1 L 1135 372.2 L 1315 420.6 L 1440 451.8 L 1440 282.4 L 1315 313.6 L 1135 230.6 L 955 391.8 L 775 478.2 L 595 583.4 L 415 564.2 L 235 641.0 Z" fill="url(#gap-hatch)"/>
+
+          <path class="route" d="M 155 700 L 235 579.5 L 415 510.4 L 595 467.7 L 775 414.4 L 955 409.1 L 1135 372.2 L 1315 420.6 L 1440 451.8" fill="none" stroke="#0072b2" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+          <path class="route route-france" d="M 155 700 L 235 641.0 L 415 564.2 L 595 583.4 L 775 478.2 L 955 391.8 L 1135 230.6 L 1315 313.6 L 1440 282.4" fill="none" stroke="#009e73" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="14 9" filter="url(#glow)"/>
+
+          <g stroke="#7190aa" stroke-width="2">
+            <line x1="235" y1="700" x2="235" y2="710"/><line x1="415" y1="700" x2="415" y2="710"/>
+            <line x1="595" y1="700" x2="595" y2="710"/><line x1="775" y1="700" x2="775" y2="710"/>
+            <line x1="955" y1="700" x2="955" y2="710"/><line x1="1135" y1="700" x2="1135" y2="710"/>
+            <line x1="1315" y1="700" x2="1315" y2="710"/><line x1="1440" y1="700" x2="1440" y2="710"/>
+          </g>
+          <g text-anchor="middle">
+            <text x="235" y="744" fill="#eef5ff" font-size="17" font-weight="800">G1</text><text x="235" y="770" fill="#aebdcd" font-size="14">MATCH 1</text>
+            <text x="415" y="744" fill="#eef5ff" font-size="17" font-weight="800">G2</text><text x="415" y="770" fill="#aebdcd" font-size="14">MATCH 2</text>
+            <text x="595" y="744" fill="#eef5ff" font-size="17" font-weight="800">G3</text><text x="595" y="770" fill="#aebdcd" font-size="14">MATCH 3</text>
+            <text x="775" y="744" fill="#eef5ff" font-size="17" font-weight="800">R32</text><text x="775" y="770" fill="#aebdcd" font-size="14">MATCH 4</text>
+            <text x="955" y="744" fill="#eef5ff" font-size="17" font-weight="800">R16</text><text x="955" y="770" fill="#aebdcd" font-size="14">MATCH 5</text>
+            <text x="1135" y="744" fill="#eef5ff" font-size="17" font-weight="800">QF</text><text x="1135" y="770" fill="#aebdcd" font-size="14">MATCH 6</text>
+            <text x="1315" y="744" fill="#eef5ff" font-size="17" font-weight="800">SF</text><text x="1315" y="770" fill="#aebdcd" font-size="14">MATCH 7</text>
+            <text x="1440" y="744" fill="#eef5ff" font-size="17" font-weight="800">BRONZE</text><text x="1440" y="770" fill="#aebdcd" font-size="14">MATCH 8</text>
+          </g>
+
+          <g fill="none" stroke="#d0dbe7" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.85">
+            <path d="M 415 537.3 L 465 348"/><path d="M 955 400.5 L 820 319"/><path d="M 1440 367.1 L 1110 510"/>
+          </g>
+          <g fill="#f0e442"><circle cx="415" cy="537.3" r="4"/><circle cx="955" cy="400.5" r="4"/><circle cx="1440" cy="367.1" r="4"/></g>
+          <g>
+            <text x="465" y="340" fill="#f0e442" font-size="15" font-weight="850" letter-spacing="1.5">ENGLAND SETS THE EARLY PACE</text>
+            <text x="465" y="366" fill="#eef5ff" font-size="17" font-weight="700">+3.95 xG differential after match 2</text>
+            <text x="465" y="390" fill="#aebdcd" font-size="16">France was at +2.83 after the same step.</text>
+            <text x="820" y="311" fill="#f0e442" font-size="15" font-weight="850" letter-spacing="1.5">FRANCE TAKES THE LEAD</text>
+            <text x="820" y="337" fill="#eef5ff" font-size="17" font-weight="700">+6.42 after the round of 16</text>
+            <text x="820" y="361" fill="#aebdcd" font-size="16">England was at +6.06. It stayed close, then split.</text>
+            <text x="1110" y="502" fill="#f0e442" font-size="15" font-weight="850" letter-spacing="1.5">THE SCORELINE AND xG DISAGREE</text>
+            <text x="1110" y="528" fill="#eef5ff" font-size="17" font-weight="700">England won the bronze final 6–4.</text>
+            <text x="1110" y="552" fill="#aebdcd" font-size="16">France had 2.99 xG to England's 2.34.</text>
+            <text x="1110" y="576" fill="#aebdcd" font-size="16">France kept the higher route.</text>
+          </g>
+
+          <g class="marker" tabindex="0" aria-label="England, Group 1 against Croatia: plus 2.51 match xG differential and plus 2.51 cumulative"><title>England · 17 Jun · Group 1 v Croatia: +2.51 match xG differential; +2.51 cumulative.</title><rect x="225" y="569.5" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="England, Group 2 against Ghana: plus 1.44 match xG differential and plus 3.95 cumulative"><title>England · 23 Jun · Group 2 v Ghana: +1.44 match xG differential; +3.95 cumulative.</title><rect x="405" y="500.4" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="England, Group 3 against Panama: plus 0.89 match xG differential and plus 4.84 cumulative"><title>England · 27 Jun · Group 3 v Panama: +0.89 match xG differential; +4.84 cumulative.</title><rect x="585" y="457.7" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="England, round of 32 against Congo DR: plus 1.11 match xG differential and plus 5.95 cumulative"><title>England · 1 Jul · Round of 32 v Congo DR: +1.11 match xG differential; +5.95 cumulative.</title><rect x="765" y="404.4" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="England, round of 16 against Mexico: plus 0.11 match xG differential and plus 6.06 cumulative"><title>England · 5 Jul · Round of 16 v Mexico: +0.11 match xG differential; +6.06 cumulative.</title><rect x="945" y="399.1" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="England, quarter-final against Norway: plus 0.77 match xG differential and plus 6.83 cumulative"><title>England · 11 Jul · Quarter-final v Norway: +0.77 match xG differential; +6.83 cumulative.</title><rect x="1125" y="362.2" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="England, semi-final against Argentina: minus 1.01 match xG differential and plus 5.82 cumulative"><title>England · 15 Jul · Semi-final v Argentina: −1.01 match xG differential; +5.82 cumulative.</title><rect x="1305" y="410.6" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="England, bronze final against France: minus 0.65 match xG differential and plus 5.17 cumulative"><title>England · 18 Jul · Bronze final v France: −0.65 match xG differential; +5.17 cumulative.</title><rect x="1430" y="441.8" width="20" height="20" rx="2" fill="#0072b2" stroke="#eef5ff" stroke-width="3"/></g>
+
+          <g class="marker" tabindex="0" aria-label="France, Group 1 against Senegal: plus 1.23 match xG differential and plus 1.23 cumulative"><title>France · 16 Jun · Group 1 v Senegal: +1.23 match xG differential; +1.23 cumulative.</title><circle cx="235" cy="641.0" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="France, Group 2 against Iraq: plus 1.60 match xG differential and plus 2.83 cumulative"><title>France · 22 Jun · Group 2 v Iraq: +1.60 match xG differential; +2.83 cumulative.</title><circle cx="415" cy="564.2" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="France, Group 3 against Norway: minus 0.40 match xG differential and plus 2.43 cumulative"><title>France · 26 Jun · Group 3 v Norway: −0.40 match xG differential; +2.43 cumulative.</title><circle cx="595" cy="583.4" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="France, round of 32 against Sweden: plus 2.19 match xG differential and plus 4.62 cumulative"><title>France · 30 Jun · Round of 32 v Sweden: +2.19 match xG differential; +4.62 cumulative.</title><circle cx="775" cy="478.2" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="France, round of 16 against Paraguay: plus 1.80 match xG differential and plus 6.42 cumulative"><title>France · 4 Jul · Round of 16 v Paraguay: +1.80 match xG differential; +6.42 cumulative.</title><circle cx="955" cy="391.8" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="France, quarter-final against Morocco: plus 3.36 match xG differential and plus 9.78 cumulative"><title>France · 9 Jul · Quarter-final v Morocco: +3.36 match xG differential; +9.78 cumulative.</title><circle cx="1135" cy="230.6" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="France, semi-final against Spain: minus 1.73 match xG differential and plus 8.05 cumulative"><title>France · 14 Jul · Semi-final v Spain: −1.73 match xG differential; +8.05 cumulative.</title><circle cx="1315" cy="313.6" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+          <g class="marker" tabindex="0" aria-label="France, bronze final against England: plus 0.65 match xG differential and plus 8.70 cumulative"><title>France · 18 Jul · Bronze final v England: +0.65 match xG differential; +8.70 cumulative.</title><circle cx="1440" cy="282.4" r="11" fill="#009e73" stroke="#eef5ff" stroke-width="3"/></g>
+
+          <g>
+            <rect x="150" y="242" width="280" height="76" rx="11" fill="#061321" stroke="#009e73" stroke-width="2"/>
+            <text x="170" y="264" fill="#009e73" font-size="12" font-weight="850" letter-spacing="1">FRANCE</text>
+            <text x="170" y="282" fill="#a9bed2" font-size="11" font-weight="750" letter-spacing=".7">CUMULATIVE xG DIFFERENTIAL</text>
+            <text x="170" y="306" fill="#eef5ff" font-size="17" font-weight="800">+8.70</text>
+            <rect x="150" y="335" width="280" height="76" rx="11" fill="#061321" stroke="#0072b2" stroke-width="2"/>
+            <text x="170" y="357" fill="#0072b2" font-size="12" font-weight="850" letter-spacing="1">ENGLAND</text>
+            <text x="170" y="375" fill="#a9bed2" font-size="11" font-weight="750" letter-spacing=".7">CUMULATIVE xG DIFFERENTIAL</text>
+            <text x="170" y="399" fill="#eef5ff" font-size="17" font-weight="800">+5.17</text>
+          </g>
+
+          <text x="150" y="848" fill="#f0e442" font-size="14" font-weight="850" letter-spacing="1.8">WHAT THIS SHOWS</text>
+          <text x="150" y="884" fill="#eef5ff" font-size="24" font-weight="750">France had the higher cumulative chance balance, even after England won their last match.</text>
+          <text x="150" y="915" fill="#aebdcd" font-size="19">France's quarter-final created the decisive cushion: +3.36 xG differential, then +2.95 ahead of England.</text>
+        </svg>
+        <figcaption>
+          <div><strong>How to read it:</strong> Each point is the running total of FIFA-reported xG created minus xG conceded after that team's first through eighth tournament match. A steeper section means a larger positive xG differential. Hover or focus a marker for the exact fixture.</div>
+          <div><strong>Metric note:</strong> The endpoint totals are cumulative xG differential, not raw xG. Raw tournament xG was 16.79 for France and 15.03 for England.</div>
+          <div class="source"><strong>Sources:</strong> FIFA Training Centre public post-match reports for England and France, including the 18 July bronze final (use subject to FIFA website terms).</div>
+          <div class="source"><strong>Tools:</strong> Python/pdfplumber, the existing FIFA report parser, and SVG.</div>
+          <div class="source"><strong>Limitations:</strong> The teams faced different opponents. Cumulative xG differential describes their tournament paths; it is not an opponent-adjusted strength rating or a claim about the better team. Static snapshot rendered 22 July 2026.</div>
+        </figcaption>
+      </figure>
+    </section>
+  </main>
+</body>
+</html>

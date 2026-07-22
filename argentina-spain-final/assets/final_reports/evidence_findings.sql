@@ -3,8 +3,9 @@
 name: final_reports.evidence_findings
 type: bq.sql
 description: |
-  Data-driven findings emitted only after both teams have seven complete FIFA
-  reports with core metrics. No tactical claim is prewritten into this asset.
+  Data-driven findings emitted only after both teams have eight complete FIFA
+  reports with core metrics, including the final. No tactical claim is
+  prewritten into this asset.
 connection: bruin-playground-arsalan
 
 materialization:
@@ -34,7 +35,7 @@ columns:
 @bruin */
 
 WITH complete AS (
-  SELECT COUNT(*) = 2 AND MIN(completed_matches) = 7 AS is_complete
+  SELECT COUNT(*) = 2 AND MIN(completed_matches) = 8 AS is_complete
   FROM `bruin-playground-arsalan.final_reports.team_kpis`
 ),
 best_xg AS (
@@ -54,13 +55,13 @@ repeated_link AS (
 )
 
 SELECT 1 AS finding_order, 'Chance quality' AS evidence_area,
-  FORMAT('%s comes out a touch ahead on xG differential: %+.2f xG per match across seven completed pre-final reports.', team_name, xg_differential_per_match) AS finding,
-  'Seven matches are context, not a forecast of the final.' AS caveat
+  FORMAT('%s finished with the higher tournament xG differential: %+.2f xG per match across eight reports.', team_name, xg_differential_per_match) AS finding,
+  'This is descriptive tournament context, not an opponent-adjusted strength rating.' AS caveat
 FROM best_xg CROSS JOIN complete
 WHERE is_complete
 UNION ALL
 SELECT 2, 'Progression',
-  FORMAT('%s completed %.1f line breaks per 100 passes, the higher rate in this seven-report sample.', team_name, completed_line_breaks_per_100_passes),
+  FORMAT('%s completed %.1f line breaks per 100 passes, the higher rate across the eight-report tournament sample.', team_name, completed_line_breaks_per_100_passes),
   'FIFA defines line breaks its own way, and the rate still moves with possession and opponents.'
 FROM best_progression CROSS JOIN complete
 WHERE is_complete

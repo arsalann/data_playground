@@ -3,8 +3,8 @@ name: final_staging.shot_events
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  FIFA player-level shot events for Argentina and Spain in completed pre-final
-  reports, including delivery type and an outcome group for analysis.
+  FIFA player-level shot events for Argentina and Spain in completed reports,
+  including the final, delivery type, and an outcome group for analysis.
 
 depends:
   - final_raw.fifa_match_facts

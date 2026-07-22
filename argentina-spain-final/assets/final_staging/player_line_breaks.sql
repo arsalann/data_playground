@@ -4,7 +4,7 @@ type: bq.sql
 connection: bruin-playground-arsalan
 description: |
   FIFA player-level attempted and completed line breaks for Argentina and Spain
-  in completed pre-final matches.
+  in completed matches, including the final.
 
 depends:
   - final_raw.fifa_match_facts

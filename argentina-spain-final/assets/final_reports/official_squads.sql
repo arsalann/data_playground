@@ -33,7 +33,7 @@ columns:
     description: FIFA-listed club.
   - name: tournament_starts
     type: INTEGER
-    description: Starts across parsed pre-final FIFA reports.
+    description: Starts across parsed FIFA reports.
   - name: coach
     type: VARCHAR
     description: FIFA-listed head coach.

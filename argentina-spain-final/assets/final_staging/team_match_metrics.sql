@@ -3,8 +3,8 @@ name: final_staging.team_match_metrics
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  One row per team and completed pre-final FIFA report, with core match metrics
-  deduplicated from the append-only parsed fact table.
+  One row per team and completed FIFA report, including the final, with core
+  match metrics deduplicated from the append-only parsed fact table.
 
 depends:
   - final_raw.fifa_match_facts
@@ -27,7 +27,7 @@ columns:
     description: Local match date from FIFA.
   - name: stage
     type: VARCHAR
-    description: Tournament stage excluding Final.
+    description: Tournament stage.
   - name: opponent_name
     type: VARCHAR
     description: Opponent in the FIFA report.

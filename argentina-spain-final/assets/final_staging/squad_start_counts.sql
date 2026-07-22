@@ -3,7 +3,7 @@ name: final_staging.squad_start_counts
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Latest official FIFA squad lists enriched with each player's pre-final start
+  Latest official FIFA squad lists enriched with each player's tournament start
   count, joined by team and official squad number rather than fragile name text.
 
 depends:
@@ -34,7 +34,7 @@ columns:
     description: Club listed by FIFA.
   - name: tournament_starts
     type: INTEGER
-    description: Number of parsed starts across the seven pre-final reports.
+    description: Number of parsed starts across completed FIFA reports.
   - name: coach
     type: VARCHAR
     description: Head coach listed in the latest FIFA squad PDF.

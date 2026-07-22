@@ -3,8 +3,9 @@ name: final_reports.phase_mix
 type: bq.sql
 connection: bruin-playground-arsalan
 description: |
-  Mean FIFA phase shares across completed pre-final reports. FIFA phase shares
-  may overlap, so this table supports grouped bars rather than invalid stacks.
+  Mean FIFA phase shares across all eight completed reports, including the
+  final. FIFA phase shares may overlap, so this table supports grouped bars
+  rather than invalid stacks.
 
 depends:
   - final_staging.team_match_phases
@@ -28,7 +29,7 @@ columns:
     primary_key: true
   - name: mean_phase_share_pct
     type: DOUBLE
-    description: Mean separate phase share percentage across seven reports.
+    description: Mean separate phase share percentage across eight reports.
   - name: completed_matches
     type: INTEGER
     description: Number of reports contributing to the mean.
@@ -43,5 +44,5 @@ SELECT
   COUNT(*) AS completed_matches
 FROM `bruin-playground-arsalan.final_staging.team_match_phases`
 GROUP BY team_name, phase_group, phase_name
-HAVING completed_matches = 7
+HAVING completed_matches = 8
 ORDER BY phase_group, phase_name, team_name

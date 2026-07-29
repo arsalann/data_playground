@@ -6,7 +6,7 @@ This repository contains data pipelines built with **Bruin**, warehoused in **Bi
 
 **Dashboard rule:** All new dashboards in this repo MUST be built with Bruin DAC. Streamlit is the legacy pattern — do not start new Streamlit dashboards. When modifying an existing Streamlit dashboard, consider migrating it to DAC if the change is non-trivial. See `DAC.md` for the working reference on DAC conventions, quirks, and our local fork features.
 
-**Visualization rule:** Every chart in every dashboard MUST strictly follow `VISUALIZATIONS.md` at the repo root. That document is the single source of truth for chart structure, color/accessibility, truthful axes, encoding discipline, labels, layout, and framework-specific rules (DAC, Altair, Matplotlib polar). Violations are bugs.
+**Visualization rule:** Every chart and map in every dashboard MUST strictly follow `VISUALIZATIONS.md` at the repo root. That document is the single source of truth for chart structure, color/accessibility, truthful axes, encoding discipline, labels, layout, and framework-specific rules (DAC, MapLibre, Altair, Matplotlib polar). Violations are bugs.
 
 ## Project Discovery
 
@@ -559,6 +559,7 @@ Pre-DAC pipelines have a `.streamlit/secrets.toml` in their reports directory. T
 
 These rules are **mandatory** when working with geospatial data (OSMnx, GeoPandas, GHSL, etc.):
 
+- **Prefer MapLibre for map visualizations.** Use [MapLibre](https://maplibre.org/) as the default tool for interactive maps. Use another mapping library only where MapLibre cannot meet a documented technical requirement. New dashboards must still follow the DAC dashboard rule; do not introduce Streamlit for a map.
 - **Consistent spatial methodology.** When comparing cities or regions, every entity MUST use identical spatial parameters: same query function, same radius, same resolution, same projection. Never mix `graph_from_place` (admin boundaries) across cities — admin boundary sizes vary wildly (e.g., "City of London" = 1 sq mi vs "Chicago" = 234 sq mi). Use `graph_from_point(center, dist=RADIUS)` with a fixed radius for all cities.
 - **Verify query scope before charting.** Before building any visualization, verify what each geospatial query actually returned. Log the bounding box or area. Compare areas across all entities to catch inconsistencies. A query for "Barcelona" might return the city, the province, or a single neighborhood depending on the API and query string.
 - **Document the methodology explicitly.** State the exact spatial parameters (radius, center coordinates, projection, data version) in the README and in the dashboard's methodology section. Future users must be able to reproduce the analysis.
@@ -596,4 +597,4 @@ Start with the most insightful chart. Show it to the user. Get feedback. Iterate
 
 ## Visualization Framework Rules
 
-Altair gotchas (legacy Streamlit only), Matplotlib polar-plot orientation, DAC chart structure / palette / encoding, and any other framework-specific viz rules all live in `VISUALIZATIONS.md`. Read that file before writing any chart code.
+MapLibre map-visualization guidance, Altair gotchas (legacy Streamlit only), Matplotlib polar-plot orientation, DAC chart structure / palette / encoding, and any other framework-specific viz rules all live in `VISUALIZATIONS.md`. Read that file before writing any chart or map code.

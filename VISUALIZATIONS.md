@@ -13,8 +13,9 @@ This document covers:
 8. Layout
 9. Visual review after build
 10. DAC-specific rules (Bruin DAC quirks and fork-only fields)
-11. Altair-specific rules (legacy dashboards only)
-12. Matplotlib polar-plot rules (raw-asset analysis)
+11. MapLibre-specific rules (preferred interactive-map tool)
+12. Altair-specific rules (legacy dashboards only)
+13. Matplotlib polar-plot rules (raw-asset analysis)
 
 DAC-specific quirks that affect *how* a rule is implemented live in `DAC.md`. This file owns the *what* and *why*.
 
@@ -229,7 +230,17 @@ The widget schema is in `DAC.md` § "All widget properties". Anything not on tha
 
 ---
 
-## 11. Altair-Specific Rules (Legacy Only)
+## 11. MapLibre-Specific Rules
+
+- **MapLibre is the preferred tool for interactive map visualizations.** Use [MapLibre](https://maplibre.org/) by default rather than introducing another mapping library. Use a different tool only when MapLibre cannot meet a documented technical requirement.
+- **Keep the map interpretable without hover.** Include a descriptive title, an insight-led description, a visible legend or encoding key, and a per-map footnote with sources, tools, and limitations. Tooltips must provide clear, human-readable values and units, but must not be the only way to understand a map's encoding.
+- **Preserve geographic context.** Label geography and units clearly, use an appropriate projection and zoom, and disclose spatial aggregation, geographic coverage, and boundary or basemap limitations in the footnote or methodology.
+- **Use accessible map encodings.** Apply the Wong (2011) palette and pair colour with another channel where categories or severity must be distinguished. Do not rely on colour alone.
+- **Respect the dashboard architecture.** New dashboards remain Bruin DAC dashboards. Do not introduce Streamlit solely to render a map; document any integration constraint or exception in the dashboard methodology.
+
+---
+
+## 12. Altair-Specific Rules (Legacy Only)
 
 These apply only when modifying pre-DAC Streamlit dashboards. New work uses DAC.
 
@@ -242,7 +253,7 @@ These apply only when modifying pre-DAC Streamlit dashboards. New work uses DAC.
 
 ---
 
-## 12. Matplotlib Polar-Plot Rules (Raw-Asset Analysis)
+## 13. Matplotlib Polar-Plot Rules (Raw-Asset Analysis)
 
 Only relevant for raw-asset notebooks or one-off Python analyses producing polar plots (e.g. street-orientation rose diagrams). Do not use Matplotlib for DAC dashboards.
 

@@ -1,0 +1,12 @@
+schema: https://getbruin.com/schemas/dac/theme/v1
+name: wong-dark
+extends: bruin-dark
+tokens:
+  chart-1: "#56B4E9"
+  chart-2: "#E69F00"
+  chart-3: "#009E73"
+  chart-4: "#CC79A7"
+  chart-5: "#F0E442"
+  chart-6: "#0072B2"
+  chart-7: "#D55E00"
+  chart-8: "#999999"

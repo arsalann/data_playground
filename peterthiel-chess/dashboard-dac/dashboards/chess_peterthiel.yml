@@ -1,0 +1,987 @@
+name: Public Chess.com account @peterthiel — chess history
+description: One three-tab dashboard covering performance and habits, PGN move and clock signals, and evidence-led hidden insights from the available public archive.
+connection: bruin-playground-arsalan
+
+rows:
+  - widgets:
+      - name: Dashboard overview
+        type: text
+        col: 12
+        content: |
+          # Public Chess.com account @peterthiel — chess history
+
+          **A single evidence-led dashboard for the available public Chess.com archive. Use the three tabs to move from performance and habits, to PGN move and clock signals, to unusual and hidden patterns.**
+
+          **Scope:** public account records only; UTC time throughout; the available archive begins in December 2016 and is not a verified person's complete chess history.
+
+  - tab: Performance & habits
+    widgets:
+      - name: Archive scope
+        type: text
+        col: 12
+        content: |
+          # Public Chess.com account @peterthiel — performance and habits
+
+          **This report analyzes every public game currently available for the `peterthiel` Chess.com account: 42,975 games from 2016-12-18 through 2026-08-05 UTC. The public archive is about 9.6 years, not a full ten years; it should not be treated as a verified real-world person's complete chess history.**
+
+          **Scope:** public Chess.com game records only. **Time zone:** UTC throughout. **Dominant format:** three-minute blitz (3+0).
+
+  - tab: Performance & habits
+    widgets:
+      - name: Analyzed games
+        type: metric
+        col: 3
+        sql: |
+          SELECT games AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_player_overview`
+        value: { field: value, type: number, format: ",.0f" }
+      - name: Score rate (%)
+        type: metric
+        col: 3
+        sql: |
+          SELECT score_rate_pct AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_player_overview`
+        value: { field: value, type: number, format: ",.1f" }
+      - name: Peak post-game rating
+        type: metric
+        col: 3
+        sql: |
+          SELECT peak_rating_after AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_player_overview`
+        value: { field: value, type: number, format: ",.0f" }
+      - name: Longest active streak (UTC days)
+        type: metric
+        col: 3
+        sql: |
+          SELECT longest_active_day_streak AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_player_overview`
+        value: { field: value, type: number, format: ",.0f" }
+
+  - tab: Performance & habits
+    widgets:
+      - name: Rating trajectory header
+        type: text
+        col: 12
+        content: |
+          # Month-end public rating in 3+0 blitz, December 2016–August 2026
+
+          **The public account's observed peak post-game rating is 2,308 and the latest is 2,245. Its monthly end rating was 2,105 twelve months before the latest month, placing the latest result near the top of the archive's 1,913–2,308 observed range.**
+
+          **X-axis:** UTC calendar month. **Y-axis:** last public post-game 3+0 rating in the month.
+  - tab: Performance & habits
+    widgets:
+      - name: Month-end public rating chart
+        type: chart
+        chart: line
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            game_month,
+            month_end_rating_after AS rating
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_monthly_performance`
+          WHERE time_control = '180'
+          ORDER BY game_month
+        x: { field: game_month, type: date, format: "%b %Y", title: "UTC month" }
+        y: { field: [rating], type: number, format: ",.0f", title: "Month-end public rating" }
+        seriesNames:
+          rating: "Month-end public rating"
+  - tab: Performance & habits
+    widgets:
+      - name: Month-end public rating footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public game archive for `peterthiel`.
+
+          **Tools:** **Bruin cli** (ingestion, transformation, and reporting), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Chess.com supplies public post-game rating snapshots. A month-end value is the final archived game of that month, not an independently audited rating history. The available archive begins in December 2016.
+
+  - tab: Performance & habits
+    widgets:
+      - name: Peer performance header
+        type: text
+        col: 12
+        content: |
+          # Actual score versus rating proxy in close-rating 3+0 games
+
+          **Across 36,716 games with public post-game ratings within 100 points, the account scored 50.9% versus a 51.6% rating proxy. In the overlapping subset of 3,391 close-rating games against the top decile of opponents encountered, it scored 39.8% versus a 45.7% proxy — a 5.8 percentage-point shortfall.**
+
+          **X-axis:** transparent peer cohort. **Bars:** actual score (% of possible points). **Solid line:** rating-derived expected-score proxy. **Dashed line:** even score (50%).
+  - tab: Performance & habits
+    widgets:
+      - name: Close-rating peer performance chart
+        type: chart
+        chart: combo
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            cohort_label,
+            actual_score_pct,
+            expected_score_proxy_pct,
+            even_score_pct
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_peer_competition`
+          ORDER BY cohort_order
+        x: { field: cohort_label, type: category, title: "Peer cohort" }
+        y: { field: [actual_score_pct, expected_score_proxy_pct, even_score_pct], type: number, format: ".1f", title: "Score (% of possible points)" }
+        lines: [expected_score_proxy_pct, even_score_pct]
+        seriesNames:
+          actual_score_pct: "Actual score (%)"
+          expected_score_proxy_pct: "Expected-score proxy (%)"
+          even_score_pct: "Even score (50%)"
+  - tab: Performance & habits
+    widgets:
+      - name: Close-rating peer performance footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public game ratings and results for `peterthiel`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** “Top-rated” means the top decile of opponent ratings encountered in this archive and time control, not Chess.com's historical global leaderboard. Chess.com ratings are post-game snapshots: the target's previous rating is reconstructed, but the opponent rating remains post-game, so the expected score is explicitly a proxy. The two cohorts overlap.
+
+  - tab: Performance & habits
+    widgets:
+      - name: Hourly activity header
+        type: text
+        col: 12
+        content: |
+          # Public 3+0 game volume by UTC hour
+
+          **The archive's busiest UTC hour is 23:00, with 3,135 games. This describes when games end in Chess.com's UTC record; it does not reveal a local-time routine or the account holder's identity.**
+
+          **X-axis:** game-end hour (UTC, 00:00–23:00). **Y-axis:** public 3+0 games ending in the hour.
+  - tab: Performance & habits
+    widgets:
+      - name: Hourly activity chart
+        type: chart
+        chart: line
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            hour_label_utc,
+            games
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_activity_by_hour`
+          ORDER BY hour_utc
+        x: { field: hour_label_utc, type: category, title: "Game-end hour (UTC)" }
+        y: { field: [games], type: number, format: ",.0f", title: "Public games" }
+        seriesNames:
+          games: "Public games"
+  - tab: Performance & habits
+    widgets:
+      - name: Hourly activity footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public game timestamps for `peterthiel`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Timestamps are UTC game-end times, not starts and not a verified local time zone. The line shows counts, not hours spent playing.
+
+  - tab: Performance & habits
+    widgets:
+      - name: Weekday activity header
+        type: text
+        col: 12
+        content: |
+          # Public 3+0 game volume by UTC weekday
+
+          **Sunday is the archive's busiest UTC weekday, with 7,774 public 3+0 games. The ranking persists as a game-volume observation only; it cannot explain why the games were played.**
+
+          **X-axis:** UTC weekday in calendar order. **Y-axis:** public 3+0 games ending on the weekday.
+  - tab: Performance & habits
+    widgets:
+      - name: Weekday activity chart
+        type: chart
+        chart: bar
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            day_name_utc,
+            games
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_activity_by_weekday`
+          ORDER BY day_of_week_utc
+        x: { field: day_name_utc, type: category, title: "UTC weekday" }
+        y: { field: [games], type: number, format: ",.0f", title: "Public games" }
+        seriesNames:
+          games: "Public games"
+  - tab: Performance & habits
+    widgets:
+      - name: Weekday activity footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public game timestamps for `peterthiel`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Bar baseline is zero. UTC weekday labels may differ from a player's local calendar date, and public account activity is not evidence of off-platform habits.
+
+  - tab: Performance & habits
+    widgets:
+      - name: Habit extremes
+        type: text
+        col: 12
+        content: |
+          # Auditable habit extremes from the public log
+
+          **The longest active-day run is 97 consecutive UTC dates (2020-02-27 to 2020-06-02). The busiest UTC date has 78 games (2019-08-17), the largest game-count session has 48 games, the longest 30-minute-gap-defined session lasts 369.6 minutes, and the longest exact inter-game gap is 98.0 days.**
+
+          **Definitions:** an active-day streak has at least one game on consecutive UTC dates; a session starts after a gap greater than 30 minutes; an exact gap is measured between consecutive public game-end timestamps.
+
+  - tab: Performance & habits
+    widgets:
+      - name: Repeat opponent table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            opponent_username,
+            games,
+            wins,
+            draws,
+            losses,
+            score_rate_pct,
+            average_opponent_rating_after
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_opponent_matchups`
+          ORDER BY games DESC, opponent_username
+          LIMIT 12
+        columns:
+          - { name: opponent_username, label: Opponent }
+          - { name: games, label: Games, number: ",.0f" }
+          - { name: wins, label: Wins, number: ",.0f" }
+          - { name: draws, label: Draws, number: ",.0f" }
+          - { name: losses, label: Losses, number: ",.0f" }
+          - { name: score_rate_pct, label: Score rate (%), number: ",.1f" }
+          - { name: average_opponent_rating_after, label: Avg opponent rating after, number: ",.0f" }
+
+  - tab: Performance & habits
+    widgets:
+      - name: Repeat opponent table footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public opponents, ratings, and results for `peterthiel`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Repeat-opponent samples are small: no opponent appears more than 39 times in the public 3+0 archive. Opponent ratings are post-game snapshots, so this table is descriptive rather than a measure of historical rank.
+
+  - tab: Performance & habits
+    widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          The project ingests the public `peterthiel` profile, archive index, and game records through Bruin's Chess ingestr source. It deduplicates by public game URL, retains the available rolling ten-year window, and analyzes the account from the side recorded as `PeterThiel` in each game. Chess.com has public archives from December 2016 onward for this account; there is no claim of complete ten-year coverage.
+
+          “Close-rating peer” means public post-game ratings within 100 points. “Top-rated close peer” further requires the opponent to be in the top decile of opponent ratings encountered within the same time control. The target rating before a game is approximated with the prior target game-end rating within the time control; opponent ratings remain post-game snapshots. UTC activity is not converted to local time. See the companion deep-dive report for PGN move and clock definitions.
+
+  - tab: Moves & clock
+    widgets:
+      - name: Deep-dive scope
+        type: text
+        col: 12
+        content: |
+          # Public Chess.com account @peterthiel — PGN move and clock deep dive
+
+          **The available public archive contains 1,683,213 parsed moves from 42,881 games with moves. This report uses PGN notation and Chess.com's public clock annotations to describe patterns; it does not use Stockfish, so it does not label moves as good, bad, tactical, or strategic.**
+
+          **Scope:** 3+0 blitz is 99.97% of the available archive. **Clock times:** public remaining-clock annotations in seconds. **Identity:** `peterthiel` is treated as a public account handle only.
+
+  - tab: Moves & clock
+    widgets:
+      - name: 3+0 share of archive (%)
+        type: metric
+        col: 3
+        sql: |
+          SELECT dominant_time_control_pct AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_player_overview`
+        value: { field: value, type: number, format: ",.2f" }
+      - name: White e4 usage (%)
+        type: metric
+        col: 3
+        sql: |
+          SELECT usage_pct AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_first_move_repertoire`
+          WHERE player_color = 'white' AND first_move = 'e4'
+        value: { field: value, type: number, format: ",.2f" }
+      - name: Parsed player moves
+        type: metric
+        col: 3
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.stage_game_moves`
+        value: { field: value, type: number, format: ",.0f" }
+      - name: Top close-peer residual (pp)
+        type: metric
+        col: 3
+        sql: |
+          SELECT performance_residual_proxy_pp AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_peer_competition`
+          WHERE cohort_key = 'top_rated_close_peers'
+        value: { field: value, type: number, format: ",.1f" }
+
+  - tab: Moves & clock
+    widgets:
+      - name: First-move repertoire header
+        type: text
+        col: 12
+        content: |
+          # First move as White and first reply as Black in public 3+0 games
+
+          **As White, the public account plays e4 in 21,411 of 21,440 3+0 games (99.86%). As Black, c5 accounts for 53.36% and d5 for 41.76% of first replies, so those two replies make up 95.12% of Black games.**
+
+          **X-axis:** player color plus SAN first move. **Y-axis:** share of color-specific public 3+0 games. **Tooltip:** opening frequency for the selected first move.
+  - tab: Moves & clock
+    widgets:
+      - name: First-move repertoire chart
+        type: chart
+        chart: bar
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            move_label,
+            usage_pct
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_first_move_repertoire`
+          WHERE first_move_rank <= 3
+          ORDER BY usage_pct DESC, move_label
+        x: { field: move_label, type: category, title: "Player color and SAN first move" }
+        y: { field: [usage_pct], type: number, format: ".1f", title: "Share of color-specific games (%)" }
+        seriesNames:
+          usage_pct: "Opening frequency (%)"
+  - tab: Moves & clock
+    widgets:
+      - name: First-move repertoire footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public PGN game records for `peterthiel`.
+
+          **Tools:** **Bruin cli** (PGN parsing and pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Bar baseline is zero. First-move frequency is a repertoire description only; it cannot establish strategic strength, preparation, or move quality. The 94 games with no parsed moves are excluded from this chart.
+
+  - tab: Moves & clock
+    widgets:
+      - name: Opening-family performance header
+        type: text
+        col: 12
+        content: |
+          # Score rate across common Chess.com opening families, split by player color
+
+          **The Sicilian is the dominant named family in the public 3+0 record: 8,921 games as Black score 53.3%, while 6,835 games as White score 54.6%. The next large Black-only family, Queen's Gambit Declined, has 3,105 games at 51.2%. These rates describe observed results, not opening strength.**
+
+          **X-axis:** readable grouping of Chess.com's opening labels. **Y-axis:** score (% of possible points). **Encoding:** legend and grouped bar position distinguish the player's color.
+  - tab: Moves & clock
+    widgets:
+      - name: Opening-family performance chart
+        type: chart
+        chart: bar
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            opening_chart_label,
+            player_color,
+            score_rate_pct
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_opening_performance`
+          WHERE games >= 250
+            AND opening_family != 'Other openings'
+          ORDER BY opening_family_rank, player_color
+        x: { field: opening_chart_label, type: category, title: "Opening family in public PGN" }
+        y: { field: [score_rate_pct], type: number, format: ".1f", title: "Score rate (% of possible points)" }
+        color: { field: player_color }
+        seriesNames:
+          white: "Played as White"
+          black: "Played as Black"
+  - tab: Moves & clock
+    widgets:
+      - name: Opening-family performance footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public opening labels, results, and ratings for `peterthiel`.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Bar baseline is zero. Families are transparent label groupings, not a complete opening taxonomy. Only color/family groups with at least 250 public 3+0 games are shown; results are not adjusted for player rating, opponent mix, time period, or move quality.
+
+  - tab: Moves & clock
+    widgets:
+      - name: Move signature header
+        type: text
+        col: 12
+        content: |
+          # PGN capture and check signatures by move number in public 3+0 games
+
+          **Capture frequency peaks in moves 11–30 at 11.90 per 40 target-player moves, more than double the 5.81 rate in moves 1–10. Checking moves rise from 0.43 per 40 in moves 1–10 to 4.79 in moves 31+, consistent with later-game tactical contact rather than an engine-evaluated style verdict.**
+
+          **X-axis:** descriptive full-move bucket. **Bars:** target-player captures and checks per 40 target-player moves. **Legend:** measure type.
+  - tab: Moves & clock
+    widgets:
+      - name: Move signature chart
+        type: chart
+        chart: combo
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            move_bucket_label,
+            capture_moves_per_40,
+            check_moves_per_40
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_move_style_by_bucket`
+          ORDER BY move_bucket_order
+        x: { field: move_bucket_label, type: category, title: "Full-move bucket" }
+        y: { field: [capture_moves_per_40, check_moves_per_40], type: number, format: ".2f", title: "Moves per 40 target-player moves" }
+        seriesNames:
+          capture_moves_per_40: "Captures per 40 moves"
+          check_moves_per_40: "Checks per 40 moves"
+  - tab: Moves & clock
+    widgets:
+      - name: Move signature footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public PGN move text for `peterthiel`.
+
+          **Tools:** **Bruin cli** (PGN parsing and pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** A capture, check, castling, or pawn move is inferred from standard algebraic notation. Rates are normalized to 40 moves and do not distinguish sound from unsound tactics, nor prove an intentional strategy.
+
+  - tab: Moves & clock
+    widgets:
+      - name: Clock-pressure header
+        type: text
+        col: 12
+        content: |
+          # Score rate by lowest public clock remaining in a 3+0 game
+
+          **The 3,837 games in which a public clock annotation fell below five seconds scored 18.4%, compared with 55.1% across 34,157 games whose minimum remained at least 30 seconds — a 36.6 percentage-point association. This comparison describes within-game co-occurrence, not a causal effect of time pressure.**
+
+          **X-axis:** minimum target-player remaining clock observed in public PGN. **Y-axis:** score rate (% of possible points). **Ordering:** lower to higher remaining time.
+  - tab: Moves & clock
+    widgets:
+      - name: Clock-pressure outcome chart
+        type: chart
+        chart: bar
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            min_clock_bucket,
+            score_rate_pct
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_clock_outcomes`
+          WHERE min_clock_bucket != 'No public clock'
+          ORDER BY min_clock_bucket_order
+        x: { field: min_clock_bucket, type: category, title: "Minimum public clock remaining" }
+        y: { field: [score_rate_pct], type: number, format: ".1f", title: "Score rate (% of possible points)" }
+        seriesNames:
+          score_rate_pct: "Score rate (%)"
+  - tab: Moves & clock
+    widgets:
+      - name: Clock-pressure footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public PGN clock annotations and game results for `peterthiel`.
+
+          **Tools:** **Bruin cli** (clock parsing and pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Bar baseline is zero. A PGN clock annotation records remaining clock after a move and can be missing or irregular; the lowest clock is observed in the same game as the result, so it cannot demonstrate that clock pressure caused the outcome.
+
+  - tab: Moves & clock
+    widgets:
+      - name: Ending mechanisms
+        type: text
+        col: 12
+        content: |
+          # How public 3+0 games end
+
+          **Resignation is the largest non-win mechanism (12,481 games, 29.05%), ahead of timeout (3,520, 8.19%) and checkmate (2,197, 5.11%). These labels are Chess.com's public result mechanisms, not diagnoses of a player's decision-making.**
+
+  - tab: Moves & clock
+    widgets:
+      - name: Ending-mechanism table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            player_result,
+            games,
+            games_pct,
+            score_rate_pct
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_outcome_mechanisms`
+          ORDER BY games DESC, player_result
+        columns:
+          - { name: player_result, label: Chess.com result mechanism }
+          - { name: games, label: Games, number: ",.0f" }
+          - { name: games_pct, label: Share of games (%), number: ",.2f" }
+          - { name: score_rate_pct, label: Score rate (%), number: ",.1f" }
+
+  - tab: Moves & clock
+    widgets:
+      - name: Evidence-backed archive facts
+        type: text
+        col: 12
+        content: |
+          # Six evidence-backed facts worth remembering
+
+          **Each row pairs a striking figure with its sample and a specific caveat. The strongest-looking relationship in a log is still not a causal explanation.**
+
+  - tab: Moves & clock
+    widgets:
+      - name: Evidence-backed facts table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            fact_label,
+            value_numeric,
+            value_unit,
+            evidence,
+            caveat
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_intriguing_facts`
+          ORDER BY fact_order
+        columns:
+          - { name: fact_label, label: Finding }
+          - { name: value_numeric, label: Value, number: ",.2f" }
+          - { name: value_unit, label: Unit }
+          - { name: evidence, label: Evidence }
+          - { name: caveat, label: Caveat }
+
+  - tab: Moves & clock
+    widgets:
+      - name: Traceable notable games
+        type: text
+        col: 12
+        content: |
+          # Traceable notable games, selected by declared rules
+
+          **The table highlights rating-proxy underdog wins, rating-proxy favored losses, and long parsed games only when both recorded ratings are at least 1,800. Public game URLs make each row independently inspectable.**
+
+  - tab: Moves & clock
+    widgets:
+      - name: Traceable notable games table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            notable_kind,
+            notable_rank,
+            game_date_utc,
+            opponent_username,
+            player_rating_before,
+            opponent_rating_after,
+            rating_gap_proxy,
+            expected_score_proxy_pct,
+            player_move_count,
+            game_url
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_notable_games`
+          ORDER BY notable_kind, notable_rank
+          LIMIT 30
+        columns:
+          - { name: notable_kind, label: Selection rule }
+          - { name: notable_rank, label: Rank, number: ",.0f" }
+          - { name: game_date_utc, label: UTC date }
+          - { name: opponent_username, label: Opponent }
+          - { name: player_rating_before, label: Player rating proxy, number: ",.0f" }
+          - { name: opponent_rating_after, label: Opponent rating after, number: ",.0f" }
+          - { name: rating_gap_proxy, label: Rating gap proxy, number: ",.0f" }
+          - { name: expected_score_proxy_pct, label: Expected-score proxy (%), number: ",.1f" }
+          - { name: player_move_count, label: Player moves, number: ",.0f" }
+          - { name: game_url, label: Public game URL }
+
+  - tab: Moves & clock
+    widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          Bruin ingests public Chess.com `games`, `profiles`, and `archives` for the `peterthiel` handle. PGN headers supply standard algebraic notation, ECO, timestamps, and public clock annotations. The move parser removes headers, comments, move numbers, and results, then creates one row per target-player move. It validated 1,683,213 player moves with zero tokens outside the supported SAN pattern.
+
+          Move buckets are full moves 1–10, 11–30, and 31+. Capture/check rates are normalized to 40 target-player moves. A clock-derived estimated think time compares consecutive remaining-clock annotations, adjusted for an encoded increment; it is never treated as a direct measure of human thought. Ratings are post-game snapshots. All habit dates and times are UTC. No Stockfish evaluation, personal identity verification, local-time inference, or causal claim is made.
+
+  - tab: Hidden insights
+    widgets:
+      - name: Hidden-insights scope
+        type: text
+        col: 12
+        content: |
+          # Public Chess.com account @peterthiel — hidden insights
+
+          **This report keeps only patterns that survived a data-quality and sample-size check: UTC performance timing, position in long sessions, repeated opponents, current Chess.com title-registry matches, and extreme rating-proxy results. It describes a public account, not a verified person or a complete chess history.**
+
+          **Scope:** 42,975 public games from 2016-12-18 through 2026-08-05 UTC; 3+0 is 99.97% of the record. **Caution:** no Stockfish or other chess engine is used, so the report identifies rating shocks—not move-level “blunders.”
+
+  - tab: Hidden insights
+    widgets:
+      - name: Current titled opponents
+        type: metric
+        col: 3
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_titled_opponents`
+        value: { field: value, type: number, format: ",.0f" }
+      - name: Current GM opponents
+        type: metric
+        col: 3
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_titled_opponents`
+          WHERE opponent_title = 'GM'
+        value: { field: value, type: number, format: ",.0f" }
+      - name: Longest winning run (games)
+        type: metric
+        col: 3
+        sql: |
+          SELECT consecutive_games AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_result_streaks`
+          WHERE streak_kind = 'win' AND streak_rank = 1
+        value: { field: value, type: number, format: ",.0f" }
+      - name: Largest underdog gap (rating points)
+        type: metric
+        col: 3
+        sql: |
+          SELECT -MIN(rating_gap_proxy) AS value
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_notable_games`
+          WHERE notable_kind = 'Underdog win'
+        value: { field: value, type: number, format: ",.0f" }
+
+  - tab: Hidden insights
+    widgets:
+      - name: UTC-hour performance header
+        type: text
+        col: 12
+        content: |
+          # Actual score and rating-proxy expectation by game-end UTC hour, 2016–2026
+
+          **The public 3+0 record has a clear UTC association: games ending from 00:00–05:59 UTC scored 54.8% across 14,899 games, versus 50.2% across 5,891 games from 12:00–17:59 UTC. The rating proxy is almost unchanged between those windows (53.3% versus 52.3%), so the observed-score gap is not explained by this proxy alone.**
+
+          **X-axis:** public game-end hour (UTC). **Y-axis:** score (% of possible points), fixed to 45–60%. **Lines:** sky blue = actual score; orange = rating-derived expected-score proxy.
+  - tab: Hidden insights
+    widgets:
+      - name: UTC-hour performance chart
+        type: chart
+        chart: line
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            hour_label_utc,
+            actual_score_pct,
+            expected_score_proxy_pct
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_time_of_day_performance`
+          ORDER BY game_hour_utc
+        x: { field: hour_label_utc, type: category, title: "Game-end hour (UTC)" }
+        y: { field: [actual_score_pct, expected_score_proxy_pct], type: number, format: ".1f", title: "Score (% of possible points)" }
+        yMin: "45"
+        yMax: "60"
+        seriesNames:
+          actual_score_pct: "Actual score (%)"
+          expected_score_proxy_pct: "Expected-score proxy (%)"
+  - tab: Hidden insights
+    widgets:
+      - name: UTC-hour performance footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public game timestamps, ratings, and results for the **peterthiel** account.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The axis is intentionally fixed to 45–60% so hour-to-hour differences can be read; this is a line chart, not a zero-baseline bar chart. Game-end timestamps are UTC, not a verified local time zone or start time. The expected score uses a reconstructed target pre-game rating and an opponent post-game rating, so it is a proxy. Association is not evidence of a schedule or fatigue cause.
+
+  - tab: Hidden insights
+    widgets:
+      - name: Long-session performance header
+        type: text
+        col: 12
+        content: |
+          # Score through long public 3+0 sessions, 2016–2026
+
+          **Among 755 sessions with at least ten games, the first game scored 58.7% (755 games), while game 21+ scored 53.8% (398 games across 71 sessions): a 4.9-point decline. The expected-score proxy stays near 53%, so this supports a session-position association—but cannot prove fatigue or continuous play.**
+
+          **X-axis:** ordinal position in a 30-minute-gap-defined public session. **Y-axis:** score (% of possible points), fixed to 45–60%. **Lines:** sky blue = actual score; orange = rating-derived expected-score proxy.
+  - tab: Hidden insights
+    widgets:
+      - name: Long-session performance chart
+        type: chart
+        chart: line
+        hideName: true
+        col: 12
+        sql: |
+          SELECT
+            session_position_bucket,
+            actual_score_pct,
+            expected_score_proxy_pct
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_session_position_performance`
+          ORDER BY session_position_order
+        x: { field: session_position_bucket, type: category, title: "Game position within a qualifying session" }
+        y: { field: [actual_score_pct, expected_score_proxy_pct], type: number, format: ".1f", title: "Score (% of possible points)" }
+        yMin: "45"
+        yMax: "60"
+        seriesNames:
+          actual_score_pct: "Actual score (%)"
+          expected_score_proxy_pct: "Expected-score proxy (%)"
+  - tab: Hidden insights
+    widgets:
+      - name: Long-session performance footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public game end times, ratings, and results for the **peterthiel** account.
+
+          **Tools:** **Bruin cli** (session transformation and reporting), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** A session begins after more than 30 minutes between recorded game-end times and includes only 3+0 sessions with at least ten games. A gap threshold cannot prove that someone was continuously playing, and later games in a session are not independent observations. The fixed 45–60% line-chart range is disclosed to make the comparison legible.
+
+  - tab: Hidden insights
+    widgets:
+      - name: Repeat-opponent surprises header
+        type: text
+        col: 12
+        content: |
+          # Repeat public matchups with the largest shortfall versus the rating proxy
+
+          **The opponent named tututante is the clearest long-running example: the account scored 16.7% (2 wins, 10 losses) in 12 games on 12 UTC dates from 2018–2025, despite a 53.6% average expected-score proxy. The table limits itself to repeat pairings with at least eight games and a 35%+ expected score, so it avoids merely listing mismatches against far stronger opponents.**
+
+          **Columns:** actual and expected values are percentages of possible points; residual is actual minus expected in percentage points. **Ordering:** most negative residual first.
+  - tab: Hidden insights
+    widgets:
+      - name: Repeat-opponent surprises table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            matchup_rank,
+            opponent_username,
+            games,
+            wins,
+            draws,
+            losses,
+            actual_score_pct,
+            expected_score_proxy_pct,
+            performance_residual_proxy_pp,
+            distinct_utc_dates,
+            first_game_utc,
+            last_game_utc
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_repeat_opponent_surprises`
+          ORDER BY matchup_rank
+        columns:
+          - { name: matchup_rank, label: Rank, number: ",.0f" }
+          - { name: opponent_username, label: Opponent }
+          - { name: games, label: Games, number: ",.0f" }
+          - { name: wins, label: Wins, number: ",.0f" }
+          - { name: draws, label: Draws, number: ",.0f" }
+          - { name: losses, label: Losses, number: ",.0f" }
+          - { name: actual_score_pct, label: Actual score (%), number: ",.1f" }
+          - { name: expected_score_proxy_pct, label: Expected score proxy (%), number: ",.1f" }
+          - { name: performance_residual_proxy_pp, label: Residual (pp), number: ",.1f" }
+          - { name: distinct_utc_dates, label: UTC dates, number: ",.0f" }
+          - { name: first_game_utc, label: First UTC date }
+          - { name: last_game_utc, label: Last UTC date }
+  - tab: Hidden insights
+    widgets:
+      - name: Repeat-opponent surprises footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public opponents, ratings, timestamps, and results for the **peterthiel** account.
+
+          **Tools:** **Bruin cli** (reporting), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** These matchups are not independent trials, and opponent accounts may represent a changing person or strength over time. The public rating comparison reconstructs only the target account's prior rating; the opponent rating is a post-game snapshot. “Surprise” is a transparent selection rule, not proof of a psychological matchup effect.
+
+  - tab: Hidden insights
+    widgets:
+      - name: Titled-opponent header
+        type: text
+        col: 12
+        content: |
+          # Current Chess.com title-registry matches in the public 3+0 archive
+
+          **The archive matches 623 distinct accounts on Chess.com's current titled-player registries, across 1,235 public 3+0 games. Six currently appear in the GM registry: vica56 is the most frequent at 39 games (15–2–22), while Hugooakland has the highest recorded opponent rating snapshot at 2,532.**
+
+          **Columns:** title is the current public Chess.com registry label; score is % of possible points. **Ordering:** highest archived opponent post-game rating snapshot first.
+  - tab: Hidden insights
+    widgets:
+      - name: Current GM opponents table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            opponent_username,
+            games,
+            wins,
+            draws,
+            losses,
+            score_rate_pct,
+            peak_opponent_rating_after,
+            first_game_utc,
+            last_game_utc
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_titled_opponents`
+          WHERE opponent_title = 'GM'
+          ORDER BY peak_opponent_rating_after DESC, games DESC, opponent_username
+        columns:
+          - { name: opponent_username, label: Current GM account }
+          - { name: games, label: Games, number: ",.0f" }
+          - { name: wins, label: Wins, number: ",.0f" }
+          - { name: draws, label: Draws, number: ",.0f" }
+          - { name: losses, label: Losses, number: ",.0f" }
+          - { name: score_rate_pct, label: Score rate (%), number: ",.1f" }
+          - { name: peak_opponent_rating_after, label: Peak rating snapshot, number: ",.0f" }
+          - { name: first_game_utc, label: First UTC date }
+          - { name: last_game_utc, label: Last UTC date }
+  - tab: Hidden insights
+    widgets:
+      - name: Titled-opponent footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public game records and **[Chess.com Public API](https://www.chess.com/news/view/published-data-api)** current titled-player registries.
+
+          **Tools:** **Bruin cli** (registry ingestion and pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** A registry match is a current username-level observation, not proof of a historical title at the game date, account ownership, offline identity, or an endorsement. The public list can change as Chess.com updates it. Ratings remain post-game snapshots.
+
+  - tab: Hidden insights
+    widgets:
+      - name: Rating-shock header
+        type: text
+        col: 12
+        content: |
+          # Largest rating-proxy surprise wins and losses in public 3+0 games
+
+          **The largest selected underdog win was against vicoy25 on 2022-09-02: a 2,062 player-rating proxy versus a 2,487 opponent snapshot (a 425-point gap) implied an 8.0% expected score, yet the account won after 66 recorded moves. “Favored losses” are equally strong rating surprises, but neither result type identifies a move-level blunder without engine analysis.**
+
+          **Columns:** rating gap is player proxy minus opponent snapshot; a negative gap marks an underdog result. **Selection:** both recorded ratings must be at least 1,800; each result type is ranked by the largest absolute rating gap.
+  - tab: Hidden insights
+    widgets:
+      - name: Rating-shock games table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            notable_kind,
+            notable_rank,
+            game_date_utc,
+            opponent_username,
+            player_rating_before,
+            opponent_rating_after,
+            rating_gap_proxy,
+            expected_score_proxy_pct,
+            player_move_count,
+            opening_name
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_notable_games`
+          WHERE notable_kind IN ('Underdog win', 'Favored loss')
+            AND notable_rank <= 5
+          ORDER BY
+            CASE notable_kind
+              WHEN 'Underdog win' THEN 1
+              WHEN 'Favored loss' THEN 2
+              ELSE 3
+            END,
+            notable_rank
+        columns:
+          - { name: notable_kind, label: Result selection }
+          - { name: notable_rank, label: Rank, number: ",.0f" }
+          - { name: game_date_utc, label: UTC date }
+          - { name: opponent_username, label: Opponent }
+          - { name: player_rating_before, label: Player rating proxy, number: ",.0f" }
+          - { name: opponent_rating_after, label: Opponent rating snapshot, number: ",.0f" }
+          - { name: rating_gap_proxy, label: Rating gap proxy, number: ",.0f" }
+          - { name: expected_score_proxy_pct, label: Expected score proxy (%), number: ",.1f" }
+          - { name: player_move_count, label: Recorded player moves, number: ",.0f" }
+          - { name: opening_name, label: Chess.com opening label }
+  - tab: Hidden insights
+    widgets:
+      - name: Rating-shock footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public ratings, results, PGN moves, and opening labels for the **peterthiel** account.
+
+          **Tools:** **Bruin cli** (PGN parsing and reporting), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Selection is driven by a rating proxy, not a chess-engine evaluation. Both rating fields are public snapshots after games except that the target’s prior value is reconstructed from the preceding game in the same time control. A result far from a rating expectation is not evidence of a blunder, cheating, or causal explanation.
+
+  - tab: Hidden insights
+    widgets:
+      - name: Result-streak header
+        type: text
+        col: 12
+        content: |
+          # The longest uninterrupted public winning and losing runs in 3+0
+
+          **The longest winning run is 16 games over 30.0 hours, with a +116-point rating change proxy; the longest losing run is 14 games over 25.3 hours, with a −117-point change. The near symmetry is a compact view of result volatility—not a measure of momentum or psychology.**
+
+          **Columns:** a draw breaks a run; duration is measured between first and final recorded game-end timestamps. **Ordering:** longest result run first within wins and losses.
+  - tab: Hidden insights
+    widgets:
+      - name: Result-streak table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            CASE streak_kind
+              WHEN 'win' THEN 'Winning run'
+              WHEN 'loss' THEN 'Losing run'
+              ELSE streak_kind
+            END AS result_run,
+            streak_rank,
+            consecutive_games,
+            streak_start_utc,
+            streak_end_utc,
+            streak_duration_hours,
+            player_rating_before_start,
+            player_rating_after_end,
+            rating_change_proxy
+          FROM `bruin-playground-arsalan.chess_peterthiel.report_result_streaks`
+          ORDER BY result_run, streak_rank
+        columns:
+          - { name: result_run, label: Result run }
+          - { name: streak_rank, label: Rank, number: ",.0f" }
+          - { name: consecutive_games, label: Consecutive games, number: ",.0f" }
+          - { name: streak_start_utc, label: Start (UTC) }
+          - { name: streak_end_utc, label: End (UTC) }
+          - { name: streak_duration_hours, label: Duration (hours), number: ",.1f" }
+          - { name: player_rating_before_start, label: Start rating proxy, number: ",.0f" }
+          - { name: player_rating_after_end, label: End rating snapshot, number: ",.0f" }
+          - { name: rating_change_proxy, label: Rating change proxy, number: ",.0f" }
+  - tab: Hidden insights
+    widgets:
+      - name: Result-streak footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Chess.com Published Data API](https://www.chess.com/news/view/published-data-api)** public timestamps, results, and ratings for the **peterthiel** account.
+
+          **Tools:** **Bruin cli** (reporting), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** A public timestamp sequence does not reveal why a run occurred. A draw breaks a run by definition, and the rating change uses the same reconstructed/pre-game and post-game snapshot convention as the rest of the project.
+
+  - tab: Hidden insights
+    widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          Bruin ingests the public **peterthiel** Chess.com archive through the Chess ingestr source, deduplicates public game URLs, and analyzes the account from its recorded side of each game. The accessible archive begins in December 2016 and covers roughly 9.6 years, not a verified full decade. All timing is UTC; no local-time or personal-identity inference is made.
+
+          The dominant 3+0 time control is selected by archive frequency. The rating proxy uses the target account’s prior public game-end rating in that time control as a pre-game approximation and the opponent's public post-game rating. Session analysis uses a 30-minute gap between game-end timestamps, restricts to sessions of at least ten 3+0 games, and reports associations only. Repeat-opponent rows require at least eight games and an average expected score of at least 35%.
+
+          Titled opponents are matched case-insensitively to the current public Chess.com GM/IM/FM/NM/WGM/WIM/WFM/WNM registries fetched on pipeline execution. This is a current username-level match, not a claim about historical title status or real-world identity. PGN-derived move counts are descriptive. No engine analysis or claim about blunders, strategy quality, intent, fatigue, or causation is made.

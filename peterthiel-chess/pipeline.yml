@@ -1,0 +1,7 @@
+name: peterthiel-chess
+schedule: daily
+start_date: "2016-08-06"
+
+default_connections:
+  google_cloud_platform: "bruin-playground-arsalan"
+  chess: "chess-peterthiel"

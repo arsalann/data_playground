@@ -1,0 +1,20 @@
+name: chess_peterthiel.raw_peterthiel_archives
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Loads the public monthly Chess.com archive index for the account peterthiel.
+  This audit table makes gaps in public archive availability visible and allows
+  downstream coverage checks to distinguish no-play months from unavailable
+  archive months.
+
+  Source: https://www.chess.com/news/view/published-data-api
+  License: Chess.com public API terms; public account data only.
+
+materialization:
+  type: table
+  strategy: create+replace
+
+parameters:
+  source_connection: chess-peterthiel
+  source_table: archives
+  destination: bigquery

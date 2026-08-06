@@ -1,0 +1,18 @@
+name: chess_peterthiel.raw_peterthiel_profile
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Loads the public Chess.com profile record for the account peterthiel to
+  document account-level context alongside the game archive.
+
+  Source: https://www.chess.com/news/view/published-data-api
+  License: Chess.com public API terms; public account data only.
+
+materialization:
+  type: table
+  strategy: create+replace
+
+parameters:
+  source_connection: chess-peterthiel
+  source_table: profiles
+  destination: bigquery

@@ -1,0 +1,24 @@
+name: chess_peterthiel.raw_peterthiel_games
+type: ingestr
+connection: bruin-playground-arsalan
+description: |
+  Loads the public Chess.com game archive for the account peterthiel.
+
+  The Chess.com connector retrieves game-level records, including players and
+  ratings, time controls, result metadata, PGN move text, and opening URLs.
+  The account's public archive begins in December 2016; downstream assets use
+  the last ten years available at each run.
+
+  Source: https://www.chess.com/news/view/published-data-api
+  License: Chess.com public API terms; public account data only.
+
+materialization:
+  type: table
+  strategy: create+replace
+
+parameters:
+  source_connection: chess-peterthiel
+  source_table: games
+  destination: bigquery
+  # Chess.com advises serial archive requests; preserve complete monthly coverage.
+  extract_parallelism: 1

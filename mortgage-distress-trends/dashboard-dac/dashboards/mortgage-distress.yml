@@ -1,0 +1,239 @@
+name: Mortgage Distress in US Search - 2026 vs the 2007-2010 Crisis Window
+description: |
+  US Google Trends interest in search terms that signal difficulty paying a
+  mortgage (foreclosure help, loan modification, stop foreclosure, avoid
+  foreclosure, mortgage assistance), monthly 2004-2026, benchmarked against the
+  the June 2007-December 2010 financial-crisis window.
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+rows:
+  # -------------------------------------------------------------------------
+  # Intro
+  # -------------------------------------------------------------------------
+  - widgets:
+      - name: intro
+        type: text
+        col: 12
+        content: |
+          # Are Americans struggling to pay their mortgage again? What search tells us
+
+          **Bottom line:** As of August 2026, the equal-weight standardized index for US mortgage-distress search terms is 24.2, or 28% of its June 2007-December 2010 crisis-window peak. Interest rose through 2025-2026 to its highest level since 2013, but remains far below the foreclosure-crisis wave. This is an early-warning read on search behavior, not a measure of actual defaults or foreclosures.
+
+          **What this tracks:** Five independently normalised Google Trends series for mortgage-distress queries, averaged into a custom equal-weight standardized index. The index uses a 0-100 display scale; its observed maximum is 86.2 in March 2009. Scope: United States, monthly, January 2004 to August 2026. See each chart's footnote for sources, tools, and limitations.
+  # -------------------------------------------------------------------------
+  # KPI row
+  # -------------------------------------------------------------------------
+  - widgets:
+      - name: Distress index - latest (Aug 2026)
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT ROUND(AVG(interest), 0) AS value
+          FROM `bruin-playground-arsalan.raw.mortgage_distress_google_trends`
+          WHERE category = 'core_distress'
+            AND month = (
+              SELECT MAX(month)
+              FROM `bruin-playground-arsalan.raw.mortgage_distress_google_trends`
+              WHERE category = 'core_distress')
+      - name: March 2009 crisis peak
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT ROUND(MAX(idx), 0) AS value FROM (
+            SELECT month, AVG(interest) AS idx
+            FROM `bruin-playground-arsalan.raw.mortgage_distress_google_trends`
+            WHERE category = 'core_distress' GROUP BY month)
+      - name: Latest vs 2009 crisis peak
+        type: metric
+        col: 3
+        column: value
+        format: number
+        suffix: "%"
+        sql: |
+          WITH comp AS (
+            SELECT month, AVG(interest) AS idx
+            FROM `bruin-playground-arsalan.raw.mortgage_distress_google_trends`
+            WHERE category = 'core_distress' GROUP BY month)
+          SELECT ROUND(100 *
+            (SELECT idx FROM comp WHERE month = (SELECT MAX(month) FROM comp))
+            / (SELECT MAX(idx) FROM comp), 0) AS value
+      - name: 2026 high (June)
+        type: metric
+        col: 3
+        column: value
+        format: number
+        sql: |
+          SELECT ROUND(MAX(idx), 0) AS value FROM (
+            SELECT month, AVG(interest) AS idx
+            FROM `bruin-playground-arsalan.raw.mortgage_distress_google_trends`
+            WHERE category = 'core_distress' AND month >= '2026-01-01' GROUP BY month)
+  # -------------------------------------------------------------------------
+  # Chart 1 - composite index time series
+  # -------------------------------------------------------------------------
+  - widgets:
+      - name: composite header
+        type: text
+        col: 12
+        content: |
+          # Mortgage Distress Search Index, 2004-2026
+
+          **Insight:** The index peaks at 86.2 in March 2009 during the foreclosure crisis. It later reaches a low of 10.8 and a high of 22.4 between 2015 and 2021, then rises to 35.0 in June 2026 - the highest reading since 2013 - before easing to 24.2 in August 2026. August is 28% of the crisis-window peak; June was 41%.
+
+          **How to read the chart:** One point per month. The vertical axis is the equal-weight mean of five independently self-normalised search-term series; 86.2 is the observed maximum, not a claim about absolute search volume. The horizontal axis runs from January 2004 to August 2026.
+  - widgets:
+      - name: Mortgage Distress Search Index
+        hideName: true
+        type: chart
+        chart: line
+        col: 12
+        file: queries/composite_timeseries.sql
+        x: month_label
+        y: [distress_index]
+        yLabel: Distress Search Index (0-100)
+        yMin: "0"
+        seriesNames:
+          distress_index: Mortgage Distress Search Index
+  - widgets:
+      - name: composite footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Google Trends](https://trends.google.com/trends)** (US web search interest, monthly, 2004-2026; terms: foreclosure help, loan modification, stop foreclosure, avoid foreclosure, mortgage assistance), retrieved via the pytrends client.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Google Trends reports relative search interest, not counts of people in distress - it cannot separate distressed borrowers from journalists, students, or investors searching the same words. Each term is normalised to its own 2004-2026 peak, so the composite is a custom equal-weight standardized indicator and cannot measure aggregate search volume or absolute term popularity. The current-month bucket is dropped, so the series ends at the last complete month (August 2026). Search interest is a behavioural signal, not a measure of actual delinquencies, defaults, or foreclosures.
+  # -------------------------------------------------------------------------
+  # Chart 2 - per-term time series
+  # -------------------------------------------------------------------------
+  - widgets:
+      - name: terms header
+        type: text
+        col: 12
+        content: |
+          # Every distress term peaked within the 2007-2010 crisis window
+
+          **Insight:** Four queries peak between January and March 2009, while "stop foreclosure" peaks in October 2010. The synchronized crisis-window spike is a common timing pattern in search behavior; this dataset alone cannot establish whether it reflects borrower distress, media attention, policy activity, or other searchers.
+
+          **How to read the chart:** Five lines, one per search term. Each line is that term's own 0-100 series (100 = its single highest month). The horizontal axis runs monthly from January 2004 to August 2026.
+  - widgets:
+      - name: Distress terms over time
+        hideName: true
+        type: chart
+        chart: combo
+        col: 12
+        file: queries/term_timeseries.sql
+        x: month_label
+        y: [foreclosure_help, loan_modification, stop_foreclosure, avoid_foreclosure, mortgage_assistance]
+        lines: [foreclosure_help, loan_modification, stop_foreclosure, avoid_foreclosure, mortgage_assistance]
+        yLabel: Search interest (0-100, self-normalised)
+        yMin: "0"
+        seriesNames:
+          foreclosure_help: foreclosure help
+          loan_modification: loan modification
+          stop_foreclosure: stop foreclosure
+          avoid_foreclosure: avoid foreclosure
+          mortgage_assistance: mortgage assistance
+  - widgets:
+      - name: terms footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Google Trends](https://trends.google.com/trends)** (US web search interest, monthly, 2004-2026; one request per term so each series is independently normalised to 0-100).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Because each term is scaled to its own peak, the lines show timing and shape but not relative search volume - a value of 50 on one line is not the same number of searches as 50 on another. Terms are identified by the legend and line colour; lines are not shape-coded. Low-volume months can be noisy, especially for rarer phrases such as "loan modification".
+  # -------------------------------------------------------------------------
+  # Chart 3 - current vs crisis peak
+  # -------------------------------------------------------------------------
+  - widgets:
+      - name: gap header
+        type: text
+        col: 12
+        content: |
+          # Today vs the June 2007-December 2010 crisis peak, by term
+
+          **Insight:** No distress term is close to its crisis peak. "Mortgage assistance" is the most elevated at 46% of its June 2007-December 2010 high, followed by "stop foreclosure" (36%) and "avoid foreclosure" (25%). "Foreclosure help" (11%) and "loan modification" (3%) have much lower search interest; these readings cannot estimate borrower counts or loss-mitigation program participation.
+
+          **How to read the chart:** Each bar is the latest full month (August 2026) as a percentage of that term's own June 2007-December 2010 crisis peak. The axis is capped at 100%, which would mark a full return to crisis-level search interest.
+  - widgets:
+      - name: Current interest vs crisis peak
+        hideName: true
+        type: chart
+        chart: bar
+        col: 12
+        direction: horizontal
+        file: queries/current_vs_peak.sql
+        x: term
+        y: [pct_of_crisis_peak]
+        yLabel: Aug 2026 interest as % of Jun 2007-Dec 2010 peak
+        yMin: "0"
+        yMax: "100"
+  - widgets:
+      - name: gap footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Google Trends](https://trends.google.com/trends)** (US web search interest, monthly, 2004-2026).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** "Crisis peak" is each term's highest month between June 2007 and December 2010; the comparison is a ratio of two relative-interest values, not of search counts. A single elevated recent month would raise a bar without implying a wider trend - read this alongside the time-series charts above. Percentages depend on the exact peak month chosen and on Google's normalisation.
+  # -------------------------------------------------------------------------
+  # Chart 4 - detail table
+  # -------------------------------------------------------------------------
+  - widgets:
+      - name: table header
+        type: text
+        col: 12
+        content: |
+          # Per-term detail
+
+          **Insight:** Four crisis peaks occur in early 2009 and "stop foreclosure" peaks in October 2010. Because each term's crisis peak equals 100, the "Latest" column reads as a percentage of that term's crisis peak. "Mortgage assistance" is the outlier: it briefly reached 74 in June 2026 - three-quarters of its crisis-era high - before cooling to 46, while "loan modification" and "foreclosure help" are at 3 and 11.
+
+          **How to read the table:** Rows are sorted by the latest value, highest first. All interest values are 0-100 self-normalised Google Trends readings, where each term's June 2007-December 2010 crisis peak = 100. "2026 high" is the term's strongest complete month so far in 2026.
+  - widgets:
+      - name: Distress terms - crisis peak vs today
+        type: table
+        col: 12
+        file: queries/term_table.sql
+        columns:
+          - {name: term,              label: Search term}
+          - {name: crisis_peak_month, label: Crisis peak month (term peak = 100)}
+          - {name: high_2026,         label: 2026 high}
+          - {name: current_interest,  label: "Latest (Aug 2026)"}
+  - widgets:
+      - name: table footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Google Trends](https://trends.google.com/trends)** (US web search interest, monthly, 2004-2026).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Values are relative search interest (0-100), not counts. "Crisis peak month" is the highest month in June 2007-December 2010 for each term. Context terms tracked in the pipeline but excluded from this index - "foreclosure" (mixed intent), "mortgage forbearance" (a 2020 COVID-policy spike), and "unemployment benefits" (a general recession barometer) - are omitted to keep the index focused on mortgage-distress queries.
+  # -------------------------------------------------------------------------
+  # Methodology
+  # -------------------------------------------------------------------------
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          **Index:** The Mortgage Distress Search Index is the unweighted arithmetic mean of five Google Trends interest-over-time series: foreclosure help, loan modification, stop foreclosure, avoid foreclosure, and mortgage assistance. Each term is queried separately for the United States and independently scaled to its own 2004-2026 maximum of 100; the composite is therefore a custom equal-weight standardized indicator, not aggregate search volume.
+
+          **Comparison window:** Crisis comparisons use June 2007 through December 2010. The latest complete month is August 2026; the incomplete current-month bucket is excluded.
+
+          **Sources:** **[Google Trends](https://trends.google.com/trends)** via the pytrends client; stored in **BigQuery**.
+
+          **Tools:** **Bruin cli** (ingestion and queries), **BigQuery** (warehouse), **Bruin dac** (dashboard).
+
+          **Limitations:** Search interest is relative and can reflect borrowers, advisors, journalists, researchers, investors, or policy attention. It cannot estimate the number of distressed households, defaults, foreclosures, or assistance-program participation. Low-volume terms can be noisy, and multi-word queries use Google Trends' default term matching rather than a verified count of exact phrases.

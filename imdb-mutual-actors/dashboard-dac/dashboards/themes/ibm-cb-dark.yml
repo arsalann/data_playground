@@ -1,0 +1,12 @@
+name: ibm-cb-dark
+extends: bruin-dark
+
+tokens:
+  chart-1: "#648FFF"
+  chart-2: "#785EF0"
+  chart-3: "#DC267F"
+  chart-4: "#FE6100"
+  chart-5: "#FFB000"
+  chart-6: "#FFFFFF"
+  chart-7: "#82E0AA"
+  chart-8: "#BBBBBB"

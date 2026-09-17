@@ -1,0 +1,452 @@
+name: IMDb mutual actors - unrelated titles that share a cast
+description: |
+  Which pairs of movies and TV series share the most billed actors, once
+  sequels, prequels, remakes, spin-offs and same-franchise entries are removed,
+  plus the actor duos who have appeared together in the most titles. Built from
+  the IMDb Non-Commercial Datasets, restricted to movies and series with at
+  least 25,000 IMDb votes. Use the filters to scope by release-year range,
+  medium (movies / TV) and cast type (live action / animation).
+connection: bruin-playground-arsalan
+theme: ibm-cb-dark
+
+filters:
+  - name: year_from
+    type: select
+    default: "1915"
+    options:
+      values: ["1915", "1930", "1940", "1950", "1955", "1960", "1965", "1970", "1975",
+               "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2020", "2025", "2026"]
+  - name: year_to
+    type: select
+    default: "2026"
+    options:
+      values: ["1915", "1930", "1940", "1950", "1955", "1960", "1965", "1970", "1975",
+               "1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015", "2020", "2025", "2026"]
+  - name: media
+    type: select
+    default: All
+    options:
+      values: [All, Movies, TV]
+  - name: cast_type
+    type: select
+    default: All
+    options:
+      values: [All, Live action, Animation]
+
+queries:
+  top_pairs:
+    sql: |
+      SELECT
+        CONCAT(p.title_a, ' (', CAST(p.year_a AS STRING), ')') AS title_1,
+        CONCAT(p.title_b, ' (', CAST(p.year_b AS STRING), ')') AS title_2,
+        p.shared_actor_count AS shared,
+        p.pair_kind AS kind,
+        IF(p.both_animation, 'animation', 'live action') AS medium,
+        p.shared_actors AS shared_billed_actors
+      FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs` p
+      JOIN `bruin-playground-arsalan.imdb_mutual_raw.imdb_titles` ta
+        ON p.tconst_a = ta.tconst
+      JOIN `bruin-playground-arsalan.imdb_mutual_raw.imdb_titles` tb
+        ON p.tconst_b = tb.tconst
+      WHERE NOT p.likely_related
+        -- The headline is intentionally scoped to feature movies.
+        AND p.type_a = 'movie' AND p.type_b = 'movie'
+        AND NOT REGEXP_CONTAINS(LOWER(COALESCE(ta.genres, '')), r'(^|,)documentary(,|$)')
+        AND NOT REGEXP_CONTAINS(LOWER(COALESCE(tb.genres, '')), r'(^|,)documentary(,|$)')
+        AND NOT REGEXP_CONTAINS(LOWER(COALESCE(ta.genres, '')), r'(^|,)short(,|$)')
+        AND NOT REGEXP_CONTAINS(LOWER(COALESCE(tb.genres, '')), r'(^|,)short(,|$)')
+        AND NOT REGEXP_CONTAINS(LOWER(ta.primary_title), r'\b(inside look|making of|behind the scenes|special feature|featurette|cast reunion|companion|spin[- ]off)\b')
+        AND NOT REGEXP_CONTAINS(LOWER(tb.primary_title), r'\b(inside look|making of|behind the scenes|special feature|featurette|cast reunion|companion|spin[- ]off)\b')
+        AND p.year_a BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+        AND p.year_b BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+        {% if filters.cast_type == 'Animation' %} AND both_animation
+        {% elif filters.cast_type == 'Live action' %} AND NOT both_animation {% endif %}
+      ORDER BY p.shared_actor_count DESC, title_1
+      LIMIT 25
+
+  actor_duos:
+    sql: |
+      WITH related_titles AS (
+        SELECT tconst_a AS tconst
+        FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+        WHERE likely_related
+        UNION DISTINCT
+        SELECT tconst_b AS tconst
+        FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+        WHERE likely_related
+      ),
+      c AS (
+        SELECT DISTINCT tc.tconst, tc.nconst, tc.actor_name, tc.primary_title
+        FROM `bruin-playground-arsalan.imdb_mutual_staging.title_cast` tc
+        LEFT JOIN related_titles rt ON tc.tconst = rt.tconst
+        WHERE rt.tconst IS NULL
+          AND tc.start_year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          {% if filters.media == 'Movies' %} AND tc.title_type = 'movie'
+          {% elif filters.media == 'TV' %} AND tc.title_type != 'movie' {% endif %}
+          {% if filters.cast_type == 'Animation' %} AND REGEXP_CONTAINS(LOWER(tc.genres), r'animation')
+          {% elif filters.cast_type == 'Live action' %} AND NOT COALESCE(REGEXP_CONTAINS(LOWER(tc.genres), r'animation'), FALSE) {% endif %}
+      )
+      SELECT
+        CONCAT(a.actor_name, ' + ', b.actor_name) AS actor_duo,
+        COUNT(DISTINCT a.tconst) AS shared_works
+      FROM c a
+      JOIN c b ON a.tconst = b.tconst AND a.nconst < b.nconst
+      GROUP BY actor_duo
+      ORDER BY shared_works DESC, actor_duo
+      LIMIT 6
+
+  actor_duos_detail:
+    sql: |
+      WITH related_titles AS (
+        SELECT tconst_a AS tconst
+        FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+        WHERE likely_related
+        UNION DISTINCT
+        SELECT tconst_b AS tconst
+        FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+        WHERE likely_related
+      ),
+      c AS (
+        SELECT DISTINCT tc.tconst, tc.nconst, tc.actor_name, tc.primary_title
+        FROM `bruin-playground-arsalan.imdb_mutual_staging.title_cast` tc
+        LEFT JOIN related_titles rt ON tc.tconst = rt.tconst
+        WHERE rt.tconst IS NULL
+          AND tc.start_year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          {% if filters.media == 'Movies' %} AND tc.title_type = 'movie'
+          {% elif filters.media == 'TV' %} AND tc.title_type != 'movie' {% endif %}
+          {% if filters.cast_type == 'Animation' %} AND REGEXP_CONTAINS(LOWER(tc.genres), r'animation')
+          {% elif filters.cast_type == 'Live action' %} AND NOT COALESCE(REGEXP_CONTAINS(LOWER(tc.genres), r'animation'), FALSE) {% endif %}
+      )
+      SELECT
+        a.actor_name AS actor_1,
+        b.actor_name AS actor_2,
+        COUNT(DISTINCT a.tconst) AS shared_works,
+        STRING_AGG(DISTINCT a.primary_title, ', ' ORDER BY a.primary_title) AS titles
+      FROM c a
+      JOIN c b ON a.tconst = b.tconst AND a.nconst < b.nconst
+      GROUP BY actor_1, actor_2
+      ORDER BY shared_works DESC, actor_1
+      LIMIT 20
+
+  hub_titles:
+    sql: |
+      WITH u AS (
+        SELECT * FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+        WHERE NOT likely_related AND shared_actor_count >= 3
+          AND year_a BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          AND year_b BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+          {% if filters.media == 'Movies' %} AND type_a = 'movie' AND type_b = 'movie'
+          {% elif filters.media == 'TV' %} AND type_a != 'movie' AND type_b != 'movie' {% endif %}
+          {% if filters.cast_type == 'Animation' %} AND both_animation
+          {% elif filters.cast_type == 'Live action' %} AND NOT both_animation {% endif %}
+      ),
+      edges AS (
+        SELECT title_a AS title, year_a AS yr, shared_actor_count AS s FROM u
+        UNION ALL
+        SELECT title_b, year_b, shared_actor_count FROM u
+      )
+      SELECT
+        CONCAT(title, ' (', CAST(ANY_VALUE(yr) AS STRING), ')') AS title_year,
+        COUNT(*) AS partner_titles,
+        MAX(s) AS max_shared_with_one_partner
+      FROM edges
+      GROUP BY title
+      ORDER BY partner_titles DESC, max_shared_with_one_partner DESC, title
+      LIMIT 15
+
+  shared_dist:
+    sql: |
+      SELECT
+        CAST(shared_actor_count AS STRING) AS shared_billed_actors,
+        COUNT(*) AS pair_count
+      FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+      WHERE NOT likely_related
+        AND year_a BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+        AND year_b BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+        {% if filters.media == 'Movies' %} AND type_a = 'movie' AND type_b = 'movie'
+        {% elif filters.media == 'TV' %} AND type_a != 'movie' AND type_b != 'movie' {% endif %}
+        {% if filters.cast_type == 'Animation' %} AND both_animation
+        {% elif filters.cast_type == 'Live action' %} AND NOT both_animation {% endif %}
+      GROUP BY shared_actor_count
+      ORDER BY shared_actor_count
+
+  pair_kind:
+    sql: |
+      SELECT
+        CASE pair_kind
+          WHEN 'movie-movie' THEN 'Movie + Movie'
+          WHEN 'movie-tv' THEN 'Movie + TV'
+          WHEN 'tv-tv' THEN 'TV + TV'
+        END AS medium_pair,
+        COUNT(*) AS pair_count
+      FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+      WHERE NOT likely_related
+        AND year_a BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+        AND year_b BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+        {% if filters.media == 'Movies' %} AND type_a = 'movie' AND type_b = 'movie'
+        {% elif filters.media == 'TV' %} AND type_a != 'movie' AND type_b != 'movie' {% endif %}
+        {% if filters.cast_type == 'Animation' %} AND both_animation
+        {% elif filters.cast_type == 'Live action' %} AND NOT both_animation {% endif %}
+      GROUP BY pair_kind
+      ORDER BY pair_count DESC
+
+rows:
+  - widgets:
+      - name: Overview
+        type: text
+        col: 12
+        content: |
+          # Unrelated titles that share a cast, and the actor duos who reunite most
+
+          **Two questions from one dataset of 8,615 well-known titles (movies and TV series with 25,000+ IMDb votes) and 37,546 billed actors. First: which pairs of genuinely distinct works (sequels, prequels, remakes and same-franchise entries removed) share the most billed actors. Second: which actor duos have appeared together in the most titles. The strongest title overlaps share six billed actors; the most-reunited duos have shared eight to ten titles.**
+
+          **Method:** a title pair is one unordered combination of two titles; shared cast counts distinct people credited as actor or actress on both. "Directly related" pairs are flagged and excluded (see Methodology). The actor-duo view applies a conservative title-level version of that exclusion before counting distinct shared titles, so franchise casts do not dominate. Year and cast-type filters apply throughout; the headline pair table stays fixed to the documented feature-movie scope, while the other summaries also respond to the medium filter.
+
+  - widgets:
+      - name: Titles in view
+        type: metric
+        col: 3
+        sql: |
+          SELECT COUNT(*) AS value FROM `bruin-playground-arsalan.imdb_mutual_raw.imdb_titles`
+          WHERE start_year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            {% if filters.media == 'Movies' %} AND title_type = 'movie'
+            {% elif filters.media == 'TV' %} AND title_type != 'movie' {% endif %}
+            {% if filters.cast_type == 'Animation' %} AND REGEXP_CONTAINS(LOWER(genres), r'animation')
+            {% elif filters.cast_type == 'Live action' %} AND NOT COALESCE(REGEXP_CONTAINS(LOWER(genres), r'animation'), FALSE) {% endif %}
+        column: value
+        format: number
+      - name: Billed actors in view
+        type: metric
+        col: 3
+        sql: |
+          SELECT COUNT(DISTINCT nconst) AS value FROM `bruin-playground-arsalan.imdb_mutual_staging.title_cast`
+          WHERE start_year BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            {% if filters.media == 'Movies' %} AND title_type = 'movie'
+            {% elif filters.media == 'TV' %} AND title_type != 'movie' {% endif %}
+            {% if filters.cast_type == 'Animation' %} AND REGEXP_CONTAINS(LOWER(genres), r'animation')
+            {% elif filters.cast_type == 'Live action' %} AND NOT COALESCE(REGEXP_CONTAINS(LOWER(genres), r'animation'), FALSE) {% endif %}
+        column: value
+        format: number
+      - name: Unrelated pairs
+        type: metric
+        col: 3
+        sql: |
+          SELECT COUNT(*) AS value FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+          WHERE NOT likely_related
+            AND year_a BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            AND year_b BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            {% if filters.media == 'Movies' %} AND type_a = 'movie' AND type_b = 'movie'
+            {% elif filters.media == 'TV' %} AND type_a != 'movie' AND type_b != 'movie' {% endif %}
+            {% if filters.cast_type == 'Animation' %} AND both_animation
+            {% elif filters.cast_type == 'Live action' %} AND NOT both_animation {% endif %}
+        column: value
+        format: number
+      - name: Most shared (unrelated pair)
+        type: metric
+        col: 3
+        sql: |
+          SELECT COALESCE(MAX(shared_actor_count), 0) AS value FROM `bruin-playground-arsalan.imdb_mutual_report.mutual_actor_pairs`
+          WHERE NOT likely_related
+            AND year_a BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            AND year_b BETWEEN {{ filters.year_from }} AND {{ filters.year_to }}
+            {% if filters.media == 'Movies' %} AND type_a = 'movie' AND type_b = 'movie'
+            {% elif filters.media == 'TV' %} AND type_a != 'movie' AND type_b != 'movie' {% endif %}
+            {% if filters.cast_type == 'Animation' %} AND both_animation
+            {% elif filters.cast_type == 'Live action' %} AND NOT both_animation {% endif %}
+        column: value
+        format: number
+
+  - widgets:
+      - name: Actor duos header
+        type: text
+        col: 12
+        content: |
+          # Actor collaborations outside related franchises
+
+          **A playful tile view of the 6 strongest actor pairings in the selected view. Each tile is one duo, and its area represents the number of distinct shared titles after related franchise/sequel titles are removed. The focused set gives every label room to breathe. The default all-time leader is Adam Sandler + Allen Covert with 9 shared titles, followed by three 7-title collaborations and two 6-title collaborations.**
+
+          **Tile label:** actor duo. **Tile area:** distinct shared-title count. **Colour:** categorical tile identity only; read the value from the tile or tooltip, not from colour.
+
+  - widgets:
+      - name: Actor duos
+        type: chart
+        chart: treemap
+        hideName: true
+        col: 12
+        query: actor_duos
+        label: actor_duo
+        value: shared_works
+
+  - widgets:
+      - name: Actor duos detail
+        type: table
+        col: 12
+        query: actor_duos_detail
+        columns:
+          - { name: actor_1, label: Actor A }
+          - { name: actor_2, label: Actor B }
+          - { name: shared_works, label: Shared titles }
+          - { name: titles, label: Titles they share }
+
+  - widgets:
+      - name: Actor duos footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[IMDb Non-Commercial Datasets](https://developer.imdb.com/non-commercial-datasets/)** (`title.principals`, `name.basics`, `title.basics`, `title.ratings`).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Co-appearance is counted from top-billed credits only, so pairings that exist only in deep supporting casts are undercounted. Any title appearing in a report pair flagged `likely_related` is removed from the actor-duo calculation; this conservatively excludes Harry Potter, Star Wars, Star Trek, Marvel, DC, X-Men, Lord of the Rings, Fast & Furious, and other sequel / prequel / spin-off families. It may also remove an otherwise standalone title that shares a distinctive title pattern with a related work. Only titles above the 25,000-vote gate are counted.
+
+  - widgets:
+      - name: Top pairs header
+        type: text
+        col: 12
+        content: |
+          # Top Hollywood movie pairs by shared billed actors
+
+          **The 25 pairs of distinct, non-franchise feature movies with the most billed actors in common. The default all-time leader is The Big Boss and Fist of Fury with six shared actors; the cleaned list also removes documentary/short titles and obvious companion or spin-off-style titles, which otherwise make the word "unrelated" misleading.**
+
+          **Columns:** the two titles with release year, the count of shared billed actors, the movie-only medium marker, cast type, and the names of the shared actors.
+
+  - widgets:
+      - name: Top unrelated pairs
+        type: table
+        col: 12
+        query: top_pairs
+        columns:
+          - { name: title_1, label: Title A }
+          - { name: title_2, label: Title B }
+          - { name: shared, label: Shared actors }
+          - { name: kind, label: Media }
+          - { name: medium, label: Cast type }
+          - { name: shared_billed_actors, label: Shared billed actors }
+
+  - widgets:
+      - name: Top pairs footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[IMDb Non-Commercial Datasets](https://developer.imdb.com/non-commercial-datasets/)** (`title.basics`, `title.principals`, `title.ratings`, `name.basics`; IMDb non-commercial licence, not affiliated with or endorsed by IMDb).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** "Hollywood movie" is operationalized as both titles having IMDb `title_type = 'movie'`; the current IMDb basics export has no production-country or studio field, so this is a feature-film proxy rather than a strict geography claim. Documentary and Short genres are excluded, as are title patterns such as `Inside Look`, `Making Of`, `Behind the Scenes`, `Featurette`, `Companion`, and `Spin-Off`. The report's curated-plus-heuristic related-title flag also excludes likely sequels, prequels, remakes, and franchise entries, but is not guaranteed exhaustive. `title.principals` lists only the top-billed cast (usually up to 10), so counts understate full-cast overlap.
+
+  - widgets:
+      - name: Connector titles header
+        type: text
+        col: 12
+        content: |
+          # Connector titles: works sharing 3+ actors with the most distinct partners
+
+          **Titles that share three or more billed actors with the largest number of distinct, unrelated partner titles in the selected view. These are repertory anchors: recurring ensembles reused across unrelated works. The all-time list surfaces the Adam Sandler / Happy Madison comedies (Grown Ups, Hubie Halloween, 50 First Dates), Akira Kurosawa's regular company (Seven Samurai, Yojimbo, Rashomon, The Hidden Fortress), Yash Raj-era Bollywood (Veer-Zaara, Kuch Kuch Hota Hai), and Cartoon Network voice casts.**
+
+          **Columns:** the title with year, the number of distinct partner titles it shares 3+ actors with, and the most it shares with any single partner.
+
+  - widgets:
+      - name: Connector titles
+        type: table
+        col: 12
+        query: hub_titles
+        columns:
+          - { name: title_year, label: Title }
+          - { name: partner_titles, label: Distinct partner titles (3+ shared) }
+          - { name: max_shared_with_one_partner, label: Max shared with one partner }
+
+  - widgets:
+      - name: Connector titles footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[IMDb Non-Commercial Datasets](https://developer.imdb.com/non-commercial-datasets/)** (`title.principals`, `name.basics`, `title.basics`, `title.ratings`).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** A partner is counted once regardless of how many actors are shared beyond the three-actor threshold. Prolific character and voice actors inflate the partner count for the studios and troupes that employ them repeatedly. Only titles above the 25,000-vote gate are eligible as partners.
+
+  - widgets:
+      - name: Shared-count distribution header
+        type: text
+        col: 12
+        content: |
+          # How many billed actors unrelated pairs share
+
+          **The number of unrelated title pairs at each shared-actor count in the selected view. In the all-time view, overlap decays steeply: 5,333 pairs share exactly two billed actors, 330 share three, 66 share four, 12 share five, and only 3 share six. Sharing more than two leading-cast members between unrelated works is uncommon, and sharing six is exceptional.**
+
+          **X-axis:** number of shared billed actors. **Y-axis:** count of unrelated title pairs (linear scale, so the two-actor bar dwarfs the rest by design).
+
+  - widgets:
+      - name: Shared-count distribution
+        type: chart
+        chart: bar
+        col: 12
+        query: shared_dist
+        x: shared_billed_actors
+        y: [pair_count]
+
+  - widgets:
+      - name: Shared-count distribution footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[IMDb Non-Commercial Datasets](https://developer.imdb.com/non-commercial-datasets/)** (`title.principals`, `title.basics`, `title.ratings`).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Counts include only pairs flagged not directly related. The 2-actor bar includes many incidental overlaps (two working actors who happen to co-appear); higher counts are more likely to reflect a deliberately reused ensemble. Top-billed-only cast data caps the achievable overlap.
+
+  - widgets:
+      - name: Medium mix header
+        type: text
+        col: 12
+        content: |
+          # Unrelated shared-cast pairs by medium combination
+
+          **How the unrelated pairs in the selected view split across media. In the all-time view movie-to-movie overlaps dominate (5,033 of 5,744), reflecting the movie-heavy title universe, but 494 pairs cross between a film and a TV series and 217 are TV-to-TV - shared casts are not confined to a single medium.**
+
+          **Slices:** the three medium combinations, sized by pair count. The legend maps each colour to a combination.
+
+  - widgets:
+      - name: Medium mix
+        type: chart
+        chart: pie
+        col: 12
+        query: pair_kind
+        label: medium_pair
+        value: pair_count
+
+  - widgets:
+      - name: Medium mix footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[IMDb Non-Commercial Datasets](https://developer.imdb.com/non-commercial-datasets/)** (`title.basics`, `title.principals`, `title.ratings`).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The universe holds far more movies (7,278) than series (1,337), so the movie-to-movie share partly reflects availability rather than a stronger tendency to reuse casts. TV miniseries are grouped with TV series. When the medium filter is set, this chart shows only the selected combination.
+
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology and limitations
+
+          **Data.** IMDb Non-Commercial Datasets (`datasets.imdbws.com`): `title.ratings`, `title.basics`, `title.principals`, `name.basics`. Personal / non-commercial use only; not affiliated with or endorsed by IMDb.
+
+          **Universe.** Titles of type movie, tvSeries or tvMiniSeries, non-adult, with at least 25,000 IMDb votes: 8,615 titles spanning 1915-2026. The vote gate keeps the analysis to widely recognised titles so overlaps are meaningful.
+
+          **Filters.** Year range filters on each title's release / series-start year (both titles of a pair, or the shared title of a duo, must fall in range). Medium filters to movies or to TV (series and miniseries). Cast type filters to live action or animation (animation = the title carries the IMDb Animation genre; for title pairs, animation means both titles are animated).
+
+          **Cast.** Only credits with category actor or actress from `title.principals`, which lists the top-billed principals per title (usually up to 10), not the full cast. Shared cast is the count of distinct people credited on both titles; an actor duo's shared works is the count of distinct titles both people are billed on.
+
+          **Title pairs.** Every unordered pair of titles sharing at least two billed actors (`tconst_a < tconst_b`), 7,213 in total before filtering; 1,469 are currently excluded as directly related and 5,744 remain for the all-time summaries.
+
+          **Headline movie scope.** The "Top Hollywood movie pairs" table further requires both titles to be IMDb `title_type = 'movie'`, excludes `Documentary` and `Short` genres, and removes obvious companion / spin-off-style title patterns (`Inside Look`, `Making Of`, `Behind the Scenes`, `Featurette`, `Companion`, `Spin-Off`). Because the current IMDb basics export does not include production country or studio, "Hollywood" is a transparent feature-film proxy, not a verified production-location classification. The other title-pair summaries retain the selected all/movie/TV view.
+
+          **"Directly related" exclusion.** A title pair is flagged as related when: both titles map to the same curated franchise (Marvel, DC, Star Wars, X-Men, Middle-earth, Wizarding World, Fast & Furious, James Bond, American Pie, Meet the Parents, Firefly, Grindhouse, Animaniacs, Despicable Me, Alice in Wonderland, Mexico Trilogy, Freaky Friday, Knocked Up, Halloween, Hotel Transylvania, the G.O.R.A. universe, Beatles films, John Wick, Jurassic films, or Jean de Florette); or they share a rare title word (appearing in six or fewer titles); or their normalised base titles match, share a two-word prefix, one contains the other, or have token-set similarity of 0.5 or more. 1,469 pairs are excluded this way; 5,744 remain. This is curated plus heuristic and not guaranteed exhaustive - same-universe films with dissimilar titles may slip through, and unrelated works with coincidentally similar titles may be over-excluded. The actor-duo view applies a conservative title-level version: any title appearing in a pair flagged `likely_related` is removed before duo counts are calculated. This keeps Harry Potter, Star Wars, and other sequel / prequel / spin-off families from dominating the chart, but may also remove an otherwise standalone title linked by a heuristic match.
+
+          **Caveats.** Top-billed-only cast data understates true overlap. Animation pairs are driven by a small pool of prolific voice actors and are labelled as such. Vote-count and billing data are snapshots from the IMDb export used to build this pipeline.

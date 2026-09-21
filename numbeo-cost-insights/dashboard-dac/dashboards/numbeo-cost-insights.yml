@@ -1,0 +1,507 @@
+name: The Cost-of-Living Squeeze
+description: |
+  A current global comparison of prices, rent, and local purchasing power,
+  designed to surface places where "cheap" still does not mean affordable.
+connection: bruin-playground-arsalan
+
+rows:
+  - tab: Global
+    widgets:
+      - name: Cities tracked
+        type: metric
+        col: 3
+        value: { field: value, type: number, format: ",.0f" }
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+      - name: Countries tracked
+        type: metric
+        col: 3
+        value: { field: value, type: number, format: ",.0f" }
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.numbeo_staging.country_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.country_cost_metrics`)
+      - name: Cities in a squeeze
+        type: metric
+        col: 3
+        value: { field: value, type: number, format: ",.0f" }
+        sql: |
+          SELECT COUNT(*) AS value
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+            AND affordability_gap_index > 0
+      - name: Largest country gap
+        type: metric
+        col: 3
+        value: { field: value, type: number, format: ",.1f" }
+        sql: |
+          SELECT MAX(affordability_gap_index) AS value
+          FROM `bruin-playground-arsalan.numbeo_staging.country_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.country_cost_metrics`)
+
+  - tab: Global
+    widgets:
+      - name: The cost-of-living squeeze overview
+        type: text
+        col: 12
+        content: |
+          # When "cheap" still means unaffordable
+
+          **Numbeo's current city and country indices reveal a counter-intuitive split: the places with the lowest sticker prices are not always the places where local pay stretches furthest. The dashboard defines an affordability gap as combined cost plus rent minus local purchasing power. A positive gap means indexed living costs outrun indexed local buying power.**
+
+          **Reading guide:** Indexes use New York City = 100. Higher gap = tighter local affordability. The source is a live, user-contributed benchmark, so treat rankings as directional rather than as official household budgets.
+
+  - tab: Global
+    widgets:
+      - name: Country affordability gap header
+        type: text
+        col: 12
+        content: |
+          # Countries where the price tag outruns local buying power
+
+          **The largest country-level gap is 52.5 index points in the Solomon Islands; Turkmenistan follows at 47.6 and Cuba at 25.6. This is the dashboard's sharpest warning against equating a low cost-of-living index with an easy local life: these places have low indexed prices, but local purchasing power is lower still.**
+
+          **Encoding key:** Bars = affordability gap (index points; combined cost plus rent minus local purchasing power). **Line:** zero gap, the break-even threshold. **X-axis:** country or territory.
+
+  - tab: Global
+    widgets:
+      - name: Country affordability gap chart
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            country,
+            affordability_gap_index,
+            0.0 AS zero_gap
+          FROM `bruin-playground-arsalan.numbeo_report.country_squeeze_top`
+          ORDER BY affordability_gap_index DESC
+        x: { field: country, type: category, title: "Country or territory" }
+        y: { field: [affordability_gap_index, zero_gap], type: number, format: ".1f", title: "Index points" }
+        lines: [zero_gap]
+
+  - tab: Global
+    widgets:
+      - name: Country affordability gap footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current country rankings](https://www.numbeo.com/cost-of-living/rankings_by_country.jsp)** (crowdsourced cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** This is a relative index subtraction, not a household budget or a claim about disposable income. Country coverage and contributor density vary. Territories and small markets can have thin samples; currency conversion, household size, taxes, and public benefits are not modeled.
+
+  - tab: Global
+    widgets:
+      - name: Country affordability gap table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            country,
+            affordability_gap_index,
+            cost_of_living_plus_rent_index,
+            local_purchasing_power_index,
+            rent_to_purchasing_power_ratio
+          FROM `bruin-playground-arsalan.numbeo_report.country_squeeze_top`
+          ORDER BY affordability_gap_index DESC
+        columns:
+          - name: country
+            label: Country / territory
+          - name: affordability_gap_index
+            label: Gap (index pts)
+            format: number
+          - name: cost_of_living_plus_rent_index
+            label: Cost + rent
+            format: number
+          - name: local_purchasing_power_index
+            label: Local buying power
+            format: number
+          - name: rent_to_purchasing_power_ratio
+            label: Rent / buying power
+            format: number
+
+  - tab: Global
+    widgets:
+      - name: City affordability comparison header
+        type: text
+        col: 12
+        content: |
+          # Cities where combined costs beat local buying power
+
+          **The city-level outliers are even more visceral: Abidjan's combined cost-plus-rent index is 20.0 points above its local purchasing-power index, followed by Addis Ababa at 18.7 and Bali at 17.9. These are not the world's most expensive cities; they are places where low absolute prices coexist with even lower local buying power.**
+
+          **Encoding key:** Bars = combined cost plus rent and local purchasing power (both indexed to New York City = 100). **X-axis:** city; country is shown in the companion table.
+
+  - tab: Global
+    widgets:
+      - name: City affordability comparison chart
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            cost_of_living_plus_rent_index AS cost_plus_rent,
+            local_purchasing_power_index AS local_buying_power
+          FROM `bruin-playground-arsalan.numbeo_report.city_squeeze_top`
+          ORDER BY affordability_gap_index DESC
+        x: { field: city, type: category, title: "City" }
+        y: { field: [cost_plus_rent, local_buying_power], type: number, format: ".1f", title: "Index (New York City = 100)" }
+
+  - tab: Global
+    widgets:
+      - name: City affordability comparison footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (crowdsourced city cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The chart intentionally focuses on positive-gap cities only. Numbeo city labels can combine city and territory names inconsistently, and local purchasing power is an index proxy rather than observed household income after tax. Bars use a zero baseline as required for truthful comparison.
+
+  - tab: Global
+    widgets:
+      - name: City affordability comparison table
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            city,
+            country,
+            affordability_gap_index,
+            cost_of_living_plus_rent_index,
+            local_purchasing_power_index,
+            rent_to_purchasing_power_ratio
+          FROM `bruin-playground-arsalan.numbeo_report.city_squeeze_top`
+          ORDER BY affordability_gap_index DESC
+        columns:
+          - name: city
+            label: City
+          - name: country
+            label: Country / territory
+          - name: affordability_gap_index
+            label: Gap (index pts)
+            format: number
+          - name: cost_of_living_plus_rent_index
+            label: Cost + rent
+            format: number
+          - name: local_purchasing_power_index
+            label: Local buying power
+            format: number
+          - name: rent_to_purchasing_power_ratio
+            label: Rent / buying power
+            format: number
+
+  - tab: Global
+    widgets:
+      - name: Rent burden header
+        type: text
+        col: 12
+        content: |
+          # Rent can be more than twice local buying power
+
+          **Lagos is the dashboard's most extreme city-level rent burden: its indexed rent is 2.83× its local purchasing-power index. Bali follows at 2.05×. This ratio is a relative stress signal, not a claim that rent literally consumes that share of salary, but it makes the housing squeeze legible across currencies.**
+
+          **Encoding key:** Bars = rent index divided by local purchasing-power index (×). **Line:** 1.00× parity, where the two indexes are equal. **X-axis:** city.
+
+  - tab: Global
+    widgets:
+      - name: Rent burden chart
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            rent_to_purchasing_power_ratio AS rent_burden_ratio,
+            1.0 AS parity_ratio
+          FROM `bruin-playground-arsalan.numbeo_report.city_rent_burden_top`
+          ORDER BY rent_to_purchasing_power_ratio DESC
+        x: { field: city, type: category, title: "City" }
+        y: { field: [rent_burden_ratio, parity_ratio], type: number, format: ".2f", title: "Indexed ratio (×)" }
+        lines: [parity_ratio]
+
+  - tab: Global
+    widgets:
+      - name: Rent burden footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (rent and local purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** A ratio of indexes is not a rent-to-income percentage: Numbeo's purchasing-power index incorporates local prices and salary assumptions, while the rent index is city-level. Small-sample cities and informal housing markets may be underrepresented.
+
+  - tab: Africa
+    widgets:
+      - name: Africa affordability story header
+        type: text
+        col: 12
+        content: |
+          # Africa: the local affordability squeeze
+
+          **This tab ranks the ten cities with the widest affordability gaps in Africa. Use it to compare where combined cost plus rent is furthest above local purchasing power, regardless of the absolute price level.**
+
+          **Encoding key:** Bars = affordability gap (index points; combined cost plus rent minus local purchasing power). **Line:** zero gap, the break-even threshold. **X-axis:** city.
+  - tab: Africa
+    widgets:
+      - name: Africa city affordability gap
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            affordability_gap_index,
+            0.0 AS zero_gap
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+            AND continent = 'Africa'
+          ORDER BY affordability_gap_index DESC
+          LIMIT 10
+        x: { field: city, type: category, title: "City" }
+        y: { field: [affordability_gap_index, zero_gap], type: number, format: ".1f", title: "Index points" }
+        lines: [zero_gap]
+  - tab: Africa
+    widgets:
+      - name: Africa affordability story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (crowdsourced city cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Continent labels are a broad, hand-maintained grouping of Numbeo country labels; Russia and Turkey are assigned to Europe and Cyprus to Europe for this dashboard. The gap is an index difference, not a literal share of income. Coverage and contributor density vary by city.
+
+  - tab: Asia
+    widgets:
+      - name: Asia affordability story header
+        type: text
+        col: 12
+        content: |
+          # Asia: the local affordability squeeze
+
+          **This tab ranks the ten cities with the widest affordability gaps in Asia. Use it to compare where combined cost plus rent is furthest above local purchasing power, regardless of the absolute price level.**
+
+          **Encoding key:** Bars = affordability gap (index points; combined cost plus rent minus local purchasing power). **Line:** zero gap, the break-even threshold. **X-axis:** city.
+  - tab: Asia
+    widgets:
+      - name: Asia city affordability gap
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            affordability_gap_index,
+            0.0 AS zero_gap
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+            AND continent = 'Asia'
+          ORDER BY affordability_gap_index DESC
+          LIMIT 10
+        x: { field: city, type: category, title: "City" }
+        y: { field: [affordability_gap_index, zero_gap], type: number, format: ".1f", title: "Index points" }
+        lines: [zero_gap]
+  - tab: Asia
+    widgets:
+      - name: Asia affordability story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (crowdsourced city cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Continent labels are a broad, hand-maintained grouping of Numbeo country labels; Russia and Turkey are assigned to Europe and Cyprus to Europe for this dashboard. The gap is an index difference, not a literal share of income. Coverage and contributor density vary by city.
+
+  - tab: Europe
+    widgets:
+      - name: Europe affordability story header
+        type: text
+        col: 12
+        content: |
+          # Europe: the local affordability squeeze
+
+          **This tab ranks the ten cities with the widest affordability gaps in Europe. Use it to compare where combined cost plus rent is furthest above local purchasing power, regardless of the absolute price level.**
+
+          **Encoding key:** Bars = affordability gap (index points; combined cost plus rent minus local purchasing power). **Line:** zero gap, the break-even threshold. **X-axis:** city.
+  - tab: Europe
+    widgets:
+      - name: Europe city affordability gap
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            affordability_gap_index,
+            0.0 AS zero_gap
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+            AND continent = 'Europe'
+          ORDER BY affordability_gap_index DESC
+          LIMIT 10
+        x: { field: city, type: category, title: "City" }
+        y: { field: [affordability_gap_index, zero_gap], type: number, format: ".1f", title: "Index points" }
+        lines: [zero_gap]
+  - tab: Europe
+    widgets:
+      - name: Europe affordability story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (crowdsourced city cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Continent labels are a broad, hand-maintained grouping of Numbeo country labels; Russia and Turkey are assigned to Europe and Cyprus to Europe for this dashboard. The gap is an index difference, not a literal share of income. Coverage and contributor density vary by city.
+
+  - tab: North America
+    widgets:
+      - name: North America affordability story header
+        type: text
+        col: 12
+        content: |
+          # North America: the local affordability squeeze
+
+          **This tab ranks the ten cities with the widest affordability gaps in North America. Use it to compare where combined cost plus rent is furthest above local purchasing power, regardless of the absolute price level.**
+
+          **Encoding key:** Bars = affordability gap (index points; combined cost plus rent minus local purchasing power). **Line:** zero gap, the break-even threshold. **X-axis:** city.
+  - tab: North America
+    widgets:
+      - name: North America city affordability gap
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            affordability_gap_index,
+            0.0 AS zero_gap
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+            AND continent = 'North America'
+          ORDER BY affordability_gap_index DESC
+          LIMIT 10
+        x: { field: city, type: category, title: "City" }
+        y: { field: [affordability_gap_index, zero_gap], type: number, format: ".1f", title: "Index points" }
+        lines: [zero_gap]
+  - tab: North America
+    widgets:
+      - name: North America affordability story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (crowdsourced city cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Continent labels are a broad, hand-maintained grouping of Numbeo country labels; Russia and Turkey are assigned to Europe and Cyprus to Europe for this dashboard. The gap is an index difference, not a literal share of income. Coverage and contributor density vary by city.
+
+  - tab: South America
+    widgets:
+      - name: South America affordability story header
+        type: text
+        col: 12
+        content: |
+          # South America: the local affordability squeeze
+
+          **This tab ranks the ten cities with the widest affordability gaps in South America. Use it to compare where combined cost plus rent is furthest above local purchasing power, regardless of the absolute price level.**
+
+          **Encoding key:** Bars = affordability gap (index points; combined cost plus rent minus local purchasing power). **Line:** zero gap, the break-even threshold. **X-axis:** city.
+  - tab: South America
+    widgets:
+      - name: South America city affordability gap
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            affordability_gap_index,
+            0.0 AS zero_gap
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+            AND continent = 'South America'
+          ORDER BY affordability_gap_index DESC
+          LIMIT 10
+        x: { field: city, type: category, title: "City" }
+        y: { field: [affordability_gap_index, zero_gap], type: number, format: ".1f", title: "Index points" }
+        lines: [zero_gap]
+  - tab: South America
+    widgets:
+      - name: South America affordability story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (crowdsourced city cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Continent labels are a broad, hand-maintained grouping of Numbeo country labels; Russia and Turkey are assigned to Europe and Cyprus to Europe for this dashboard. The gap is an index difference, not a literal share of income. Coverage and contributor density vary by city.
+
+  - tab: Oceania
+    widgets:
+      - name: Oceania affordability story header
+        type: text
+        col: 12
+        content: |
+          # Oceania: the local affordability squeeze
+
+          **This tab ranks the ten cities with the widest affordability gaps in Oceania. Use it to compare where combined cost plus rent is furthest above local purchasing power, regardless of the absolute price level.**
+
+          **Encoding key:** Bars = affordability gap (index points; combined cost plus rent minus local purchasing power). **Line:** zero gap, the break-even threshold. **X-axis:** city.
+  - tab: Oceania
+    widgets:
+      - name: Oceania city affordability gap
+        type: chart
+        chart: combo
+        col: 12
+        sql: |
+          SELECT
+            city,
+            affordability_gap_index,
+            0.0 AS zero_gap
+          FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`
+          WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM `bruin-playground-arsalan.numbeo_staging.city_cost_metrics`)
+            AND continent = 'Oceania'
+          ORDER BY affordability_gap_index DESC
+          LIMIT 10
+        x: { field: city, type: category, title: "City" }
+        y: { field: [affordability_gap_index, zero_gap], type: number, format: ".1f", title: "Index points" }
+        lines: [zero_gap]
+  - tab: Oceania
+    widgets:
+      - name: Oceania affordability story footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Numbeo current city rankings](https://www.numbeo.com/cost-of-living/rankings_current.jsp)** (crowdsourced city cost, rent, and purchasing-power indices; New York City = 100).
+
+          **Tools:** **Bruin cli** (ingestion and transformations), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Continent labels are a broad, hand-maintained grouping of Numbeo country labels; Russia and Turkey are assigned to Europe and Cyprus to Europe for this dashboard. The gap is an index difference, not a literal share of income. Coverage and contributor density vary by city.
+
+  - tab: Global
+    widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          **Source and snapshot:** The pipeline captures Numbeo's public current city and country ranking tables on each run and appends a dated snapshot. The staging layer deduplicates by entity plus snapshot date. The dashboard always selects the latest available snapshot.
+
+          **Indices:** Numbeo sets New York City = 100 for the cost, rent, combined cost-plus-rent, groceries, restaurant, and local purchasing-power indices. The affordability gap is `cost_of_living_plus_rent_index - local_purchasing_power_index`; positive values flag indexed costs above indexed local buying power. The rent-burden ratio is `rent_index / local_purchasing_power_index`.
+
+          **Interpretation:** These are comparative signals for exploration, not official inflation, poverty, or household-budget statistics. Numbeo combines user-contributed observations with automated market data and statistical validation; contributor coverage, recency, taxes, household composition, housing quality, and public services can materially change a person's lived affordability.
+
+          **Reproducibility:** **[Numbeo cost-of-living database](https://www.numbeo.com/cost-of-living/)** → **Bruin** raw ingestion → BigQuery staging/report tables → **Bruin DAC** dashboard. A paid Numbeo API or data license may be required for commercial or high-volume use; this project uses the public ranking pages at modest frequency.

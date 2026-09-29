@@ -1,0 +1,165 @@
+name: Regional Affordability - OECD TL2
+description: Apples-to-apples OECD TL2 comparison of income, taxes/transfers, and housing-cost burden.
+connection: bruin-playground-arsalan
+
+queries:
+  kpis:
+    sql: |
+      SELECT
+          COUNT(*) AS comparable_regions,
+          COUNT(DISTINCT country_name) AS countries,
+          ROUND(AVG(housing_cost_pct_disposable_income), 1) AS avg_housing_cost_pct,
+          ROUND(AVG(disposable_after_housing_ppp_pc), 0) AS avg_after_housing_income
+      FROM `bruin-playground-arsalan.report.regional_affordability_snapshot`
+  history_coverage:
+    sql: |
+      SELECT
+          CAST(year AS STRING) AS year_label,
+          COUNT(*) AS comparable_region_count,
+          ROUND(APPROX_QUANTILES(housing_cost_pct_disposable_income, 100)[OFFSET(50)], 1) AS median_housing_cost_pct,
+          ROUND(APPROX_QUANTILES(disposable_after_housing_ppp_pc, 100)[OFFSET(50)], 0) AS median_after_housing_income
+      FROM `bruin-playground-arsalan.staging.regional_affordability`
+      GROUP BY year
+      ORDER BY year
+  least_constrained_regions:
+    sql: |
+      SELECT
+          CONCAT(region_name, ', ', country_name) AS region,
+          ROUND(disposable_after_housing_ppp_pc, 0) AS after_housing_income_usd_ppp,
+          ROUND(housing_cost_pct_disposable_income, 1) AS housing_cost_pct,
+          ROUND(affordability_score, 1) AS affordability_score
+      FROM `bruin-playground-arsalan.report.regional_affordability_snapshot`
+      ORDER BY affordability_score DESC
+      LIMIT 12
+  most_constrained_regions:
+    sql: |
+      SELECT
+          CONCAT(region_name, ', ', country_name) AS region,
+          ROUND(disposable_after_housing_ppp_pc, 0) AS after_housing_income_usd_ppp,
+          ROUND(housing_cost_pct_disposable_income, 1) AS housing_cost_pct,
+          ROUND(affordability_score, 1) AS affordability_score
+      FROM `bruin-playground-arsalan.report.regional_affordability_snapshot`
+      ORDER BY affordability_score ASC
+      LIMIT 12
+
+rows:
+  - widgets:
+      - name: Regions
+        type: metric
+        query: kpis
+        value:
+          field: comparable_regions
+          type: number
+          format: ",.0f"
+        col: 3
+      - name: Countries
+        type: metric
+        query: kpis
+        value:
+          field: countries
+          type: number
+          format: ",.0f"
+        col: 3
+      - name: Avg housing burden
+        type: metric
+        query: kpis
+        value:
+          field: avg_housing_cost_pct
+          type: number
+          format: ".1f"
+        col: 3
+      - name: Avg after-housing income
+        type: metric
+        query: kpis
+        value:
+          field: avg_after_housing_income
+          type: number
+          format: "$,.0f"
+        col: 3
+
+  - widgets:
+      - name: Map overview
+        type: text
+        col: 12
+        content: |
+          # OECD TL2 after-housing disposable income, Europe and North America, 2022
+
+          **The strict apples-to-apples filter leaves 81 TL2 regions in 9 countries for 2022. Germany, Canada, and Mexico provide the largest comparable regional coverage; the United States is excluded because OECD does not publish the matching regional housing-cost burden series for the same TL2 grain.**
+
+          **Color:** after-housing disposable income score, where 100 equals the 2022 comparable-region median. **Map panels:** each comparable country is shown separately with the same shared color scale so regional patterns remain readable without mixing country extents.
+  - widgets:
+      - name: Regional affordability choropleth
+        type: text
+        col: 12
+        content: |
+          ![Country-panel choropleth map of 2022 OECD TL2 regional affordability scores for comparable Europe and North America regions.](http://localhost:8330/regional_affordability_map.png?v=20260722-country-panels)
+  - widgets:
+      - name: Sources, tools, and limitations - map
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[OECD Regional Economy: Income - Regions](https://data-explorer.oecd.org/vis?df[ds]=dsDisseminateFinalDMZ&df[id]=DSD_REG_ECO@DF_INC)**, **[OECD Regional Social: Housing - Regions](https://data-explorer.oecd.org/vis?df[ds]=dsDisseminateFinalDMZ&df[id]=DSD_REG_SOC@DF_HOUSING)**, **[Eurostat GISCO NUTS boundaries](https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/territorial-units-statistics)**, and **[Natural Earth Admin 1 boundaries](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-1-states-provinces/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** This is a regional affordability comparison, not a full cost-of-living index. Housing burden is available at TL2; transportation, groceries, utilities, and city-level rent prices are excluded because they are not available from a single comparable regional source across Europe and North America. Map boundaries are visual joins to public NUTS/Admin-1 geometries and should not be interpreted as OECD-official map geometry.
+
+  - widgets:
+      - name: Comparable history overview
+        type: text
+        col: 12
+        content: |
+          # Comparable regional coverage and median affordability, 1995-2024
+
+          **Coverage is uneven over time: 2010 has the largest strict intersection, while 2022 is the latest year with broad coverage. The 2022 map therefore privileges recency over maximum region count, and the full historical panel remains available for deeper time-series analysis.**
+
+          **Y-axis:** number of TL2 region-year observations with all required metrics. **X-axis:** calendar year.
+  - widgets:
+      - name: Comparable coverage chart
+        type: chart
+        chart: line
+        col: 12
+        query: history_coverage
+        x: { field: year_label }
+        y: { field: [comparable_region_count] }
+  - widgets:
+      - name: Sources, tools, and limitations - history
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[OECD Regional Economy: Income - Regions](https://data-explorer.oecd.org/vis?df[ds]=dsDisseminateFinalDMZ&df[id]=DSD_REG_ECO@DF_INC)** and **[OECD Regional Social: Housing - Regions](https://data-explorer.oecd.org/vis?df[ds]=dsDisseminateFinalDMZ&df[id]=DSD_REG_SOC@DF_HOUSING)** via DBnomics API mirrors.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Region counts reflect the strict same-region same-year join of primary income, disposable income, and housing burden. A falling count can mean source publication gaps, territorial-grid changes, or incomplete recent reporting rather than a real economic shift.
+
+  - widgets:
+      - name: Ranked regions overview
+        type: text
+        col: 12
+        content: |
+          # Highest and lowest after-housing affordability scores, OECD TL2, 2022
+
+          **The ranking combines income and housing burden: a high-income region can still fall if housing absorbs a large share of disposable income, while a moderate-income region can rank higher if housing costs are low. The score is indexed to the 2022 comparable-region median, so 120 means 20% above the panel median.**
+
+          **Table fields:** after-housing income is USD PPP per person; housing cost is percent of disposable household income; score is indexed to 2022 median = 100.
+  - widgets:
+      - name: Least constrained regions
+        type: table
+        col: 6
+        query: least_constrained_regions
+      - name: Most constrained regions
+        type: table
+        col: 6
+        query: most_constrained_regions
+
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          The pipeline uses OECD TL2 regions because city-level pre-tax income, post-tax income, and detailed cost categories are not available from a single comparable source across Europe and North America. The staging table keeps only region-year rows where all three required fields exist at the same TL2 grain: primary income per person (`B5N`, USD PPP/person), disposable income per person (`B6N`, USD PPP/person), and housing cost as a percent of net disposable household income (`HOUSE_COST`, `PT_B6N_S14`).
+
+          Disposable after-housing income is calculated as `disposable_income_ppp_pc * (1 - housing_cost_pct / 100)`. The affordability score divides that value by the same-year median and multiplies by 100. Transportation and other cost-of-living categories are intentionally excluded because mixing country-level CPI weights, commercial city indexes, or crowdsourced prices would violate the same-level and same-time comparison rule.

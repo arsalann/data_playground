@@ -1,0 +1,509 @@
+name: US data centres and the environment
+description: |
+  Four testable claims about US data centres, checked against open facility,
+  grid-emissions and drought data: how many facilities there actually are, whether
+  they are sited on dirtier-than-average grids, how much announced capacity
+  converts into built capacity, and whether siting and cooling track water stress.
+connection: bruin-playground-arsalan
+
+queries:
+  inventory_counts:
+    sql: |
+      SELECT
+        label AS inventory,
+        facility_count,
+        counting_unit,
+        IF(is_ingested, 'Ingested by this pipeline', 'Published figure, not ingested') AS ingestion
+      FROM `bruin-playground-arsalan.staging.edc_inventory_comparison`
+      WHERE metric_type = 'inventory_count'
+      ORDER BY facility_count DESC
+
+  overlap_sensitivity:
+    sql: |
+      SELECT
+        label AS match_radius,
+        pct_of_compute_atlas AS pct_matched,
+        facility_count AS facilities_matched,
+        counting_unit AS what_the_radius_means
+      FROM `bruin-playground-arsalan.staging.edc_inventory_comparison`
+      WHERE metric_type = 'overlap_sensitivity'
+      ORDER BY sort_order
+
+  h1_carbon_cuts:
+    sql: |
+      -- Long format so the legend shows readable series names rather than column names.
+      SELECT cut_label AS subset, 'Data centre hosting grid' AS series,
+             dc_co2e_g_per_kwh AS g_co2e_per_kwh,
+             facility_count AS facilities, pct_vs_us_average AS pct_difference,
+             sort_order, 1 AS series_order
+      FROM `bruin-playground-arsalan.staging.edc_h1_carbon_intensity`
+      UNION ALL
+      SELECT cut_label, 'US average, all grids', us_avg_co2e_g_per_kwh,
+             facility_count, pct_vs_us_average, sort_order, 2
+      FROM `bruin-playground-arsalan.staging.edc_h1_carbon_intensity`
+      ORDER BY sort_order, series_order
+
+  h1_subregion_scatter:
+    sql: |
+      SELECT
+        subregion_code,
+        co2e_rate_g_per_kwh AS grid_intensity,
+        share_of_capacity_pct AS dc_capacity_share,
+        share_of_us_generation_pct AS us_generation_share,
+        facility_count
+      FROM `bruin-playground-arsalan.staging.edc_h1_subregion_detail`
+      WHERE facility_count > 0
+      ORDER BY co2e_rate_g_per_kwh
+
+  h9_pipeline:
+    sql: |
+      SELECT
+        CASE label
+          WHEN 'operational' THEN 'Operational'
+          WHEN 'under_construction' THEN 'Under construction'
+          WHEN 'permitted' THEN 'Permitted'
+          WHEN 'proposed' THEN 'Proposed'
+          WHEN 'cancelled' THEN 'Cancelled'
+        END AS status,
+        total_capacity_mw AS capacity_mw,
+        facility_count AS facilities
+      FROM `bruin-playground-arsalan.staging.edc_h9_attrition`
+      WHERE metric_type = 'pipeline'
+      ORDER BY sort_order
+
+  h9_cohorts:
+    sql: |
+      -- Long format: one row per cohort-status pair, required for a stacked bar.
+      WITH cohorts AS (
+        SELECT label, sort_order, facility_count,
+               operational_pct, under_construction_pct, still_proposed_pct, cancelled_pct
+        FROM `bruin-playground-arsalan.staging.edc_h9_attrition`
+        WHERE metric_type = 'cohort' AND facility_count >= 10
+      )
+      SELECT label AS first_proposed_year, 'Operational' AS status,
+             operational_pct AS share_pct, facility_count AS facilities, sort_order, 1 AS status_order
+      FROM cohorts
+      UNION ALL
+      SELECT label, 'Under construction', under_construction_pct, facility_count, sort_order, 2 FROM cohorts
+      UNION ALL
+      SELECT label, 'Still proposed', still_proposed_pct, facility_count, sort_order, 3 FROM cohorts
+      UNION ALL
+      SELECT label, 'Cancelled', cancelled_pct, facility_count, sort_order, 4 FROM cohorts
+      ORDER BY sort_order, status_order
+
+  h3_exposure:
+    sql: |
+      SELECT
+        label AS measurement_basis,
+        mean_pct_d1_or_worse AS mean_county_area_in_drought_pct,
+        pct_weeks_majority_drought AS pct_weeks_majority_in_drought,
+        facility_count AS facilities
+      FROM `bruin-playground-arsalan.staging.edc_h3_drought_siting`
+      WHERE metric_type = 'siting'
+      ORDER BY sort_order
+
+  h3_tiers:
+    sql: |
+      -- Long format so the legend names the two measures rather than the columns.
+      SELECT label AS drought_quartile, 'Facilities (%)' AS measure,
+             share_pct AS value, sort_order, 1 AS measure_order
+      FROM `bruin-playground-arsalan.staging.edc_h3_drought_siting`
+      WHERE metric_type = 'tier'
+      UNION ALL
+      SELECT label, 'Capacity (% of reported MW)',
+             ROUND(100 * total_capacity_mw / SUM(total_capacity_mw) OVER (), 2),
+             sort_order, 2
+      FROM `bruin-playground-arsalan.staging.edc_h3_drought_siting`
+      WHERE metric_type = 'tier'
+      ORDER BY sort_order, measure_order
+
+  h3_cooling:
+    sql: |
+      -- Technology on the x-axis with quartile as the series, so the trend for a
+      -- single technology across quartiles reads directly. Zero-filled so a
+      -- technology absent from a quartile still shows a gap rather than vanishing.
+      WITH grid AS (
+        SELECT t.cooling_technology, q.drought_quartile, q.sort_order
+        FROM (SELECT DISTINCT sub_label AS cooling_technology
+              FROM `bruin-playground-arsalan.staging.edc_h3_drought_siting`
+              WHERE metric_type = 'cooling') t
+        CROSS JOIN (SELECT DISTINCT label AS drought_quartile, sort_order
+                    FROM `bruin-playground-arsalan.staging.edc_h3_drought_siting`
+                    WHERE metric_type = 'cooling') q
+      )
+      SELECT
+        g.cooling_technology,
+        g.drought_quartile,
+        COALESCE(c.share_pct, 0) AS share_of_quartile_pct,
+        COALESCE(c.facility_count, 0) AS facilities,
+        g.sort_order
+      FROM grid g
+      LEFT JOIN `bruin-playground-arsalan.staging.edc_h3_drought_siting` c
+        ON c.metric_type = 'cooling'
+       AND c.sub_label = g.cooling_technology
+       AND c.label = g.drought_quartile
+      ORDER BY g.cooling_technology, g.sort_order
+
+rows:
+  - widgets:
+      - name: Intro
+        type: text
+        col: 12
+        content: |
+          # US data centres and the environment
+
+          **Four hypotheses, tested against open data. Most are rejected or only partly supported, which
+          is reported here as the result rather than reframed. The facility spine merges Compute Atlas and
+          FracTracker into 2,372 deduplicated US sites; grid emissions come from EPA eGRID2023 and drought
+          exposure from the US Drought Monitor, 2015 to 2025.**
+
+          **Read the footnote under each chart.** Coverage of the underlying fields is uneven - capacity is
+          reported for under half of facilities and cooling technology for well under a fifth - and every
+          chart states the sample it actually rests on.
+
+  # ── Count disagreement ──
+  - widgets:
+      - name: Inventory counts header
+        type: text
+        col: 12
+        content: |
+          # US data centre facility counts, by published inventory
+
+          **No two public inventories agree on how many US data centres exist. The range runs from 937 to
+          5,115, a factor of 5.5. The spread is not mainly a data-quality problem: it is a definitional one.
+          Compute Atlas counts source-cited sites, FracTracker counts sites including proposed and cancelled
+          ones, OpenStreetMap counts tagged map features, and the commercial listing platforms count
+          colocation suites, so one building can appear as several records.**
+
+          **X-axis:** inventory. **Y-axis:** facilities counted. **Counting unit differs per inventory** - see the table column in the underlying query and the limitations below.
+  - widgets:
+      - name: Facility counts by inventory
+        type: chart
+        chart: bar
+        col: 12
+        query: inventory_counts
+        x: { field: inventory, type: category }
+        y: { field: [facility_count], type: number, format: ",.0f" }
+  - widgets:
+      - name: Sources, tools and limitations - inventory counts
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Compute Atlas](https://www.compute-atlas.com/)** (CC-BY-4.0), **[FracTracker Alliance](https://fractracker.org/data-centers/)** (free for non-commercial use with credit), **[OpenStreetMap](https://www.openstreetmap.org/)** via the Overpass API (ODbL), **[DataCenterMap](https://www.datacentermap.com/usa/)** and **[Baxtel](https://baxtel.com/data-center/united-states)** (published figures, not ingested).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The DataCenterMap and Baxtel figures are counts published on those sites and are not independently verified here; both include colocation suites, which inflates counts relative to site-level inventories. The OpenStreetMap figure counts tagged features (nodes, ways and relations), so a campus mapped as several buildings contributes several records. Coverage in OpenStreetMap follows contributor density and under-represents facilities in less-mapped areas. None of these inventories is a government register; no authoritative US data centre census exists.
+  - widgets:
+      - name: Overlap sensitivity header
+        type: text
+        col: 12
+        content: |
+          # Compute Atlas facilities with a FracTracker record nearby, by match radius
+
+          **The overlap between two inventories is not a fixed number - it is a function of how close two
+          records must be to count as the same site. At 250 m, roughly one building, only 15.5% of Compute
+          Atlas facilities have a FracTracker counterpart. At 20 km, a metro area, 84.6% do. Any headline
+          claim about how much two data centre inventories agree is really a claim about the author's
+          matching threshold, and that threshold usually goes unstated.**
+
+          **X-axis:** match radius, from one building (250 m) to a metro area (20 km). **Y-axis:** percentage of the 937 Compute Atlas facilities with at least one FracTracker record inside that radius.
+  - widgets:
+      - name: Inventory overlap by match radius
+        type: chart
+        chart: bar
+        col: 12
+        query: overlap_sensitivity
+        x: { field: match_radius, type: category }
+        y: { field: [pct_matched], type: number, format: ",.1f" }
+  - widgets:
+      - name: Sources, tools and limitations - overlap sensitivity
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Compute Atlas](https://www.compute-atlas.com/)** (CC-BY-4.0), **[FracTracker Alliance](https://fractracker.org/data-centers/)** (free for non-commercial use with credit).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Measured on the 937 Compute Atlas and 1,668 FracTracker records that carry coordinates. A match here means only that a record exists within the radius, not that the two describe the same facility; at larger radii the two records are often genuinely different sites in the same market. Compute Atlas reports coordinate precision as exact for 561 records and approximate for 375, so some of the failure to match at tight radii reflects geocoding precision rather than genuine absence. The deduplicated spine used elsewhere in this dashboard uses 1 km plus a shared operator token, or 250 m regardless of operator, and matches 164 facilities.
+
+  # ── H1 ──
+  - widgets:
+      - name: H1 header
+        type: text
+        col: 12
+        content: |
+          # Grid carbon intensity where US data centres are sited, against the national average
+
+          **Hypothesis rejected. Data centres are not sited on dirtier-than-average grids. Across six
+          subsets and both weightings, the emissions intensity of the hosting grid regions lands between
+          6.7% below and 1.0% above the US generation-weighted average of 349.7 gCO2e/kWh. Operational
+          facilities sit on the cleanest grids in the sample, 6.7% below average; proposed and
+          under-construction sites are closer to average at 1.8% below. The dirty-siting story is not
+          visible in this data.**
+
+          **X-axis:** facility subset and weighting. **Y-axis:** grid CO2e intensity in grams per kWh. **Two series:** the hosting-grid intensity for that subset, and the US generation-weighted average of 349.7 gCO2e/kWh shown as a flat reference across every subset.
+  - widgets:
+      - name: Hosting-grid carbon intensity by subset
+        type: chart
+        chart: bar
+        col: 12
+        query: h1_carbon_cuts
+        x: { field: subset, type: category }
+        y: { field: [g_co2e_per_kwh], type: number, format: ",.0f" }
+        color: { field: series }
+  - widgets:
+      - name: Sources, tools and limitations - H1
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[EPA eGRID2023](https://www.epa.gov/egrid)** (data year 2023, file egrid2023_data_rev2.xlsx released June 2025, public domain), **[Compute Atlas](https://www.compute-atlas.com/)**, **[FracTracker Alliance](https://fractracker.org/data-centers/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** These are eGRID annual **average** output rates, which answer "how dirty is this grid region" and not "what would additional load emit here" - the marginal rate, from a source such as NREL Cambium, can differ substantially and is not measured here. Facilities are assigned to an eGRID subregion by nearest generating plant with non-zero annual generation, a proxy for the balancing authority actually serving the site that is unreliable near subregion boundaries; a subset excluding sites over 25 km from their assigned plant is shown and does not change the conclusion. Capacity-weighted rows rest only on the facilities that publish a capacity figure. A published study (arXiv 2411.09786) using eGRID2022, balancing-authority polygons and a Baxtel-derived inventory reported 548 against a 369 gCO2e/kWh national average; the difference from this result comes from the inventory, the vintage and the region-assignment method, and is not reconciled here.
+  - widgets:
+      - name: H1 subregion header
+        type: text
+        col: 12
+        content: |
+          # Data centre capacity share against grid carbon intensity, by eGRID subregion
+
+          **This is why the headline is a null. If data centres clustered on dirty grids, capacity share
+          would rise with carbon intensity. It does not - reported capacity is spread across clean and
+          dirty subregions alike, so the fleet average lands close to the national average by construction.**
+
+          **X-axis:** subregion grid intensity (gCO2e/kWh). **Y-axis:** that subregion's share of all reported US data centre capacity (%). **Each point:** one eGRID subregion hosting at least one facility. Scatter charts render no legend in DAC, so this line is the encoding key.
+  - widgets:
+      - name: Capacity share against grid intensity by subregion
+        type: chart
+        chart: scatter
+        col: 12
+        query: h1_subregion_scatter
+        x: { field: grid_intensity, type: number, format: ",.0f" }
+        y: { field: [dc_capacity_share], type: number, format: ",.1f" }
+  - widgets:
+      - name: Sources, tools and limitations - H1 subregions
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[EPA eGRID2023](https://www.epa.gov/egrid)** (public domain), **[Compute Atlas](https://www.compute-atlas.com/)**, **[FracTracker Alliance](https://fractracker.org/data-centers/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Capacity share reflects only facilities that publish a capacity figure, so a subregion hosting many facilities that do not report capacity is under-weighted here. Subregion assignment is by nearest generating plant and is unreliable near boundaries. Subregions with no assigned facilities are excluded from this chart but retained in the underlying table.
+
+  # ── H9 ──
+  - widgets:
+      - name: H9 pipeline header
+        type: text
+        col: 12
+        content: |
+          # Compute Atlas capacity by lifecycle status, in megawatts
+
+          **The announced pipeline dwarfs what exists. Operational facilities account for 26,612 MW against
+          87,902 MW merely proposed and 87,526 MW under construction - so for every megawatt running today,
+          roughly 6.6 MW is announced or being built. Cancelled projects account for 3,342 MW, which is
+          small, but see the limitation below: this dataset structurally cannot see projects abandoned
+          before it started tracking them.**
+
+          **X-axis:** lifecycle status. **Y-axis:** total reported capacity in MW. Only facilities publishing a capacity figure contribute.
+  - widgets:
+      - name: Reported capacity by lifecycle status
+        type: chart
+        chart: bar
+        col: 12
+        query: h9_pipeline
+        x: { field: status, type: category }
+        y: { field: [capacity_mw], type: number, format: ",.0f" }
+  - widgets:
+      - name: Sources, tools and limitations - H9 pipeline
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Compute Atlas](https://www.compute-atlas.com/)** (CC-BY-4.0).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Capacity is reported for 434 of 937 Compute Atlas facilities, so these totals are a floor and the status mix among non-reporting facilities may differ. Megawatts here are announced or nameplate capacity, not energy consumed: converting to MWh requires utilisation and PUE assumptions that would dominate the result, so no energy figure is given. Announced capacity for proposed projects is a developer figure, not an audited one, and announcements are known to be revised. The cancelled total is a floor because a curated dataset adds projects that are newsworthy, and quietly abandoned projects may never have been added.
+  - widgets:
+      - name: H9 cohorts header
+        type: text
+        col: 12
+        content: |
+          # Current status of data centre projects, grouped by the year they were first proposed
+
+          **Hypothesis not supported, with an important caveat. Of the 74 projects first proposed in 2024,
+          9.5% are now cancelled while 36.5% are operational and 35.1% are under construction. Cancellation
+          runs at roughly 4 to 10% per cohort, not the large share the hypothesis predicted. The caveat is
+          survivorship: this measures projects a curated tracker chose to record, and quiet abandonment is
+          exactly what such a tracker misses. The 2025 and 2026 cohorts are right-censored - they have not
+          had time to convert - and their high still-proposed shares should not be read as attrition.**
+
+          **X-axis:** year the project was first recorded as proposed. **Y-axis:** percentage of that cohort now in each status. **Stacked series:** operational, under construction, still proposed, cancelled. **Cohorts under 10 facilities are excluded as too small to read.**
+  - widgets:
+      - name: Cohort status mix by first-proposed year
+        type: chart
+        chart: bar
+        col: 12
+        stacked: true
+        query: h9_cohorts
+        x: { field: first_proposed_year, type: category }
+        y: { field: [share_pct], type: number, format: ",.1f" }
+        color: { field: status }
+  - widgets:
+      - name: Sources, tools and limitations - H9 cohorts
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Compute Atlas](https://www.compute-atlas.com/)** statusHistory field (CC-BY-4.0).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Status history is populated for 479 of 937 facilities and carries more than one entry for 210, so cohort analysis rests on a minority of the dataset. Cohorts before 2021 contain fewer than 10 facilities each and are excluded from this chart. Upstream dates are mixed granularity (year, year-month, or full date); the year is taken from the leading four digits. The 2025 and 2026 cohorts are right-censored. Most importantly, the cancellation rate shown is a **floor**: a curated tracker records projects that reached public attention, so projects announced and quietly dropped before curation began are systematically absent, which biases measured attrition downward.
+
+  # ── Methodology ──
+  # ── H3 ──
+  - widgets:
+      - name: H3 exposure header
+        type: text
+        col: 12
+        content: |
+          # Drought exposure of data centre locations against the all-county baseline
+
+          **Hypothesis partly supported, and it depends entirely on the weighting. Counted one county at
+          a time, data centre counties are marginally drier than average: 19.33% of county area in
+          moderate drought or worse against a 19.87% all-county baseline, which is no skew at all. Counted
+          per facility it rises to 21.05%, and weighted by reported capacity it reaches 23.47%, about 18%
+          above baseline. The pattern is not that data centres go to dry places - it is that the largest
+          ones do.**
+
+          **X-axis:** grouping and weighting. **Y-axis:** mean share of county area in moderate drought (D1) or worse, averaged over every week from 2015 to 2025.
+
+  - widgets:
+      - name: Drought exposure against the all-county baseline
+        type: chart
+        chart: bar
+        col: 12
+        query: h3_exposure
+        x: { field: measurement_basis, type: category }
+        y: { field: [mean_county_area_in_drought_pct], type: number, format: ",.1f" }
+
+  - widgets:
+      - name: Sources, tools and limitations - H3 exposure
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[US Drought Monitor](https://droughtmonitor.unl.edu/)** (NDMC, USDA and NOAA; free with attribution), **[US Census county gazetteer](https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html)** (public domain), **[Compute Atlas](https://www.compute-atlas.com/)**, **[FracTracker Alliance](https://fractracker.org/data-centers/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** This is a correlation, not a siting explanation. Data centres follow population, power and fibre, none of which are randomly distributed with respect to drought, so a gap against the baseline does not show that water availability was ignored. The all-county baseline treats every county equally regardless of size or population, which is a deliberate but arguable choice - a population-weighted baseline would move the comparison. Drought exposure is measured over 2015 to 2025 for all 3,222 counties and is applied to facilities regardless of when they were built, so a facility built in 2024 is scored on drought that mostly predates it. Capacity weighting rests on the 1,017 facilities with both a capacity figure and a resolved county.
+
+  - widgets:
+      - name: H3 tiers header
+        type: text
+        col: 12
+        content: |
+          # Facilities and capacity by national drought quartile
+
+          **Facility counts are close to random: each quartile contains a quarter of US counties, and the
+          quartiles hold 22.7%, 23.5%, 30.6% and 23.3% of facilities. Capacity is not random. The driest
+          quartile holds 200,913 MW of reported capacity, the largest of the four and 22% more than the
+          wettest quartile's 164,009 MW, while the two middle quartiles hold far less. Whatever is driving
+          the largest projects, it is not avoidance of dry counties.**
+
+          **X-axis:** national drought quartile, Q1 wettest to Q4 driest, ranked on mean county area in moderate drought or worse. **Y-axis:** percentage share. **Two series:** share of facilities, and share of reported capacity.
+
+  - widgets:
+      - name: Facilities and capacity by drought quartile
+        type: chart
+        chart: bar
+        col: 12
+        query: h3_tiers
+        x: { field: drought_quartile, type: category }
+        y: { field: [value], type: number, format: ",.1f" }
+        color: { field: measure }
+
+  - widgets:
+      - name: Sources, tools and limitations - H3 tiers
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[US Drought Monitor](https://droughtmonitor.unl.edu/)** (NDMC, USDA and NOAA), **[Compute Atlas](https://www.compute-atlas.com/)**, **[FracTracker Alliance](https://fractracker.org/data-centers/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** Quartiles are cut on all 3,222 counties, so each contains roughly 25% of counties but not 25% of land area or population. Capacity share reflects only the facilities that publish a capacity figure, so it is sensitive to a small number of very large announced projects; a single 1 GW announcement moves a quartile visibly. Announced capacity for proposed projects is a developer figure, not an audited one.
+
+  - widgets:
+      - name: H3 cooling header
+        type: text
+        col: 12
+        content: |
+          # Cooling technology mix by drought quartile
+
+          **The adaptation half of the hypothesis is rejected. Cooling does respond to water scarcity.
+          In the driest quartile, water-consuming evaporative cooling is the least common technology at
+          3.4% of facilities, against 12.8% in the wettest quartile, while air cooling rises to 19.0% from
+          10.6% and hybrid to 12.1% from 6.4%. Closed loop dominates everywhere at 64% to 74%.**
+
+          **X-axis:** cooling technology. **Y-axis:** percentage of that drought quartile's facilities using the technology. **Four series, one per quartile:** Q1 wettest through Q4 driest, so each technology's trend across the drought gradient reads left to right within its group. **Sample: 191 facilities**, the only ones in the merged spine that report a cooling type.
+
+  - widgets:
+      - name: Cooling technology mix by drought quartile
+        type: chart
+        chart: bar
+        col: 12
+        query: h3_cooling
+        x: { field: cooling_technology, type: category }
+        y: { field: [share_of_quartile_pct], type: number, format: ",.1f" }
+        color: { field: drought_quartile }
+
+  - widgets:
+      - name: Sources, tools and limitations - H3 cooling
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[Compute Atlas](https://www.compute-atlas.com/)** and **[FracTracker Alliance](https://fractracker.org/data-centers/)** cooling fields, **[US Drought Monitor](https://droughtmonitor.unl.edu/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** **Small sample.** Cooling type is reported for 191 of 2,372 facilities, roughly 8%, and reporting is not random - facilities that attract permit scrutiny or community opposition are more likely to have their cooling documented, which plausibly correlates with water-stressed areas and could itself produce the pattern shown. Per-quartile counts are 47, 47, 39 and 58. The two inventories spell the same technology differently and both use "unknown" for missing, so values are normalised to five categories and "unknown" is treated as missing rather than as a category. Read the shares, not the counts, and treat this as suggestive rather than settled.
+
+  - widgets:
+      - name: Methodology
+        type: text
+        col: 12
+        content: |
+          ## Methodology
+
+          **Facility spine.** Compute Atlas (937 records, public JSON API, CC-BY-4.0) and FracTracker
+          (1,668 records, ArcGIS FeatureServer, non-commercial licence) are merged into 2,372 deduplicated
+          facilities. Two records are treated as the same site when they are within 1 km and share the
+          first token of the operator name, or within 250 m regardless of operator. Compute Atlas is the
+          preferred record where both describe a site because every Compute Atlas record is source-cited;
+          FracTracker fields fill gaps. Only 164 facilities are matched by both inventories under this rule.
+          County names are resolved to FIPS codes through the US Census 2024 county gazetteer, matching
+          2,336 of 2,372 facilities.
+
+          **Grid assignment.** Each facility is assigned to the eGRID subregion of the nearest generating
+          plant with non-zero annual generation, using the eGRID2023 plant file. This is a proxy for the
+          balancing authority actually serving the site and is unreliable near subregion boundaries. The
+          national benchmark, 349.7 gCO2e/kWh, is computed from the same eGRID subregion table weighted by
+          subregion net generation, so benchmark and measurement share a vintage and a method.
+
+          **Field coverage, measured across all 937 Compute Atlas records.** Coordinates and county 100%,
+          cited sources 100%, serving utility 54%, capacity 46%, land area 42%, community status 39%,
+          multi-entry status history 22%, cooling type 15%, subsidies 10%, permanent jobs 10%, reported
+          water 2%, PUE under 1%. Every chart states the sample it rests on.
+
+          **What this dashboard does not do.** It does not estimate energy consumption from capacity, which
+          would require utilisation and PUE assumptions that dominate the result. It does not use marginal
+          emission rates, so it cannot answer what additional load would emit. It does not measure water
+          consumption, direct or indirect. It makes no claim about any individual operator's compliance.
+
+          **Independent counties and cities.** Virginia, Maryland and Missouri have independent cities whose
+          names duplicate a neighbouring county. Bare county names from the inventories are resolved to the
+          county rather than the city, so a facility inside such a city is attributed to the surrounding
+          county.

@@ -2,7 +2,7 @@
 name: create-dashboard
 description: Create DAC dashboards by writing YAML or TSX dashboard definition files. Use when the user wants to create, modify, review, or understand DAC dashboards, widgets, filters, SQL queries, semantic models, or CLI validation workflows.
 argument-hint: "[dashboard request]"
-version: 3
+version: 9
 ---
 
 # Create Dashboard
@@ -101,7 +101,83 @@ rows:
         col: 3
 ```
 
-Widget types are `metric`, `chart`, `table`, `text`, `divider`, and `image`.
+Widget types are `metric`, `chart`, `table`, `pivot_table`, `text`, `divider`, `image`, and `tabs` (see Widget Tabs).
+
+A `table` column takes `name`, `label`, `number` (value format: `number`, `currency`, or a d3-format string), `align` (`left`/`center`/`right` — overrides the type-inferred alignment of the header and body cells, e.g. to right-align a text value like `£177K`), `like`, `hidden`, `frozen`, and `format`. `format` is an **ordered list of layers**; for each cell the **first layer that matches wins**. A scalar `format` string (e.g. `format: currency`) is also accepted as a legacy alias for `number` — prefer `number` in new dashboards.
+
+- With `if` (+ `value`), the layer styles only the cells that match. `value` is a scalar, `[low, high]` for `is_between`/`is_not_between`, `{ column: <name> }` to compare against another column in the same row, or omitted for empty checks. Operators: `is_empty`, `is_not_empty`, `text_contains`/`text_does_not_contain`/`text_starts_with`/`text_ends_with`/`text_is_exactly`, `date_is`/`date_before`/`date_after` (by day, or exact instant with a time), `greater_than`/`greater_than_or_equal`/`less_than`/`less_than_or_equal`, `is_equal_to`/`is_not_equal_to`, `is_between`/`is_not_between`.
+- With no `if`, the layer styles every cell — a **gradient** (`backgroundColor` is a list of 2+ colors; optional `range` list + `unit` = `absolute`/`percent`/`percentile`, omit `range` for auto min/max) or a **flat fill** (`backgroundColor` is a string). Put it last as the fallback.
+- Styles on any layer: `backgroundColor`, `textColor`, `bold`, `italic`, `underline`, `strikethrough`.
+- `like`: mirror another column's coloring, driven by that column's per-row value, while keeping this column's own `number`.
+- `hidden: true`: keep the column in the result but don't render it. Optional. Coloring reads a column whether or not it's shown, so hide only to drop it from the display, e.g. a `like` source you must declare but don't want visible.
+- `frozen: true`: freeze the column to the left so it stays visible while scrolling. Optional. Frozen columns render first, in their listed order (plain tables only; not `pivot_table`).
+
+Each layer is a YAML object, so `- { backgroundColor: [red, white, green], range: [-25, 0, 25], unit: absolute }` and the same keys written as an indented block are identical — use whichever reads better.
+
+Colors are **named** (`red green blue indigo cyan purple pink amber`, plus `white`/`black`, aliases `positive`/`negative`/`warning`) or hex. Named colors adapt to light and dark.
+
+Worked example:
+
+```yaml
+name: Regions
+
+rows:
+  - widgets:
+      - name: Regions
+        type: table
+        col: 12
+        sql: SELECT revenue, growth, score, status, actual, target, bonus, health FROM regions
+        columns:
+          - name: revenue
+            number: currency
+            format:
+              - { backgroundColor: [red, white, green] }                # gradient, auto min→max
+          - name: growth
+            number: number
+            format:
+              - { backgroundColor: [blue, white, amber], range: [-25, 0, 25], unit: absolute }   # fixed anchors; unit also percent/percentile
+          - name: score
+            number: number
+            format:                                                     # conditions, first match wins
+              - { if: greater_than_or_equal, value: 80, backgroundColor: green }
+              - { if: is_between, value: [50, 79], backgroundColor: amber }
+              - { if: less_than, value: 50, textColor: red, strikethrough: true }
+          - name: status
+            format:
+              - { if: text_contains, value: urgent, backgroundColor: amber, bold: true }
+              - { if: is_empty, backgroundColor: "#F3F4F6", italic: true }   # flat fill (string)
+          - name: actual
+            number: number
+            format:                                                     # cross-column, same row
+              - { if: greater_than, value: { column: target }, backgroundColor: green }
+          - name: target
+            hidden: true                                                # in the result for the rule above, not rendered
+          - name: bonus
+            number: currency
+            like: score                                                 # mirror score's colors, keep own number
+          - name: health
+            number: number
+            format:                                                     # a condition wins over the gradient base below
+              - { if: is_equal_to, value: 0, backgroundColor: red, bold: true }
+              - { backgroundColor: [red, white, green] }                # base, last (always matches)
+```
+
+**Pivot tables.** A `pivot_table` widget reshapes its flat result set into a spreadsheet-style pivot, computed client-side. `rows`/`columns` are nested group-by levels (each item: `field`, `order` `asc`/`desc`, `showTotals` — outer levels add per-group subtotals, the innermost level adds the Grand Total row/column), `values` are the aggregated measures (each item: `field`, `summarize` default `sum`, `label`, and optional `format` — the same conditional-formatting layers as a table column, applied to this value's leaf cells and scaled per value). `summarize` is one of: `sum`, `counta`, `count`, `countunique`, `average`, `max`, `min`, `median`, `product`, `stdev`, `stdevp`, `var`, `varp`. `pivot` is only valid on `pivot_table` widgets (which require a pivot), `values` must be non-empty, and a field can't be in both `rows` and `columns`. Row filtering is the dashboard's job — use the dashboard's `filters`.
+
+```yaml
+- name: Sales by Region and Product
+  type: pivot_table
+  sql: SELECT region, product, sales FROM orders
+  pivot:
+    rows: [ { field: region, showTotals: true } ]
+    columns: [ { field: product } ]
+    values:
+      - field: sales
+        summarize: sum
+        label: Total Sales
+        format:
+          - backgroundColor: ["#FECACA", "#FEF08A", "#BBF7D0"]   # gradient over the cells
+```
 
 ## Filters
 
@@ -117,6 +193,10 @@ Supported filter types:
 
 Date range presets include `today`, `yesterday`, `last_7_days`, `last_30_days`, `last_90_days`, `this_month`, `last_month`, `this_quarter`, `this_year`, `year_to_date`, and `all_time`.
 
+Both single and multiple `select` filters show a searchable dropdown, so you can type to find an option quickly when the list is long.
+
+Set `tab: <name>` on a filter to move it into that tab's own filter bar (shown only while the tab is active) instead of the global bar at the top. Use it when a filter is only relevant to one tab's widgets. The `tab` must match a tab some row uses — `dac validate` and Bruin Cloud reject an unmatched tab.
+
 Select filters support `multiple: true` for multi-select. The value is a list — render with `join` in Jinja and guard the empty case:
 
 ```sql
@@ -124,6 +204,8 @@ Select filters support `multiple: true` for multi-select. The value is a list �
   AND status IN ('{{ filters.status | join("','") }}')
 {% endif %}
 ```
+
+Filter values are kept in the URL query string, so you can share a filtered dashboard as a link. Each filter becomes one query parameter named after it, for example `?region=Europe&date_range=last_30_days`. When a select has `multiple: true` the values are comma separated, and a `date-range` is either a preset key or `start..end`. Anything read from the URL is checked against the filter's type and options, and ignored if it doesn't match.
 
 ## Current Viewer (`bruin.user_email`)
 
@@ -158,7 +240,38 @@ rows:
         col: 6
 ```
 
-A chart's `x` and `y` are axis encoding objects with a required `field` (bare column names like `x: region` are invalid). `field` may be a single column or a list.
+A chart's `x` and `y` are axis encoding objects with a required `field` (bare column names like `x: region` are invalid). `field` may be a single column or a list. On line/area (and combo), `y` also takes `beginAtZero: true` (anchor the value axis at 0), `markers: false` (hide point dots), `curve` (`smooth`/`straight`/`stepline` — chart-wide interpolation; use `straight` for period totals), and `dash` (chart-wide dash pattern every series inherits: `dotted`/`dashed`/`long-dash`; omit for solid). Per-series style overrides go in a **widget-level `series`** map (a sibling of `x`/`y`, not inside `y`), keyed by y-column: `series: {column: {color: "#EC4899", curve: straight, dash: dashed}}` — each key falls back to the chart-wide default / palette; store only genuine differences. Label/value charts (`pie`/`treemap`/`funnel`) style per **slice** instead, via a sibling **`slices`** map keyed by the slice's data label: `slices: {Enterprise: {color: "#8B5CF6", label: "Enterprise (2026)"}}` — `color` overrides the palette, `label` renames the displayed slice; both optional.
+
+Add a second (right-hand) value axis with `y2` when two series live on different scales (e.g. revenue `$` and conversion `%`) and one would otherwise be squashed flat. A y-column plots against the right axis when it is listed in `y2.field`; all other series stay on the left `y` axis. `y2` is a full axis encoding (same `title`/`format`/`beginAtZero`/`curve`/`dash` keys as `y`) and each axis formats its ticks and tooltip values independently. Supported on `line`/`area`/`bar`/`combo`; a column belongs to exactly one axis, `y2.type` must be `number`, and `y2` cannot combine with `stacked`, `horizontal` bars, or `color`. Axis (`y` vs `y2`) and shape (bar vs line via `lines`) are independent — the classic combo is revenue bars on the left with a rate line on the right: `chart: combo`, `lines: [conversion_rate]`, `y: {field: [revenue], format: "$,.0f"}`, `y2: {field: [conversion_rate], format: ".1%"}`.
+
+The `funnel` chart shows conversion through ordered stages: one bar per stage with its share of the top of the funnel and the step-to-step conversion. Use `label` (stage) and `value` (count), and order rows top-of-funnel first in SQL. `horizontal: true` lays the stages left-to-right, and bar labels honor `value.format` (e.g. `"$,.0f"` for a revenue funnel).
+
+Confidence intervals use `yMin`/`yMax` (the lower/upper bound columns): on `line`/`area` they shade a CI **band** behind the estimate line; on `bar` they become **error-bar caps**; the `forest` chart draws a point estimate + horizontal CI per category (grey when the interval spans 0, `horizontal: false` for a vertical dot-and-whisker). `y` is the estimate only. `yMin`/`yMax` are a single column, or a per-series map `{seriesColumn: boundColumn}` for multi-line bands. Compute the bounds in SQL (e.g. `effect ± 1.96*stderr`). Reference guides: `refLines: [{ axis: x|y, value, label? }]` (dashed line, e.g. a 0 "no-effect" mark) and `refBands: [{ axis: x|y, from, to, label? }]` (a shaded range, e.g. a ±MDE band).
+
+### Vega-Lite charts
+
+Use `chart: vega-lite` with a `spec` object for advanced layered, faceted, concatenated, or transformed visualizations. DAC still owns the query and injects its result as the named `dac` dataset:
+
+```yaml
+- name: Revenue with confidence interval
+  type: chart
+  chart: vega-lite
+  sql: SELECT month, revenue, lower_ci, upper_ci FROM monthly_revenue ORDER BY month
+  spec:
+    data: { name: dac }
+    encoding:
+      x: { field: month, type: temporal }
+    layer:
+      - mark: { type: area, opacity: 0.14 }
+        encoding:
+          y: { field: lower_ci, type: quantitative }
+          y2: { field: upper_ci }
+      - mark: { type: line, strokeWidth: 2 }
+        encoding:
+          y: { field: revenue, type: quantitative }
+```
+
+`spec.data` is optional and defaults to `{ name: dac }`. If provided, it must use that name. Do not use `data.url` or define `datasets.dac`; load primary data through `sql`, `query`, semantic fields, or the widget's illustrative inline `data`. DAC supplies theme and responsive-size defaults, while explicit Vega-Lite `config`, `width`, `height`, and `autosize` values override them.
 
 Every query is an inline `sql:` block or a named `query:` reference — YAML widgets do not take file paths. In TSX, `include("queries/revenue.sql")` reads a `.sql` file into an inline query at load time.
 
@@ -192,6 +305,41 @@ Rules:
 - Every row must have exactly one value per column.
 - Not valid on `text`, `image`, or `divider` widgets.
 - A dashboard built entirely from `data` widgets needs no top-level `connection`.
+
+## Widget Tabs
+
+A `type: tabs` widget switches between sub-views in place inside one widget box. Each entry in its `tabs` list is a **complete widget** — its own `type`, `chart`, data source (`sql`/`query`/`data`/semantic), and encodings — with `name` as the tab label.
+
+```yaml
+- name: Sales          # optional — the tab bar labels the widget
+  type: tabs
+  col: 12
+  tabs:
+    - name: Revenue
+      type: chart
+      chart: bar
+      sql: SELECT month, revenue FROM marts.sales ORDER BY 1
+      x: { field: month, type: date }
+      y: { field: revenue, type: number }
+    - name: Orders
+      type: chart
+      chart: line
+      sql: SELECT month, orders FROM marts.sales ORDER BY 1
+      x: { field: month, type: date }
+      y: { field: orders, type: number }
+    - name: Details
+      type: table
+      sql: SELECT month, revenue, orders FROM marts.sales ORDER BY 1
+```
+
+Rules:
+
+- A widget with `tabs` must be `type: tabs`, and a `type: tabs` widget must have `tabs`.
+- The container only takes `type`, `name`, `description`, `col`, `id`, and `tabs`. Put everything else (data source, `chart`, encodings, `notes`) on each tab — setting it on the container fails validation. A tab's `notes` resolve against that tab's semantic model.
+- Every tab needs a `type` and a `name`; tab names must be unique within the widget. Tabs cannot be nested.
+- In TSX, use `<WidgetTabs name="Sales">` with one child widget per tab (the child's `name` is the tab label).
+- Use widget tabs to pack related views into one widget; use row-level `tab:` to group whole rows into dashboard tabs.
+- To run one tab's query: `dac query --dashboard "Sales" --widget "Sales / Revenue"` (or the bare tab name when it's unique, or the tab id like `r0-w1::Revenue`).
 
 ## Semantic Models
 

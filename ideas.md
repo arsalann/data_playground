@@ -348,6 +348,15 @@ Istanbul's IBB Open Data Portal hosts **177 mobility datasets** — one of the r
 - **Deloitte City Mobility Index** — web profiles only.
 - **Apple/Google COVID Mobility** — discontinued (archived on GitHub).
 
+### 7. "Germany by State" - Economy and Society, 2025
+Choropleth maps of 15 economic and social indicators for the 16 German states in a single reference year (2025), plus disposable income (latest year 2024) on a separate tab.
+
+- **Data sources**: Destatis GENESIS-Online REST API (free account token required; guest access returns no data), VGRdL regional accounts (Excel), Eurostat NUTS 1 (JSON-stat), GISCO NUTS 2024 boundaries
+- **Pipeline**: `germany-regions/`
+- **Dashboard**: DAC, Vega-Lite geoshape maps paired with ranked bars; East-West table; correlation matrix; data-quality table
+- **Key findings**: all five eastern states are below every western state on GDP per inhabitant and hourly earnings; the gender pay gap is 4-6% in the east against 12-20% in the west; share aged 65+ correlates with hourly earnings at r = -0.95 across states
+- **Limitations**: Kreis level (400 districts) is only complete for 2024 and lacks official poverty and life-expectancy series; INKAR ends in 2023; low-wage share has a suppressed 2025 state value
+
 ## Backlog
 
 ### 6. "The Tariff Tax" — What Americans Are Actually Paying

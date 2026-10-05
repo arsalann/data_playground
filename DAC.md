@@ -276,6 +276,37 @@ the upstream constraint:
 To scroll the dashboard in headless tests, find the largest descendant
 with `overflow-y: auto/scroll` and call `el.scrollBy(...)` on that.
 
+### 12. Choropleth maps with `chart: vega-lite` (upstream 0.21.1)
+
+Found while building `germany-regions/` (Sept 2026), on upstream `dac` 0.21.1:
+
+- **Geometry cannot come from SQL.** Query results are flat rows; a BigQuery
+  `JSON` or `STRING` GeoJSON column arrives as a string, and Vega-Lite cannot
+  parse it, so `geoshape` draws nothing.
+- **`data.url` is rejected anywhere in the spec**, including inside a `lookup`.
+- **What works:** embed the GeoJSON features as a named dataset
+  (`spec.datasets.states: [...]`) and `lookup` them onto the query rows by key.
+  Only `datasets.dac` is reserved. In YAML, define the features once with an
+  anchor and alias them in every map. `germany-regions/dashboard-dac/scripts/build_dashboard.py`
+  generates this from `raw.de_state_boundaries`.
+- **Avoid filled `line` marks as polygons** (`interpolate: linear-closed`,
+  `filled: true`). They render, but Vega shows no tooltip on them.
+- **Height:** row-level `height: <px>` sets the widget height, and Vega-Lite
+  fills it (container height minus about 60 px). Widget-level `height` and
+  `size` are ignored or rejected.
+- **Subtitle:** widget `description` renders as a small muted line under the
+  name strip.
+
+Other 0.21.1 behaviour:
+- **`hideName` is fork-only** and upstream validation rejects it. Every chart
+  keeps its uppercase name strip, so give it a short descriptive name.
+- **Theme:** `theme:` is no longer a dashboard property. Pass
+  `--template <theme.yml>` to `dac serve` instead.
+- **TSX:** dashboards drop row `tab` and dashboard `theme`, and custom
+  components returning fragments produce empty widgets. Use YAML for tabbed
+  dashboards; in TSX use plain functions that return arrays of `<Row>`.
+- **Deprecated in YAML:** `file:` queries. Use inline `sql:` or named queries.
+
 ## Conventions for footnotes / descriptions
 
 See `VISUALIZATIONS.md` § 2 for the mandatory per-chart 3-row structure

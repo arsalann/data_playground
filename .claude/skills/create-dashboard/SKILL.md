@@ -2,7 +2,7 @@
 name: create-dashboard
 description: Create DAC dashboards by writing YAML or TSX dashboard definition files. Use when the user wants to create, modify, review, or understand DAC dashboards, widgets, filters, SQL queries, semantic models, or CLI validation workflows.
 argument-hint: "[dashboard request]"
-version: 8
+version: 9
 ---
 
 # Create Dashboard
@@ -101,7 +101,7 @@ rows:
         col: 3
 ```
 
-Widget types are `metric`, `chart`, `table`, `pivot_table`, `text`, `divider`, and `image`.
+Widget types are `metric`, `chart`, `table`, `pivot_table`, `text`, `divider`, `image`, and `tabs` (see Widget Tabs).
 
 A `table` column takes `name`, `label`, `number` (value format: `number`, `currency`, or a d3-format string), `align` (`left`/`center`/`right` — overrides the type-inferred alignment of the header and body cells, e.g. to right-align a text value like `£177K`), `like`, `hidden`, `frozen`, and `format`. `format` is an **ordered list of layers**; for each cell the **first layer that matches wins**. A scalar `format` string (e.g. `format: currency`) is also accepted as a legacy alias for `number` — prefer `number` in new dashboards.
 
@@ -194,6 +194,8 @@ Supported filter types:
 Date range presets include `today`, `yesterday`, `last_7_days`, `last_30_days`, `last_90_days`, `this_month`, `last_month`, `this_quarter`, `this_year`, `year_to_date`, and `all_time`.
 
 Both single and multiple `select` filters show a searchable dropdown, so you can type to find an option quickly when the list is long.
+
+Set `tab: <name>` on a filter to move it into that tab's own filter bar (shown only while the tab is active) instead of the global bar at the top. Use it when a filter is only relevant to one tab's widgets. The `tab` must match a tab some row uses — `dac validate` and Bruin Cloud reject an unmatched tab.
 
 Select filters support `multiple: true` for multi-select. The value is a list — render with `join` in Jinja and guard the empty case:
 
@@ -303,6 +305,41 @@ Rules:
 - Every row must have exactly one value per column.
 - Not valid on `text`, `image`, or `divider` widgets.
 - A dashboard built entirely from `data` widgets needs no top-level `connection`.
+
+## Widget Tabs
+
+A `type: tabs` widget switches between sub-views in place inside one widget box. Each entry in its `tabs` list is a **complete widget** — its own `type`, `chart`, data source (`sql`/`query`/`data`/semantic), and encodings — with `name` as the tab label.
+
+```yaml
+- name: Sales          # optional — the tab bar labels the widget
+  type: tabs
+  col: 12
+  tabs:
+    - name: Revenue
+      type: chart
+      chart: bar
+      sql: SELECT month, revenue FROM marts.sales ORDER BY 1
+      x: { field: month, type: date }
+      y: { field: revenue, type: number }
+    - name: Orders
+      type: chart
+      chart: line
+      sql: SELECT month, orders FROM marts.sales ORDER BY 1
+      x: { field: month, type: date }
+      y: { field: orders, type: number }
+    - name: Details
+      type: table
+      sql: SELECT month, revenue, orders FROM marts.sales ORDER BY 1
+```
+
+Rules:
+
+- A widget with `tabs` must be `type: tabs`, and a `type: tabs` widget must have `tabs`.
+- The container only takes `type`, `name`, `description`, `col`, `id`, and `tabs`. Put everything else (data source, `chart`, encodings, `notes`) on each tab — setting it on the container fails validation. A tab's `notes` resolve against that tab's semantic model.
+- Every tab needs a `type` and a `name`; tab names must be unique within the widget. Tabs cannot be nested.
+- In TSX, use `<WidgetTabs name="Sales">` with one child widget per tab (the child's `name` is the tab label).
+- Use widget tabs to pack related views into one widget; use row-level `tab:` to group whole rows into dashboard tabs.
+- To run one tab's query: `dac query --dashboard "Sales" --widget "Sales / Revenue"` (or the bare tab name when it's unique, or the tab id like `r0-w1::Revenue`).
 
 ## Semantic Models
 

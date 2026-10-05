@@ -1,0 +1,15 @@
+name: wong-cb-dark
+extends: bruin-dark
+
+# Wong (2011) colorblind-safe palette, per VISUALIZATIONS.md section 3.
+# Ordered so category-coloured charts (colour assigned alphabetically by DAC)
+# render "No hazard" grey, "One hazard" orange, "Two or three hazards" vermillion.
+tokens:
+  chart-1: "#999999"
+  chart-2: "#E69F00"
+  chart-3: "#D55E00"
+  chart-4: "#56B4E9"
+  chart-5: "#009E73"
+  chart-6: "#CC79A7"
+  chart-7: "#0072B2"
+  chart-8: "#F0E442"

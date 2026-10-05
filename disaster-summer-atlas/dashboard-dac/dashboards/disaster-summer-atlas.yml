@@ -1,0 +1,466 @@
+name: The Disaster Summer Atlas 2019-2026
+description: |
+  Where extreme heat, wildfire and flooding overlapped with vulnerable urban
+  populations, June 1 - September 20 of each summer 2019-2026, across the 471
+  urban centres with at least 1 million residents.
+connection: bruin-playground-arsalan
+
+filters:
+  - name: season_year
+    type: select
+    default: "2026"
+    options:
+      values: ["2026", "2025", "2024", "2023", "2022", "2021", "2020", "2019"]
+
+queries:
+  city_exposure_kpis:
+    sql: |
+      SELECT
+        COUNTIF(hazard_count >= 2) AS two_plus_cities,
+        ROUND(SUM(IF(hazard_count >= 2, population_2015, 0)) / 1e6, 1) AS two_plus_pop_m
+      FROM `bruin-playground-arsalan.staging.city_exposure`
+      WHERE season_year = CAST('{{ filters.season_year }}' AS INT64)
+
+rows:
+  # ---------------------------------------------------------------------------
+  # Intro
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - name: intro
+        type: text
+        col: 12
+        content: |
+          # The Disaster Summer Atlas: heat, fire and flood exposure in 471 large cities, summers 2019-2026
+
+          **Bottom line:** In summer 2026 (June 1 - September 20), 159 of the 471 urban centres with at least 1 million residents (484M of 1.62B people) met at least one hazard threshold, and 31 cities (74.0M people) met two or more. Overlap concentrates where development is lowest: 35.3% of people in Low-HDI cities faced two or more hazards, against 0.2% in Very-high-HDI cities. Across 2019-2026, Low-HDI cities had the highest 2+ hazard share in every summer, but the size of the gap swings with flood alerts over Pakistan's Punjab and Khyber Pakhtunkhwa cities.
+
+          **What counts as exposure:** extreme heat = at least 28 of the 112 days (1 in 4) with a daily maximum of 35 C or more; wildfire = satellite fire detections within 50 km on at least 28 days; flood = the city centre sits inside a GDACS flood alert area. Vulnerability = the city's subnational Human Development Index (HDI). Population is held at 2015 levels in every year.
+
+          **Using the dashboard:** the two trend charts cover all eight summers. The **season_year** filter (default 2026) drives the headline figures, map, HDI chart, weekly timeline and ranking; their text describes 2026. Each chart's footnote lists sources, tools and limitations; the Methodology section has the full definitions.
+
+  - widgets:
+      - name: People in cities facing 2+ hazards (millions)
+        type: metric
+        col: 3
+        query: city_exposure_kpis
+        value: { field: two_plus_pop_m, type: number, format: ",.1f" }
+      - name: Cities facing 2+ hazards (of 471)
+        type: metric
+        col: 3
+        query: city_exposure_kpis
+        value: { field: two_plus_cities, type: number, format: ",.0f" }
+      - name: MODIS vegetation-fire detections
+        type: metric
+        col: 3
+        sql: |
+          SELECT COUNTIF(is_vegetation_fire) AS detections
+          FROM `bruin-playground-arsalan.staging.fire_detections`
+          WHERE season_year = CAST('{{ filters.season_year }}' AS INT64)
+        value: { field: detections, type: number, format: ",.0f" }
+      - name: GDACS flood events (Orange/Red alerts)
+        type: metric
+        col: 3
+        sql: |
+          SELECT CONCAT(FORMAT("%'d", COUNT(*)), ' (', CAST(COUNTIF(alert_level != 'Green') AS STRING), ')') AS events
+          FROM `bruin-playground-arsalan.staging.flood_events` AS e,
+            (SELECT MIN(window_start) AS ws, MAX(window_end) AS we
+             FROM `bruin-playground-arsalan.staging.city_exposure`
+             WHERE season_year = CAST('{{ filters.season_year }}' AS INT64)) AS w
+          WHERE e.end_date >= w.ws AND e.start_date <= w.we
+        value: { field: events, type: category }
+
+  # ---------------------------------------------------------------------------
+  # Trend A - population exposed per hazard, by year (not filtered)
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - name: trend header
+        type: text
+        col: 12
+        content: |
+          # People in 1M+ cities exposed to each hazard, summers 2019-2026 (millions)
+
+          **Insight:** Heat exposure is the most stable signal, between 265.0M (2021) and 398.9M people (2022), and 325.5M in 2026. Fire exposure ranged from 55.5M (2025) to 89.8M (2024). Overlap peaked in 2022 at 125.0M people in 32 cities, fell to 18.6M in 5 cities in 2025, and returned to 74.0M in 31 cities in 2026. The flood line drops from 288.5-324.8M (2019-2024) to 144.0M (2025) and 154.8M (2026), mainly because GDACS began publishing much smaller flood polygons in 2025, not because flooding fell; flood and overlap values before and after 2025 are not directly comparable.
+
+          **How to read the chart:** one point per summer (June 1 - September 20). Lines: heat = yellow solid, wildfire = vermillion dashed, flood = sky-blue dotted, overlap = white long-dash (cities meeting 2 or 3 of the hazard rules). Population is held at 2015 levels, so changes reflect hazards, not population growth. This chart ignores the year filter.
+
+  - height: 320
+    widgets:
+      - name: People exposed per summer (millions)
+        type: chart
+        chart: line
+        col: 12
+        sql: |
+          SELECT
+            season_label,
+            heat_pop_m AS heat,
+            fire_pop_m AS wildfire,
+            flood_pop_m AS flood,
+            two_plus_pop_m AS overlap
+          FROM `bruin-playground-arsalan.report.atlas_yearly_trend`
+          ORDER BY season_year
+        x: { field: season_label, type: category, title: "Summer (June 1 - September 20)" }
+        y: { field: [heat, wildfire, flood, overlap], type: number, format: ",.1f", title: "People exposed (millions)", beginAtZero: true, curve: straight }
+        series:
+          heat: { color: "#F0E442" }
+          wildfire: { color: "#D55E00", dash: dashed }
+          flood: { color: "#56B4E9", dash: dotted }
+          overlap: { color: "#FFFFFF", dash: long-dash }
+  - widgets:
+      - name: trend footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[ERA5 reanalysis](https://cds.climate.copernicus.eu/)** via **[Open-Meteo](https://open-meteo.com/)**; **[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/)** MODIS C6.1; **[GDACS](https://www.gdacs.org/)** flood events; **[GHSL Urban Centre Database R2024A](https://ghsl.jrc.ec.europa.eu/)** (2015 population).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** GDACS flood polygons changed size in 2025: the 90th-percentile event area was 120,000-490,000 km2 in 2019-2024 and 22,000-31,000 km2 in 2025-2026, so the flood test (city centre inside the polygon) captures far fewer cities from 2025. GDACS also lists more flood events over time (98 in summer 2019, 274 in 2026), and 10 of 98 events in 2019 and 22 of 137 in 2020 have no polygon. MODIS Terra has been drifting from its original orbit since about 2020, which can shift fire-detection counts. Heat uses a fixed 35 C threshold, not each city's local normal.
+
+  # ---------------------------------------------------------------------------
+  # Trend B - 2+ hazard share by HDI tier, by year (not filtered)
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - name: tier trend header
+        type: text
+        col: 12
+        content: |
+          # Share of each HDI tier's urban population facing 2+ hazards, summers 2019-2026 (%)
+
+          **Insight:** Low-HDI cities had the highest 2+ hazard share in all eight summers, but the gap is uneven. In 2019, 2020, 2022, 2023 and 2026 the Low-HDI share was 33.8-38.0%, against 0.2-8.2% for Very-high-HDI cities; in 2021, 2024 and 2025 it was 5.0-7.5%. The high years are the summers when GDACS flood alerts covered 9-11 Pakistani 1M+ cities, most of which also met the heat threshold; in the low years only 1-2 were covered. The Very-high-HDI peaks in 2022 (8.2%) and 2023 (7.3%) come from heat + flood in cities such as Shanghai, Tehran, Rome and Madrid.
+
+          **How to read the chart:** one line per UNDP HDI tier, one point per summer. Colour and dash both encode the tier: Low = vermillion solid, Medium = orange dashed, High = sky-blue dotted, Very high = blue long-dash. Hover a point for the exact share. This chart ignores the year filter.
+
+  - height: 340
+    widgets:
+      - name: Share facing 2+ hazards by HDI tier (%)
+        type: chart
+        chart: vega-lite
+        col: 12
+        sql: |
+          SELECT season_label, tier, share_pct
+          FROM `bruin-playground-arsalan.report.atlas_yearly_trend`,
+            UNNEST([
+              STRUCT('Low HDI' AS tier, low_hdi_two_plus_pct AS share_pct),
+              STRUCT('Medium HDI', medium_hdi_two_plus_pct),
+              STRUCT('High HDI', high_hdi_two_plus_pct),
+              STRUCT('Very high HDI', very_high_hdi_two_plus_pct)
+            ])
+          ORDER BY season_label
+        spec:
+          mark: { type: line, point: true, strokeWidth: 2 }
+          encoding:
+            x: { field: season_label, type: ordinal, title: "Summer (June 1 - September 20)", axis: { labelAngle: 0 } }
+            y: { field: share_pct, type: quantitative, title: "Population facing 2+ hazards (%)", scale: { zero: true } }
+            color:
+              field: tier
+              type: nominal
+              title: HDI tier
+              scale:
+                domain: [Low HDI, Medium HDI, High HDI, Very high HDI]
+                range: ["#D55E00", "#E69F00", "#56B4E9", "#0072B2"]
+            strokeDash:
+              field: tier
+              type: nominal
+              title: HDI tier
+              scale:
+                domain: [Low HDI, Medium HDI, High HDI, Very high HDI]
+                range: [[1, 0], [6, 3], [2, 2], [10, 4]]
+            tooltip:
+              - { field: season_label, title: Summer }
+              - { field: tier, title: HDI tier }
+              - { field: share_pct, title: "Share facing 2+ hazards (%)", format: ".1f" }
+          config:
+            legend: { orient: bottom, symbolType: stroke, symbolStrokeWidth: 2, symbolSize: 400 }
+  - widgets:
+      - name: tier trend footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[GHSL Urban Centre Database R2024A](https://ghsl.jrc.ec.europa.eu/)** (2015 population, 2020 subnational HDI); hazard inputs from **[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/)**, **[GDACS](https://www.gdacs.org/)** and **[ERA5](https://cds.climate.copernicus.eu/)** via **[Open-Meteo](https://open-meteo.com/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization, Vega-Lite).
+
+          **Limitations:** The Low tier is small (31 cities, 87M people), so a single regional flood alert can move its share by 30 points; Pakistani cities with an HDI of 0.549 sit just under the 0.550 Low/Medium cut. HDI is a single 2020 value applied to every year. Flood-driven overlap from 2025 onward is understated relative to earlier years because of the GDACS polygon change described above.
+
+  # ---------------------------------------------------------------------------
+  # Chart 1 - event map
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - name: map header
+        type: text
+        col: 12
+        content: |
+          # Wildfire hotspots, flood alerts and extreme-heat cities worldwide, selected summer (default 2026)
+
+          **Insight (2026):** The three hazards occupy different belts. The densest fire hotspots are in central and southern Africa, the Amazon and Cerrado, and the boreal forests of Siberia and Canada. Most of the 115 extreme-heat cities lie in a band from North Africa and the Sahel through the Middle East to the Indus-Ganges plain (India 38, Pakistan 10, Egypt 7), with smaller clusters in the southern US, Mexico and Japan. The 274 flood alerts are spread across every inhabited continent, but all 6 Orange or Red alerts were in South and East Asia (China 4, India 1, Nepal 1). Overlaps sit where the belts cross: Pakistan and northern India (heat + flood) and northern Iraq and Syria (heat + fire). Labels mark the highest-risk city in each of the 7 countries in that year's top-25 ranking.
+
+          **How to read the map:** vermillion squares = 1-degree cells with at least 50 vegetation-fire detections; sky-blue triangles = GDACS flood event centroids (larger = Orange or Red alert); yellow circles = cities with at least 28 days at 35 C or more. Equal Earth projection, Antarctica omitted. Hover any mark for its name and values. Use the season_year filter to switch summers.
+
+  - height: 560
+    widgets:
+      - name: Hazard events map
+        type: chart
+        chart: vega-lite
+        col: 12
+        sql: |
+          SELECT *
+          FROM `bruin-playground-arsalan.report.atlas_map_layers`
+          WHERE layer = 'coast' OR season_year = CAST('{{ filters.season_year }}' AS INT64)
+          ORDER BY layer, segment_id, seq
+        spec:
+          projection: { type: equalEarth }
+          layer:
+            - transform: [{ filter: "datum.layer === 'coast'" }]
+              mark: { type: line, stroke: "#6B7280", strokeWidth: 0.7 }
+              encoding:
+                longitude: { field: lon, type: quantitative }
+                latitude: { field: lat, type: quantitative }
+                detail: { field: segment_id, type: nominal }
+                order: { field: seq, type: quantitative }
+            - transform: [{ filter: "datum.layer !== 'coast' && datum.layer !== 'label'" }]
+              mark: { type: point, filled: true, opacity: 0.85, strokeWidth: 0 }
+              encoding:
+                longitude: { field: lon, type: quantitative }
+                latitude: { field: lat, type: quantitative }
+                color:
+                  field: hazard
+                  type: nominal
+                  title: Hazard
+                  scale:
+                    domain: [Wildfire hotspot, Flood alert, Extreme heat city]
+                    range: ["#D55E00", "#56B4E9", "#F0E442"]
+                shape:
+                  field: hazard
+                  type: nominal
+                  title: Hazard
+                  scale:
+                    domain: [Wildfire hotspot, Flood alert, Extreme heat city]
+                    range: [square, triangle-up, circle]
+                size:
+                  condition:
+                    test: "datum.layer === 'flood' && (indexof(datum.name, '(Orange)') >= 0 || indexof(datum.name, '(Red)') >= 0)"
+                    value: 150
+                  value: 28
+                tooltip:
+                  - { field: hazard, title: Hazard }
+                  - { field: name, title: Name }
+                  - { field: detail, title: Detail }
+            - transform: [{ filter: "datum.layer === 'label' && datum.label_side === 'right'" }]
+              mark: { type: text, color: "#FFFFFF", fontSize: 12, fontWeight: bold, dx: 7, dy: -7, align: left }
+              encoding:
+                longitude: { field: lon, type: quantitative }
+                latitude: { field: lat, type: quantitative }
+                text: { field: name }
+            - transform: [{ filter: "datum.layer === 'label' && datum.label_side === 'left'" }]
+              mark: { type: text, color: "#FFFFFF", fontSize: 12, fontWeight: bold, dx: -7, dy: -7, align: right }
+              encoding:
+                longitude: { field: lon, type: quantitative }
+                latitude: { field: lat, type: quantitative }
+                text: { field: name }
+          config:
+            legend: { orient: bottom-left, direction: vertical, symbolSize: 90, labelFontSize: 12, titleFontSize: 12 }
+  - widgets:
+      - name: map footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/)** MODIS Collection 6.1 active fires (Standard Processing for June, Near Real-Time from July); **[GDACS](https://www.gdacs.org/)** flood events (UN OCHA / European Commission JRC, mostly GloFAS-derived); **[ERA5 reanalysis](https://cds.climate.copernicus.eu/)** (ECMWF / Copernicus) via the **[Open-Meteo Historical Weather API](https://open-meteo.com/)**; **[GHSL Urban Centre Database R2024A](https://ghsl.jrc.ec.europa.eu/)** (city points); **[Overture Maps](https://overturemaps.org/)** country areas (coastline).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization, Vega-Lite map).
+
+          **Limitations:** Fire cells aggregate detections to 1 x 1 degree; low-confidence detections, FIRMS-typed static sources and cells that burn in the same ~2 km spot on 10+ days (gas flares, industry) are removed, but agricultural burning is still counted as fire. Flood triangles mark GDACS event centroids, not flood extents. Heat uses a fixed 35 C threshold, so hot-climate cities qualify every summer; this is exposure, not an anomaly against local normals. Southern Hemisphere cities are in winter during this window. The map is Vega-Lite rather than MapLibre because DAC has no MapLibre widget.
+
+  # ---------------------------------------------------------------------------
+  # Chart 2 - exposure by population and vulnerability
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - name: vulnerability header
+        type: text
+        col: 12
+        content: |
+          # Share of urban population exposed to 0, 1, or 2+ hazards, by Human Development Index tier, selected summer (default 2026)
+
+          **Insight (2026):** Hazard overlap falls steeply as development rises: 35.3% of people in Low-HDI cities faced two or more hazards, versus 7.4% (Medium), 0.9% (High) and 0.2% (Very high). Single hazards look similar across tiers (19.6-31.7%), so it is the overlap, not the single hazard, that tracks vulnerability. Per hazard, Low-HDI cities had the highest heat (42.9%) and flood (37.8%) exposure; fire exposure was 8.6-9.4% in the Low and Medium tiers and 0.5% in Very-high-HDI cities.
+
+          **How to read the chart:** one bar per UNDP HDI tier - Low (< 0.55; 31 cities, 87M people), Medium (0.55-0.70; 160 cities, 502M), High (0.70-0.80; 148 cities, 539M), Very high (>= 0.80; 123 cities, 470M). Each bar splits the tier's 2015 population into no hazard (grey), one hazard (orange) and two or three hazards (vermillion, right end), summing to 100%; the legend below the chart names each segment.
+
+  - widgets:
+      - name: Population share by hazard count (%)
+        type: chart
+        chart: bar
+        col: 12
+        horizontal: true
+        stacked: true
+        normalized: true
+        sql: |
+          SELECT hdi_tier_label, hazards, share_pct
+          FROM (
+            SELECT *, CONCAT(hdi_tier, ' HDI') AS hdi_tier_label
+            FROM `bruin-playground-arsalan.report.atlas_vulnerability_exposure`
+            WHERE season_year = CAST('{{ filters.season_year }}' AS INT64)
+          ),
+            UNNEST([
+              STRUCT('No hazard' AS hazards, no_hazard_pct AS share_pct, 1 AS k),
+              STRUCT('One hazard', one_hazard_pct, 2),
+              STRUCT('Two or three hazards', two_plus_hazard_pct, 3)
+            ])
+          ORDER BY tier_order, k
+        x: { field: hdi_tier_label, type: category }
+        y: { field: share_pct, type: number, format: ".1f", title: "Share of tier population (%)" }
+        color: { field: hazards }
+  - widgets:
+      - name: vulnerability footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[GHSL Urban Centre Database R2024A](https://ghsl.jrc.ec.europa.eu/)** (European Commission JRC; GHS-POP 2015 population and 2020 subnational HDI); hazard inputs from **[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/)**, **[GDACS](https://www.gdacs.org/)** and **[ERA5](https://cds.climate.copernicus.eu/)** via **[Open-Meteo](https://open-meteo.com/)**.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The Low tier is small (31 cities, 87M people) and 28.2M of its 30.7M people facing 2+ hazards live in eight Pakistani cities; most carry an HDI of 0.549, just under the 0.550 Low/Medium cut, so the tier gap depends on that boundary. Population is the 2015 GHS-POP estimate. HDI is a regional development proxy, not a direct measure of household vulnerability (age, housing, cooling, income). Two implausible GHSL HDI values (Dammam 0.318, Xiamen 0.527) were replaced with their country medians; 9 cities with no HDI are excluded.
+
+  # ---------------------------------------------------------------------------
+  # Chart 3 - seasonal timeline
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - name: timeline header
+        type: text
+        col: 12
+        content: |
+          # Weekly population of 1M+ cities exposed to each hazard, selected summer (default 2026, millions)
+
+          **Insight (2026):** The hazards peaked at different times. Heat exposure stayed between 356M and 416M people from June through the week of August 3 (peak 415.8M, week of July 20), then fell to 149.2M by mid-September. Fire exposure rose from 111.0M in the first week of June to 180.7M in the week of September 14, when cities in Indonesia (56.5M people) made the largest contribution. Flood exposure was episodic, with highs of 59.7M (week of July 20) and 60.1M (week of August 31), when the Ganges-basin Orange alert (12 Indian cities, 28.1M people) and a Punjab alert in Pakistan (7 cities, 28.0M) were active at the same time.
+
+          **How to read the chart:** one point per ISO week (label = the Monday). Lines: heat = yellow solid, wildfire = vermillion dashed, flood = sky-blue dotted. A city counts in a week if it had at least 2 of 7 days at 35 C or more (heat), fire detections within 50 km on at least 2 of 7 days (fire), or sat inside an active GDACS flood alert area on any day (flood). A city can count in more than one line.
+
+  - widgets:
+      - name: Population exposed per week (millions)
+        type: chart
+        chart: line
+        col: 12
+        sql: |
+          SELECT
+            week_label,
+            heat_pop_m AS heat,
+            fire_pop_m AS wildfire,
+            flood_pop_m AS flood
+          FROM `bruin-playground-arsalan.report.atlas_weekly_exposure`
+          WHERE season_year = CAST('{{ filters.season_year }}' AS INT64)
+          ORDER BY week_start
+        x: { field: week_label, type: category, title: "Week starting (2026)" }
+        y: { field: [heat, wildfire, flood], type: number, format: ",.1f", title: "People exposed (millions)", beginAtZero: true }
+        series:
+          heat: { color: "#F0E442" }
+          wildfire: { color: "#D55E00", dash: dashed }
+          flood: { color: "#56B4E9", dash: dotted }
+  - widgets:
+      - name: timeline footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[ERA5 reanalysis](https://cds.climate.copernicus.eu/)** via **[Open-Meteo](https://open-meteo.com/)** (daily maximum temperature); **[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/)** MODIS C6.1 active fires; **[GDACS](https://www.gdacs.org/)** flood events; **[GHSL](https://ghsl.jrc.ec.europa.eu/)** 2015 population.
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** June fire data is MODIS Standard Processing and July onward is Near Real-Time; the two streams use the same sensor and algorithm but NRT has no fire-type field, so the rise from June to July is partly seasonal and partly a processing change. The weekly fire rule (2 of 7 days) is looser than a single large fire, and agricultural burning counts. GDACS event dates are alert windows and can outlast actual flooding; a single basin-scale alert can cover many cities at once (for example Pakistan's Punjab).
+
+  # ---------------------------------------------------------------------------
+  # Chart 4 - city risk ranking
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - name: ranking header
+        type: text
+        col: 12
+        content: |
+          # City risk ranking: the 25 urban centres with the highest vulnerability-weighted hazard exposure, selected summer (default 2026)
+
+          **Insight (2026):** Eight of the top 10 are Pakistani cities that combined 68-109 days at 35 C or more with GDACS flood alerts, led by Multan (risk score 24.1; 109 hot days, peak 44.7 C). Aleppo is fourth (23.2) with 75 hot days and fire detections within 50 km on 30 days. Nine Indian cities under the Ganges-basin Orange flood alert (August 9 - September 27) take 9 of ranks 12-25, and Kasai-Oriental (DR Congo, rank 23) is the highest-ranked fire-only city, with 390 detections within 50 km on 50 days.
+
+          **How to read the table:** risk score = 100 x exposure index x (1 - HDI). The exposure index averages three 0-1 scores: hot days / 56 (capped at 1), fire days / 56 (capped at 1), and the highest GDACS flood alert (Green 1/3, Orange 2/3, Red 1). Hot days = days at 35 C or more; fire days = days with a vegetation-fire detection within 50 km. Brighter cells = higher values; ties are ordered by population.
+
+  - widgets:
+      - name: City risk ranking (top 25)
+        type: table
+        col: 12
+        sql: |
+          SELECT
+            ROW_NUMBER() OVER (ORDER BY risk_score DESC, population_2015 DESC) AS rank,
+            city_label,
+            hazard_combo,
+            risk_score,
+            population_m,
+            hdi,
+            hot_days,
+            fire_days_50km,
+            max_flood_alert
+          FROM `bruin-playground-arsalan.staging.city_exposure`
+          WHERE risk_score IS NOT NULL
+            AND season_year = CAST('{{ filters.season_year }}' AS INT64)
+          QUALIFY rank <= 25
+          ORDER BY rank
+        columns:
+          - { name: rank, label: "Rank", number: ",.0f" }
+          - { name: city_label, label: "City" }
+          - { name: hazard_combo, label: "Hazards met" }
+          - name: risk_score
+            label: "Risk score (0-100)"
+            number: ",.1f"
+            format:
+              - { backgroundColor: ["#1F2937", "#D55E00"] }
+          - { name: population_m, label: "Population 2015 (M)", number: ",.2f" }
+          - { name: hdi, label: "HDI (0-1)", number: ".3f" }
+          - name: hot_days
+            label: "Days >= 35 C"
+            number: ",.0f"
+            format:
+              - { backgroundColor: ["#1F2937", "#B8A800"], range: [0, 112], unit: absolute }
+          - name: fire_days_50km
+            label: "Fire days within 50 km"
+            number: ",.0f"
+            format:
+              - { backgroundColor: ["#1F2937", "#D55E00"], range: [0, 112], unit: absolute }
+          - name: max_flood_alert
+            label: "Highest GDACS flood alert"
+            format:
+              - { if: text_is_exactly, value: "Red", backgroundColor: "#0072B2", bold: true }
+              - { if: text_is_exactly, value: "Orange", backgroundColor: "#1F5F8B" }
+              - { if: text_is_exactly, value: "Green", backgroundColor: "#1E3A4F" }
+  - widgets:
+      - name: ranking footnote
+        type: text
+        col: 12
+        content: |
+          **Sources:** **[ERA5 reanalysis](https://cds.climate.copernicus.eu/)** via **[Open-Meteo](https://open-meteo.com/)**; **[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/)** MODIS C6.1; **[GDACS](https://www.gdacs.org/)**; **[GHSL Urban Centre Database R2024A](https://ghsl.jrc.ec.europa.eu/)** (population, HDI).
+
+          **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+          **Limitations:** The risk score is a transparent screening index built for this atlas, not a validated risk model; the caps (56 days) and alert weights are judgement calls and the order changes if they change. Heat is measured at the ERA5 grid cell (~25 km) nearest the city centroid, which smooths urban heat-island peaks. Fire and flood tests use the city centroid with a fixed 50 km radius and point-in-polygon, so large metros are treated like single points. GDACS flood alert areas can be basin-scale (one Pakistan alert polygon covers 205,714 km2). Cities without HDI (9) are not ranked.
+
+  # ---------------------------------------------------------------------------
+  # Methodology
+  # ---------------------------------------------------------------------------
+  - widgets:
+      - type: divider
+        name: methodology divider
+  - widgets:
+      - name: methodology
+        type: text
+        col: 12
+        content: |
+          # Methodology
+
+          **Unit of analysis.** The 471 urban centres in the **[GHSL Urban Centre Database R2024A](https://ghsl.jrc.ec.europa.eu/)** with a 2015 GHS-POP population of at least 1 million (1.62B people). Every city is tested with identical spatial rules around its GHSL centroid.
+
+          **Window.** June 1 - September 20 of each summer 2019-2026 (112 days, 16 ISO weeks per summer; 2026 ends on the last complete week before ERA5's publication lag). 2019 is the first summer for which GDACS publishes flood polygons and impact reports; 2016 events checked had centroids only. Population is the 2015 GHS-POP value in every year, so changes over time reflect hazards, not population growth.
+
+          **Extreme heat.** Daily maximum 2 m temperature from **[ERA5](https://cds.climate.copernicus.eu/)** (ECMWF / Copernicus, via the **[Open-Meteo Historical Weather API](https://open-meteo.com/)**, CC BY 4.0) at the grid cell nearest the centroid, local calendar days. A hot day is Tmax >= 35 C (the ET-SCI TXge35 index). A city is heat-exposed with at least 28 hot days (1 day in 4). NOAA station data was evaluated first: NOAA GSOD 2026 is not published, and GHCN-Daily 2026 (BigQuery public data, through September 12) has a qualifying station within 50 km of only 16% of these cities, so the reanalysis was used for uniform coverage.
+
+          **Wildfire.** **[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/)** MODIS Collection 6.1 detections (Terra + Aqua, ~1 km pixels): 14,731,819 across the eight summers (1,474,540 in 2026). Standard Processing is used for 2019 - June 2026 and Near Real-Time from July 2026. Removed: low-confidence detections (< 30%), 0.1-degree cells where FIRMS typed any detection in any of the eight summers as a volcano, static land source or offshore platform, and 0.02-degree (~2 km) cells detected on 10 or more distinct days within one summer (persistent industrial heat such as gas flares). 12,504,448 vegetation-fire detections remain (1,236,089 in 2026). A city is fire-exposed with detections within 50 km on at least 28 days.
+
+          **Flooding.** **[GDACS](https://www.gdacs.org/)** flood events (all alert levels) whose dates overlap a summer window: 1,609 events across 2019-2026, 58 of them Orange or Red (274 and 6 in 2026). A city is flood-exposed if its centroid falls inside an event's published affected-area polygon. GDACS polygons became much smaller from 2025 (90th-percentile area 22,000-31,000 km2, against 120,000-490,000 km2 in 2019-2024), so flood exposure from 2025 onward is not directly comparable with earlier summers; some 2019-2021 events have no polygon and cannot match any city. Reported deaths and displacement come from GDACS Sendai-framework impact reports; for each region the maximum reported value is kept (reports are cumulative updates), then regions are summed. The Nepal Red alert of August 26 - September 1 carries 955 reported deaths (939 in Nepal, 16 in Tibet, China).
+
+          **Vulnerability and risk.** Subnational HDI (2020) attached to each urban centre by GHSL, grouped into UNDP tiers (Low < 0.550, Medium 0.550-0.699, High 0.700-0.799, Very high >= 0.800). Risk score = 100 x exposure index x (1 - HDI), with the exposure index defined in the ranking section.
+
+          **What this cannot tell you.** Exposure is not impact: the atlas does not measure deaths, hospitalisations or losses caused by heat or fire, and smoke transport beyond 50 km is ignored. Cities under 1 million people and rural populations, where many flood and fire impacts occur, are outside scope. All thresholds are absolute and fixed, not relative to local climate norms. HDI is a single 2020 value applied to all eight summers.
+
+          **Pipeline.** Ingestion in Python (FIRMS area API, GDACS API, Open-Meteo API), transformations in BigQuery SQL, orchestrated with **Bruin cli**; dashboard built with **Bruin dac**. Code: `disaster-summer-atlas/` in this repository.

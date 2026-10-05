@@ -276,6 +276,39 @@ the upstream constraint:
 To scroll the dashboard in headless tests, find the largest descendant
 with `overflow-y: auto/scroll` and call `el.scrollBy(...)` on that.
 
+### 12. Upstream v0.21 (Sep 2026): schema changes and map support
+
+`dac upgrade` to v0.21.1 replaces the fork binary on PATH. Dashboards that use
+fork-only fields (`hideName`, `yLabel`, `seriesNames`, `file:`, top-level
+`theme:`, bare `x:`/`y:`) no longer validate on it. The fork binary still lives
+at `/Users/bear/Github/dac/bin/dac`. New dashboards (e.g.
+`disaster-summer-atlas/`) target the upstream schema:
+
+- Axes are objects: `x: { field, type, title }`, `y: { field: [...], title, format, beginAtZero }`.
+  `title` gives native axis titles (replaces fork `yLabel`).
+- Per-series style: widget-level `series: { col: { color, dash, curve } }`. Line
+  charts render a legend with the raw column name - use short one-word names
+  (`heat`, `wildfire`, `flood`); there is no `seriesNames`.
+- `stacked: true` bars require long format + `color: { field }`. Category colours
+  come from the theme palette in **alphabetical order of the category values**;
+  `series` colours are ignored for `color:` categories. Order the theme's
+  `chart-1..8` tokens (or name categories) so the right colour lands on each.
+  `normalized: true` gives a 0-100% axis.
+- Chart height is fixed at 240 px unless the **row** sets `height: <px>`
+  (row-level property, e.g. `- height: 560` then `widgets:`).
+- No `hideName`: every non-text widget renders its `name` as the uppercase strip.
+- Themes: pass `--template path/to/theme.yml` to `dac serve` (`extends: bruin-dark` + `tokens:`).
+- `chart: vega-lite` + `spec:` works for maps. `data.url` is rejected, and JSON /
+  GeoJSON columns arrive as strings (no `geoshape` from SQL). Draw basemaps as
+  ordered line vertices (`longitude`/`latitude` + `detail` + `order` encodings)
+  from BigQuery, split rings at the antimeridian, and put all layers in one long
+  table filtered per layer with `transform: [{ filter: ... }]`. Vega tooltips work.
+- Filter values in SQL must be numbers or sit inside single quotes. A `select`
+  filter value is a string, so `season_year = {{ filters.season_year }}` fails
+  every widget at query time (`dac validate` passes; `dac check` / `dac query`
+  report "SQL template outputs must be numbers or appear inside single-quoted
+  string literals"). Use `CAST('{{ filters.season_year }}' AS INT64)`.
+
 ## Conventions for footnotes / descriptions
 
 See `VISUALIZATIONS.md` § 2 for the mandatory per-chart 3-row structure

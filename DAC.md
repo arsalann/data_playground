@@ -276,13 +276,43 @@ the upstream constraint:
 To scroll the dashboard in headless tests, find the largest descendant
 with `overflow-y: auto/scroll` and call `el.scrollBy(...)` on that.
 
-### 12. Upstream v0.21 (Sep 2026): schema changes and map support
+### 12. Choropleth maps with `chart: vega-lite` (upstream 0.21.1)
 
-`dac upgrade` to v0.21.1 replaces the fork binary on PATH. Dashboards that use
-fork-only fields (`hideName`, `yLabel`, `seriesNames`, `file:`, top-level
-`theme:`, bare `x:`/`y:`) no longer validate on it. The fork binary still lives
-at `/Users/bear/Github/dac/bin/dac`. New dashboards (e.g.
-`disaster-summer-atlas/`) target the upstream schema:
+Found while building `germany-regions/` (Sept 2026), on upstream `dac` 0.21.1:
+
+- **Geometry cannot come from SQL.** Query results are flat rows; a BigQuery
+  `JSON` or `STRING` GeoJSON column arrives as a string, and Vega-Lite cannot
+  parse it, so `geoshape` draws nothing.
+- **`data.url` is rejected anywhere in the spec**, including inside a `lookup`.
+- **What works:** embed the GeoJSON features as a named dataset
+  (`spec.datasets.states: [...]`) and `lookup` them onto the query rows by key.
+  Only `datasets.dac` is reserved. In YAML, define the features once with an
+  anchor and alias them in every map. `germany-regions/dashboard-dac/scripts/build_dashboard.py`
+  generates this from `raw.de_state_boundaries`.
+- **Avoid filled `line` marks as polygons** (`interpolate: linear-closed`,
+  `filled: true`). They render, but Vega shows no tooltip on them.
+- **Height:** row-level `height: <px>` sets the widget height, and Vega-Lite
+  fills it (container height minus about 60 px). Widget-level `height` and
+  `size` are ignored or rejected.
+- **Subtitle:** widget `description` renders as a small muted line under the
+  name strip.
+
+Other 0.21.1 behaviour:
+- **`hideName` is fork-only** and upstream validation rejects it. Every chart
+  keeps its uppercase name strip, so give it a short descriptive name.
+- **Theme:** `theme:` is no longer a dashboard property. Pass
+  `--template <theme.yml>` to `dac serve` instead.
+- **TSX:** dashboards drop row `tab` and dashboard `theme`, and custom
+  components returning fragments produce empty widgets. Use YAML for tabbed
+  dashboards; in TSX use plain functions that return arrays of `<Row>`.
+- **Deprecated in YAML:** `file:` queries. Use inline `sql:` or named queries.
+
+### 13. More upstream v0.21 notes (from `disaster-summer-atlas/`, Oct 2026)
+
+`dac upgrade` to v0.21.1 replaces the fork binary on PATH, so older dashboards
+that use fork-only fields (`hideName`, `yLabel`, `seriesNames`, `file:`,
+top-level `theme:`, bare `x:`/`y:`) no longer validate. The fork binary still
+lives at `/Users/bear/Github/dac/bin/dac`.
 
 - Axes are objects: `x: { field, type, title }`, `y: { field: [...], title, format, beginAtZero }`.
   `title` gives native axis titles (replaces fork `yLabel`).
@@ -294,15 +324,10 @@ at `/Users/bear/Github/dac/bin/dac`. New dashboards (e.g.
   `series` colours are ignored for `color:` categories. Order the theme's
   `chart-1..8` tokens (or name categories) so the right colour lands on each.
   `normalized: true` gives a 0-100% axis.
-- Chart height is fixed at 240 px unless the **row** sets `height: <px>`
-  (row-level property, e.g. `- height: 560` then `widgets:`).
-- No `hideName`: every non-text widget renders its `name` as the uppercase strip.
-- Themes: pass `--template path/to/theme.yml` to `dac serve` (`extends: bruin-dark` + `tokens:`).
-- `chart: vega-lite` + `spec:` works for maps. `data.url` is rejected, and JSON /
-  GeoJSON columns arrive as strings (no `geoshape` from SQL). Draw basemaps as
-  ordered line vertices (`longitude`/`latitude` + `detail` + `order` encodings)
-  from BigQuery, split rings at the antimeridian, and put all layers in one long
-  table filtered per layer with `transform: [{ filter: ... }]`. Vega tooltips work.
+- Point/line world maps: besides embedded `datasets` (section 12), a basemap can
+  be drawn from SQL as ordered line vertices (`longitude`/`latitude` + `detail` +
+  `order` encodings), split at the antimeridian, with all layers in one long
+  table filtered per layer via `transform: [{ filter: ... }]`. Point tooltips work.
 - Filter values in SQL must be numbers or sit inside single quotes. A `select`
   filter value is a string, so `season_year = {{ filters.season_year }}` fails
   every widget at query time (`dac validate` passes; `dac check` / `dac query`

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shop density on official registers - five cities, seven shop types</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="page-header">
+  <h1>How thickly are Madrid, Paris, Mexico City, London and Chicago served by shops?</h1>
+  <p class="standfirst">
+    Shops per 1,000 residents over 250&nbsp;m cells, counted from official business registers
+    rather than OpenStreetMap. Every city and shop-type combination carries its own data-quality
+    grade and caveats, because a count is only as trustworthy as the register behind it. Nothing
+    here is modelled or predicted.
+  </p>
+  <nav class="tabs" role="tablist">
+    <button class="tab is-active" role="tab" data-view="map" aria-selected="true">Map</button>
+    <button class="tab" role="tab" data-view="matrix" aria-selected="false">Data quality matrix</button>
+    <button class="tab" role="tab" data-view="method" aria-selected="false">Method &amp; OSM comparison</button>
+  </nav>
+</header>
+
+<!-- ============================================================== MAP VIEW -->
+<main id="view-map" class="view is-active">
+
+  <section class="controls" aria-label="Map controls">
+    <div class="control">
+      <label for="city-select">City</label>
+      <select id="city-select"></select>
+    </div>
+    <div class="control">
+      <label for="type-select">Shop type</label>
+      <select id="type-select"></select>
+    </div>
+    <div class="control control--layers">
+      <span class="control-label">Layers</span>
+      <label class="check"><input type="checkbox" id="toggle-scores" checked /> Density cells</label>
+      <label class="check"><input type="checkbox" id="toggle-points" checked /> Existing premises</label>
+      <label class="check" id="vacant-control" hidden><input type="checkbox" id="toggle-vacant" /> Vacant units (Paris only)</label>
+    </div>
+    <div class="control control--quality">
+      <span class="control-label">Data quality</span>
+      <div id="quality-badge" class="badge">&nbsp;</div>
+    </div>
+  </section>
+
+  <section class="chart-header">
+    <h2 id="map-title">Shop density</h2>
+    <p id="map-description" class="insight"><strong>&nbsp;</strong></p>
+    <p id="encoding-key" class="encoding-key"></p>
+  </section>
+
+  <div class="map-shell">
+    <div id="map" role="img" aria-label="Choropleth map of shops per 1,000 residents over a 250 metre grid"></div>
+
+    <div class="legend" id="legend">
+      <h3>Shops per 1,000 residents</h3>
+      <p class="legend-sub">Counted within 400&nbsp;m of the cell centre. Bins are quartiles of this city and shop type, so ranges differ between cities.</p>
+      <ul class="legend-bins" id="legend-bins"></ul>
+      <h3 class="legend-heading-2">Existing premises</h3>
+      <ul class="legend-marks">
+        <li><span class="mark mark--solid"></span> Classification is clean in this register</li>
+        <li><span class="mark mark--hollow"></span> Class is shared or over-broad, so the point may not be this shop type</li>
+      </ul>
+      <div id="legend-vacant" hidden>
+        <h3 class="legend-heading-2">Vacant units (Paris)</h3>
+        <ul class="legend-marks">
+          <li><span class="mark mark--diamond mark--low"></span> Low churn: 0-1 activity changes, 2000-2020</li>
+          <li><span class="mark mark--diamond mark--mid"></span> Moderate to elevated: 2-3 changes</li>
+          <li><span class="mark mark--diamond mark--high"></span> High churn: 4 or more changes</li>
+        </ul>
+        <p class="legend-sub">A diamond is an address, not a cell. Higher churn means the location has repeatedly failed to hold a business.</p>
+      </div>
+    </div>
+
+    <div class="loading" id="loading" hidden>Loading layer&hellip;</div>
+  </section>
+
+  <section class="caveat-panel">
+    <h3>Caveats for this city and shop type</h3>
+    <div id="caveat-scores" class="subscores"></div>
+    <p id="caveat-source" class="caveat-source"></p>
+    <ul id="caveat-list" class="caveat-list"></ul>
+  </section>
+
+  <section class="footnote" id="map-footnote"></section>
+</main>
+
+<!-- =========================================================== MATRIX VIEW -->
+<main id="view-matrix" class="view">
+  <section class="chart-header">
+    <h2>Data-quality score by city and shop type, out of 100</h2>
+    <p class="insight">
+      <strong>Read this before the density figures.</strong> Granularity carries the most weight in
+      the rubric because it is the criterion that most often silently invalidates a count like
+      this one: London's food register is otherwise close to perfect and cannot tell a cafe from
+      a restaurant. Three of the 35 combinations cannot be mapped at all.
+    </p>
+    <p class="encoding-key">
+      <strong>Cell fill:</strong> darker means a higher score.
+      <strong>Hatched cell:</strong> excluded from the map, either because the shop type cannot be
+      separated in that city's taxonomy or because fewer than 50 mappable premises remain.
+      <strong>Number:</strong> weighted score out of 100.
+    </p>
+  </section>
+
+  <div class="matrix-wrap">
+    <table class="matrix" id="matrix-table"></table>
+  </div>
+
+  <section class="chart-header">
+    <h3>Rubric weights</h3>
+    <p class="encoding-key">
+      Source authority 20, spatial coverage 20, <strong>category granularity 25</strong>,
+      freshness 15, geocoding 10, access and licence 10. Each sub-score runs 0-10.
+    </p>
+  </section>
+
+  <div class="matrix-wrap">
+    <table class="matrix matrix--detail" id="subscore-table"></table>
+  </div>
+
+  <section class="footnote" id="matrix-footnote"></section>
+</main>
+
+<!-- =========================================================== METHOD VIEW -->
+<main id="view-method" class="view">
+  <section class="chart-header">
+    <h2>What an OpenStreetMap-only method misses, measured against Madrid's register</h2>
+    <p class="insight" id="osm-insight"><strong>&nbsp;</strong></p>
+    <p class="encoding-key">
+      <strong>Coverage ratio:</strong> OpenStreetMap objects divided by registered premises.
+      <strong>Absent from OSM:</strong> registered premises with no same-type OpenStreetMap
+      object within 75&nbsp;m. Both sides use the identical Madrid municipal bounding box.
+    </p>
+  </section>
+
+  <div class="matrix-wrap">
+    <table class="matrix" id="osm-table"></table>
+  </div>
+
+  <section class="method-text" id="method-text"></section>
+  <section class="footnote" id="method-footnote"></section>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

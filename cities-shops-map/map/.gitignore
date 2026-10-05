@@ -1,0 +1,7 @@
+# Exported map layers, roughly 78 MB across 60-odd files. Regenerate with:
+#   python3 cities-shops-map/map/export_geojson.py
+#
+# The repo-root .gitignore has a `data/*` rule, but patterns containing a slash are anchored to
+# the file's own directory, so that rule only covers /data at the repository root and does not
+# reach this directory. Hence this local file.
+data/

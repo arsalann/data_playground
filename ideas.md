@@ -357,6 +357,15 @@ Choropleth maps of 15 economic and social indicators for the 16 German states in
 - **Key findings**: all five eastern states are below every western state on GDP per inhabitant and hourly earnings; the gender pay gap is 4-6% in the east against 12-20% in the west; share aged 65+ correlates with hourly earnings at r = -0.95 across states
 - **Limitations**: Kreis level (400 districts) is only complete for 2024 and lacks official poverty and life-expectancy series; INKAR ends in 2023; low-wage share has a suppressed 2025 state value
 
+### 8. "The Disaster Summer Atlas" - Heat, Fire and Flood Exposure in Large Cities (2019-2026)
+Where extreme heat, wildfire and flooding overlapped with vulnerable urban populations, June 1 - September 20 of each summer 2019-2026.
+
+- **Data sources**: NASA FIRMS MODIS C6.1 (area API, free MAP_KEY), GDACS flood events + affected-area polygons + Sendai impacts (public API), ERA5 via Open-Meteo (daily Tmax/precip), GHSL UCDB (population, subnational HDI, reused from `city-pulse`), Overture Maps (basemap)
+- **Pipeline**: `disaster-summer-atlas/`
+- **Dashboard**: 2019-2026 trend charts; year-filtered Vega-Lite event map, population exposure by HDI tier, weekly timeline, top-25 city risk ranking
+- **Key findings**: 2026 - 31 of 471 cities (74.0M people) met 2+ hazards; 35.3% of Low-HDI city population vs 0.2% Very-high-HDI. Low-HDI cities had the highest 2+ share in all eight summers, driven by Pakistani heat + flood cities
+- **Source notes**: NOAA GSOD 2026 is not published; GHCN-Daily 2026 (BigQuery) covers only 16% of 1M+ cities. MODIS NRT lacks fire type - mask gas flares with a persistence rule. GDACS polygons can be basin-scale, and shrank sharply from 2025 (flood exposure not comparable across that break); GDACS flood polygons/impacts start in 2019. Open-Meteo free tier: ~1 summer of 471 cities per hour before the hourly limit.
+
 ## Backlog
 
 ### 6. "The Tariff Tax" — What Americans Are Actually Paying

@@ -307,6 +307,33 @@ Other 0.21.1 behaviour:
   dashboards; in TSX use plain functions that return arrays of `<Row>`.
 - **Deprecated in YAML:** `file:` queries. Use inline `sql:` or named queries.
 
+### 13. More upstream v0.21 notes (from `disaster-summer-atlas/`, Oct 2026)
+
+`dac upgrade` to v0.21.1 replaces the fork binary on PATH, so older dashboards
+that use fork-only fields (`hideName`, `yLabel`, `seriesNames`, `file:`,
+top-level `theme:`, bare `x:`/`y:`) no longer validate. The fork binary still
+lives at `/Users/bear/Github/dac/bin/dac`.
+
+- Axes are objects: `x: { field, type, title }`, `y: { field: [...], title, format, beginAtZero }`.
+  `title` gives native axis titles (replaces fork `yLabel`).
+- Per-series style: widget-level `series: { col: { color, dash, curve } }`. Line
+  charts render a legend with the raw column name - use short one-word names
+  (`heat`, `wildfire`, `flood`); there is no `seriesNames`.
+- `stacked: true` bars require long format + `color: { field }`. Category colours
+  come from the theme palette in **alphabetical order of the category values**;
+  `series` colours are ignored for `color:` categories. Order the theme's
+  `chart-1..8` tokens (or name categories) so the right colour lands on each.
+  `normalized: true` gives a 0-100% axis.
+- Point/line world maps: besides embedded `datasets` (section 12), a basemap can
+  be drawn from SQL as ordered line vertices (`longitude`/`latitude` + `detail` +
+  `order` encodings), split at the antimeridian, with all layers in one long
+  table filtered per layer via `transform: [{ filter: ... }]`. Point tooltips work.
+- Filter values in SQL must be numbers or sit inside single quotes. A `select`
+  filter value is a string, so `season_year = {{ filters.season_year }}` fails
+  every widget at query time (`dac validate` passes; `dac check` / `dac query`
+  report "SQL template outputs must be numbers or appear inside single-quoted
+  string literals"). Use `CAST('{{ filters.season_year }}' AS INT64)`.
+
 ## Conventions for footnotes / descriptions
 
 See `VISUALIZATIONS.md` § 2 for the mandatory per-chart 3-row structure

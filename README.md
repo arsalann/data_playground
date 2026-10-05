@@ -105,6 +105,7 @@ Open the dashboard at [http://localhost:8321](http://localhost:8321).
 | `hormuz-effect` | Examines the market and macroeconomic effects of disruption in the Strait of Hormuz. |
 | `ingestr-cli-v1` | Demonstrates ingesting order data through the Ingestr CLI. |
 | `jose-ingestr` | Demonstrates loading order data into DuckDB through Ingestr assets. |
+| `murder-mystery` | A SQL detective game: seeds a fictional town into local DuckDB and hides an assassination in it. |
 | `nyc-taxi` | Analyses New York City taxi trips, fares, tips, timing, and zone-level patterns. |
 | `pension-crisis` | Assesses population ageing, pension adequacy, and fiscal pressure across OECD countries. |
 | `pension-crisis-dac` | Supplies a Bruin DAC dashboard companion for the pension-crisis analysis. |

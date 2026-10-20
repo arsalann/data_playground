@@ -1,0 +1,436 @@
+schema: v1
+name: data_quality_user_days
+label: Data Quality user days (synthetic)
+description: Synthetic source comparison at user/day grain. Distinct users recompute for the selected interval;
+  unattributed AppLovin revenue remains in totals.
+source:
+  table: staging.data_quality_user_days
+  connection: bruin-playground-arsalan
+dimensions:
+- name: dt
+  type: time
+- name: user_hash
+  type: string
+- name: presence_bucket
+  type: string
+- name: source_presence
+  type: string
+- name: in_firebase
+  type: boolean
+- name: in_adjust
+  type: boolean
+- name: in_applovin
+  type: boolean
+- name: is_attributed
+  type: boolean
+metrics:
+- name: fb_users
+  expression: COUNT(DISTINCT IF(in_firebase AND is_attributed, user_pseudo_id, NULL))
+  format:
+    type: number
+    decimals: 0
+- name: aj_users
+  expression: COUNT(DISTINCT IF(in_adjust AND is_attributed, user_pseudo_id, NULL))
+  format:
+    type: number
+    decimals: 0
+- name: al_users
+  expression: COUNT(DISTINCT IF(in_applovin AND is_attributed, user_pseudo_id, NULL))
+  format:
+    type: number
+    decimals: 0
+- name: fb_ad_inter_rev
+  expression: SUM(fb_ad_inter_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: fb_ad_rewarded_rev
+  expression: SUM(fb_ad_rewarded_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: fb_ad_inter_count
+  expression: SUM(fb_ad_inter_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_ad_rewarded_count
+  expression: SUM(fb_ad_rewarded_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_iap_rev
+  expression: SUM(fb_iap_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: fb_iap_count
+  expression: SUM(fb_iap_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_play_on_count
+  expression: SUM(fb_play_on_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_booster_use_count
+  expression: SUM(fb_booster_use_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_shop_view_count
+  expression: SUM(fb_shop_view_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_session_count
+  expression: SUM(fb_session_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_install_count
+  expression: SUM(fb_install_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_ad_inter_rev
+  expression: SUM(aj_ad_inter_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: aj_ad_rewarded_rev
+  expression: SUM(aj_ad_rewarded_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: aj_ad_inter_count
+  expression: SUM(aj_ad_inter_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_ad_rewarded_count
+  expression: SUM(aj_ad_rewarded_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_iap_rev
+  expression: SUM(aj_iap_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: aj_iap_count
+  expression: SUM(aj_iap_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_play_on_count
+  expression: SUM(aj_play_on_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_booster_use_count
+  expression: SUM(aj_booster_use_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_shop_view_count
+  expression: SUM(aj_shop_view_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_session_count
+  expression: SUM(aj_session_count)
+  format:
+    type: number
+    decimals: 0
+- name: aj_install_count
+  expression: SUM(aj_install_count)
+  format:
+    type: number
+    decimals: 0
+- name: al_ad_inter_rev
+  expression: SUM(al_ad_inter_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: al_ad_rewarded_rev
+  expression: SUM(al_ad_rewarded_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: al_ad_inter_count
+  expression: SUM(al_ad_inter_count)
+  format:
+    type: number
+    decimals: 0
+- name: al_ad_rewarded_count
+  expression: SUM(al_ad_rewarded_count)
+  format:
+    type: number
+    decimals: 0
+- name: fb_ad_rev
+  expression: SUM(fb_ad_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: aj_ad_rev
+  expression: SUM(aj_ad_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: al_ad_rev
+  expression: SUM(al_ad_rev)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: fb_ad_impressions
+  expression: '{fb_ad_inter_count} + {fb_ad_rewarded_count}'
+  format:
+    type: number
+    decimals: 0
+- name: aj_ad_impressions
+  expression: '{aj_ad_inter_count} + {aj_ad_rewarded_count}'
+  format:
+    type: number
+    decimals: 0
+- name: al_ad_impressions
+  expression: '{al_ad_inter_count} + {al_ad_rewarded_count}'
+  format:
+    type: number
+    decimals: 0
+- name: all_sources_user_days
+  expression: COUNT(CASE WHEN in_firebase AND in_adjust AND in_applovin AND is_attributed THEN 1 END)
+  format:
+    type: number
+    decimals: 0
+- name: comparison_rows
+  expression: COUNT(*)
+  format:
+    type: number
+    decimals: 0
+- name: users
+  expression: COUNT(DISTINCT IF(is_attributed, user_pseudo_id, NULL))
+  format:
+    type: number
+    decimals: 0
+- name: firebase_adjust_ad_ratio
+  expression: SAFE_DIVIDE({fb_ad_rev}, {aj_ad_rev})
+  format:
+    type: decimal
+    decimals: 0
+- name: applovin_adjust_ad_ratio
+  expression: SAFE_DIVIDE({al_ad_rev}, {aj_ad_rev})
+  format:
+    type: decimal
+    decimals: 0
+- name: play_on_count_ratio
+  expression: SAFE_DIVIDE({fb_play_on_count}, {aj_play_on_count})
+  format:
+    type: decimal
+    decimals: 0
+- name: booster_use_count_ratio
+  expression: SAFE_DIVIDE({fb_booster_use_count}, {aj_booster_use_count})
+  format:
+    type: decimal
+    decimals: 0
+- name: shop_view_count_ratio
+  expression: SAFE_DIVIDE({fb_shop_view_count}, {aj_shop_view_count})
+  format:
+    type: decimal
+    decimals: 0
+- name: session_count_ratio
+  expression: SAFE_DIVIDE({fb_session_count}, {aj_session_count})
+  format:
+    type: decimal
+    decimals: 0
+- name: install_count_ratio
+  expression: SAFE_DIVIDE({fb_install_count}, {aj_install_count})
+  format:
+    type: decimal
+    decimals: 0
+- name: user_days
+  expression: COUNT(*)
+  format:
+    type: number
+    decimals: 0
+- name: firebase_user_days
+  expression: COUNT(CASE WHEN in_firebase THEN 1 END)
+  format:
+    type: number
+    decimals: 0
+- name: firebase_ad_revenue_raw
+  expression: '{fb_ad_rev}'
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: firebase_ad_revenue_usd
+  expression: ROUND({firebase_ad_revenue_raw}, 2)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: firebase_ad_impressions
+  expression: '{fb_ad_impressions}'
+  format:
+    type: number
+    decimals: 0
+- name: adjust_user_days
+  expression: COUNT(CASE WHEN in_adjust THEN 1 END)
+  format:
+    type: number
+    decimals: 0
+- name: adjust_ad_revenue_raw
+  expression: '{aj_ad_rev}'
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: adjust_ad_revenue_usd
+  expression: ROUND({adjust_ad_revenue_raw}, 2)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: adjust_ad_impressions
+  expression: '{aj_ad_impressions}'
+  format:
+    type: number
+    decimals: 0
+- name: applovin_user_days
+  expression: COUNT(CASE WHEN in_applovin THEN 1 END)
+  format:
+    type: number
+    decimals: 0
+- name: applovin_ad_revenue_raw
+  expression: '{al_ad_rev}'
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: applovin_ad_revenue_usd
+  expression: ROUND({applovin_ad_revenue_raw}, 2)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: applovin_ad_impressions
+  expression: '{al_ad_impressions}'
+  format:
+    type: number
+    decimals: 0
+- name: firebase_minus_adjust_ad_revenue_usd
+  expression: ROUND({firebase_ad_revenue_raw} - {adjust_ad_revenue_raw}, 2)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: firebase_vs_adjust_diff_pct
+  expression: SAFE_DIVIDE({firebase_ad_revenue_raw} - {adjust_ad_revenue_raw}, {adjust_ad_revenue_raw})
+  format:
+    type: percentage
+    decimals: 0
+- name: applovin_minus_adjust_ad_revenue_usd
+  expression: ROUND({applovin_ad_revenue_raw} - {adjust_ad_revenue_raw}, 2)
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+- name: applovin_vs_adjust_diff_pct
+  expression: SAFE_DIVIDE({applovin_ad_revenue_raw} - {adjust_ad_revenue_raw}, {adjust_ad_revenue_raw})
+  format:
+    type: percentage
+    decimals: 0
+- name: ad_gap_rank
+  expression: GREATEST(ABS({firebase_ad_revenue_raw} - {adjust_ad_revenue_raw}), ABS({applovin_ad_revenue_raw} -
+    {adjust_ad_revenue_raw}))
+  format:
+    type: currency
+    decimals: 2
+    currency: USD
+segments:
+- name: attributed
+  filter: is_attributed
+- name: has_ad_gap
+  filter: GREATEST(ABS({firebase_ad_revenue_raw} - {adjust_ad_revenue_raw}), ABS({applovin_ad_revenue_raw} - {adjust_ad_revenue_raw}))
+    > 0
+checks:
+- name: full_period_distinct_users
+  query:
+    metrics:
+    - fb_users
+    - aj_users
+    - al_users
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '2026-09-06'
+        end: '2026-10-05'
+  value:
+    fb_users: 890
+    aj_users: 890
+    al_users: 810
+- name: narrow_period_distinct_users
+  query:
+    metrics:
+    - fb_users
+    - aj_users
+    - al_users
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '2026-09-20'
+        end: '2026-09-23'
+  value:
+    fb_users: 678
+    aj_users: 689
+    al_users: 618
+- name: single_period_distinct_users
+  query:
+    metrics:
+    - fb_users
+    - aj_users
+    - al_users
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '2026-09-21'
+        end: '2026-09-21'
+  value:
+    fb_users: 471
+    aj_users: 453
+    al_users: 428
+- name: unattributed_bucket_excluded_from_users
+  query:
+    metrics:
+    - users
+    filters:
+    - dimension: is_attributed
+      operator: equals
+      value: false
+  value: 0
+- name: one_row_per_user_day
+  query:
+    dimensions:
+    - name: dt
+    - name: user_hash
+    metrics:
+    - comparison_rows
+    filters:
+    - expression: '{comparison_rows} != 1'
+  count: 0

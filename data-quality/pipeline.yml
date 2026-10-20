@@ -1,0 +1,18 @@
+name: data-quality
+schedule: daily
+start_date: '2026-09-06'
+default_connections:
+  google_cloud_platform: bruin-playground-arsalan
+variables:
+  fixture_start:
+    type: string
+    default: '2026-09-06'
+  fixture_end:
+    type: string
+    default: '2026-10-05'
+  firebase_drop_start:
+    type: string
+    default: '2026-09-21'
+  firebase_drop_end:
+    type: string
+    default: '2026-09-22'

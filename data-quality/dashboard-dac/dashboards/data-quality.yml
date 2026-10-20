@@ -1,0 +1,1788 @@
+connection: bruin-playground-arsalan
+description: Data Quality — Source Metric Comparison (DUMMY DATA). Semantic metrics over the same deterministic
+  user/day fixture; inclusive date filters.
+filters:
+- default: '2026-09-06'
+  name: start_date
+  type: date
+- default: '2026-10-05'
+  name: end_date
+  type: date
+name: Data Quality
+rows:
+- tab: Overview
+  widgets:
+  - col: 12
+    columns:
+    - frozen: true
+      label: Metric
+      name: metric
+    - label: Unit
+      name: unit
+    - align: right
+      label: Firebase
+      name: firebase
+      number: ',.2f'
+    - align: right
+      label: Adjust
+      name: adjust
+      number: ',.2f'
+    - align: right
+      label: AppLovin
+      name: applovin
+      number: ',.2f'
+    - align: right
+      format:
+      - if: is_empty
+        textColor: '#999999'
+      - bold: true
+        if: is_not_between
+        textColor: '#D55E00'
+        value:
+        - -0.05
+        - 0.05
+      - textColor: '#0072B2'
+      label: Firebase vs Adjust (%)
+      name: firebase_vs_adjust_diff_pct
+      number: +.1%
+    - align: right
+      format:
+      - if: is_empty
+        textColor: '#999999'
+      - bold: true
+        if: is_not_between
+        textColor: '#D55E00'
+        value:
+        - -0.05
+        - 0.05
+      - textColor: '#0072B2'
+      label: AppLovin vs Adjust (%)
+      name: applovin_vs_adjust_diff_pct
+      number: +.1%
+    id: t_overview_summary
+    name: Overview Summary
+    type: table
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    model: data_quality_comparisons
+    dimensions:
+    - name: metric
+    - name: unit
+    metrics:
+    - firebase
+    - adjust
+    - applovin
+    - firebase_vs_adjust_diff_pct
+    - applovin_vs_adjust_diff_pct
+    segments:
+    - overview
+- tab: Overview
+  widgets:
+  - id: c_presence_user_days_header
+    name: Users by Source Presence context
+    type: text
+    col: 12
+    content: '# Users by Source Presence
+
+
+      **Users are counted once within the selected interval. Source membership is fixed in this fixture.**
+
+
+      **Encoding:** X = Source presence; Y = Users. users: #0072B2, solid.'
+- tab: Overview
+  height: 420px
+  widgets:
+  - chart: bar
+    col: 12
+    horizontal: true
+    id: c_presence_user_days
+    name: Users by Source Presence
+    series:
+      users:
+        color: '#0072B2'
+    type: chart
+    x:
+      field: presence_bucket
+      title: Source presence
+      type: category
+    y:
+      beginAtZero: true
+      curve: straight
+      field:
+      - users
+      format: ',.0f'
+      markers: false
+      title: Users
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: presence_bucket
+    metrics:
+    - users
+    segments:
+    - attributed
+    sort:
+    - name: users
+      direction: desc
+    - name: presence_bucket
+      direction: asc
+- tab: Overview
+  widgets:
+  - id: c_presence_user_days_footnote
+    name: Users by Source Presence sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Overview
+  widgets:
+  - id: c_daily_source_users_header
+    name: Daily Users by Source context
+    type: text
+    col: 12
+    content: '# Daily Users by Source
+
+
+      **Daily distinct users are calculated independently; period totals count each user once.**
+
+
+      **Encoding:** X = Date; Y = Users. aj_users: #E69F00, dashed; al_users: #009E73, dotted; fb_users: #0072B2,
+      solid.'
+- tab: Overview
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_source_users
+    name: Daily Users by Source
+    series:
+      aj_users:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      al_users:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+      fb_users:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_users
+      - aj_users
+      - al_users
+      format: ',.0f'
+      markers: false
+      title: Users
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_users
+    - aj_users
+    - al_users
+    sort:
+    - name: dt
+      direction: asc
+- tab: Overview
+  widgets:
+  - id: c_daily_source_users_footnote
+    name: Daily Users by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - col: 12
+    columns:
+    - frozen: true
+      label: Metric
+      name: metric
+    - label: Unit
+      name: unit
+    - align: right
+      label: Firebase
+      name: firebase
+      number: ',.2f'
+    - align: right
+      label: Adjust
+      name: adjust
+      number: ',.2f'
+    - align: right
+      label: AppLovin
+      name: applovin
+      number: ',.2f'
+    - align: right
+      format:
+      - if: is_empty
+        textColor: '#999999'
+      - bold: true
+        if: is_not_between
+        textColor: '#D55E00'
+        value:
+        - -0.05
+        - 0.05
+      - textColor: '#0072B2'
+      label: Firebase vs Adjust (%)
+      name: firebase_vs_adjust_diff_pct
+      number: +.1%
+    - align: right
+      format:
+      - if: is_empty
+        textColor: '#999999'
+      - bold: true
+        if: is_not_between
+        textColor: '#D55E00'
+        value:
+        - -0.05
+        - 0.05
+      - textColor: '#0072B2'
+      label: AppLovin vs Adjust (%)
+      name: applovin_vs_adjust_diff_pct
+      number: +.1%
+    id: t_revenue_source_comparison
+    name: Revenue Source Comparison
+    type: table
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    model: data_quality_comparisons
+    dimensions:
+    - name: metric
+    - name: unit
+    metrics:
+    - firebase
+    - adjust
+    - applovin
+    - firebase_vs_adjust_diff_pct
+    - applovin_vs_adjust_diff_pct
+    segments:
+    - revenue
+- tab: Revenue
+  widgets:
+  - id: c_daily_ad_revenue_header
+    name: Daily Ad Revenue by Source context
+    type: text
+    col: 12
+    content: '# Daily Ad Revenue by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = USD. aj_ad_rev: #E69F00, dashed; al_ad_rev: #009E73, dotted; fb_ad_rev: #0072B2,
+      solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_ad_revenue
+    name: Daily Ad Revenue by Source
+    series:
+      aj_ad_rev:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      al_ad_rev:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+      fb_ad_rev:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_ad_rev
+      - aj_ad_rev
+      - al_ad_rev
+      format: $,.2f
+      markers: false
+      title: USD
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_ad_rev
+    - aj_ad_rev
+    - al_ad_rev
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_daily_ad_revenue_footnote
+    name: Daily Ad Revenue by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - id: c_daily_ad_impressions_header
+    name: Daily Ad Impressions by Source context
+    type: text
+    col: 12
+    content: '# Daily Ad Impressions by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_ad_impressions: #E69F00, dashed; al_ad_impressions: #009E73, dotted;
+      fb_ad_impressions: #0072B2, solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_ad_impressions
+    name: Daily Ad Impressions by Source
+    series:
+      aj_ad_impressions:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      al_ad_impressions:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+      fb_ad_impressions:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_ad_impressions
+      - aj_ad_impressions
+      - al_ad_impressions
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_ad_impressions
+    - aj_ad_impressions
+    - al_ad_impressions
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_daily_ad_impressions_footnote
+    name: Daily Ad Impressions by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - id: c_daily_iap_revenue_header
+    name: Daily IAP Revenue by Source context
+    type: text
+    col: 12
+    content: '# Daily IAP Revenue by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = USD. aj_iap_rev: #E69F00, dashed; fb_iap_rev: #0072B2, solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_iap_revenue
+    name: Daily IAP Revenue by Source
+    series:
+      aj_iap_rev:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      fb_iap_rev:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_iap_rev
+      - aj_iap_rev
+      format: $,.2f
+      markers: false
+      title: USD
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_iap_rev
+    - aj_iap_rev
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_daily_iap_revenue_footnote
+    name: Daily IAP Revenue by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - id: c_daily_iap_purchases_header
+    name: Daily IAP Purchases by Source context
+    type: text
+    col: 12
+    content: '# Daily IAP Purchases by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_iap_count: #E69F00, dashed; fb_iap_count: #0072B2, solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_iap_purchases
+    name: Daily IAP Purchases by Source
+    series:
+      aj_iap_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      fb_iap_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_iap_count
+      - aj_iap_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_iap_count
+    - aj_iap_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_daily_iap_purchases_footnote
+    name: Daily IAP Purchases by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - id: c_ad_revenue_by_format_header
+    name: Interstitial Ad Revenue by Source context
+    type: text
+    col: 12
+    content: '# Interstitial Ad Revenue by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = USD. aj_ad_inter_rev: #E69F00, dashed; al_ad_inter_rev: #009E73, dotted; fb_ad_inter_rev:
+      #0072B2, solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_ad_revenue_by_format
+    name: Interstitial Ad Revenue by Source
+    series:
+      aj_ad_inter_rev:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      al_ad_inter_rev:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+      fb_ad_inter_rev:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_ad_inter_rev
+      - aj_ad_inter_rev
+      - al_ad_inter_rev
+      format: $,.2f
+      markers: false
+      title: USD
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_ad_inter_rev
+    - aj_ad_inter_rev
+    - al_ad_inter_rev
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_ad_revenue_by_format_footnote
+    name: Interstitial Ad Revenue by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - id: c_applovin_ad_revenue_by_format_header
+    name: Rewarded Ad Revenue by Source context
+    type: text
+    col: 12
+    content: '# Rewarded Ad Revenue by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = USD. aj_ad_rewarded_rev: #E69F00, dashed; al_ad_rewarded_rev: #009E73, dotted;
+      fb_ad_rewarded_rev: #0072B2, solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_applovin_ad_revenue_by_format
+    name: Rewarded Ad Revenue by Source
+    series:
+      aj_ad_rewarded_rev:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      al_ad_rewarded_rev:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+      fb_ad_rewarded_rev:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_ad_rewarded_rev
+      - aj_ad_rewarded_rev
+      - al_ad_rewarded_rev
+      format: $,.2f
+      markers: false
+      title: USD
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_ad_rewarded_rev
+    - aj_ad_rewarded_rev
+    - al_ad_rewarded_rev
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_applovin_ad_revenue_by_format_footnote
+    name: Rewarded Ad Revenue by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - id: c_ad_impressions_by_format_header
+    name: Interstitial Ad Impressions by Source context
+    type: text
+    col: 12
+    content: '# Interstitial Ad Impressions by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_ad_inter_count: #E69F00, dashed; al_ad_inter_count: #009E73, dotted;
+      fb_ad_inter_count: #0072B2, solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_ad_impressions_by_format
+    name: Interstitial Ad Impressions by Source
+    series:
+      aj_ad_inter_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      al_ad_inter_count:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+      fb_ad_inter_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_ad_inter_count
+      - aj_ad_inter_count
+      - al_ad_inter_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_ad_inter_count
+    - aj_ad_inter_count
+    - al_ad_inter_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_ad_impressions_by_format_footnote
+    name: Interstitial Ad Impressions by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Revenue
+  widgets:
+  - id: c_applovin_ad_impressions_by_format_header
+    name: Rewarded Ad Impressions by Source context
+    type: text
+    col: 12
+    content: '# Rewarded Ad Impressions by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_ad_rewarded_count: #E69F00, dashed; al_ad_rewarded_count: #009E73, dotted;
+      fb_ad_rewarded_count: #0072B2, solid.'
+- tab: Revenue
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_applovin_ad_impressions_by_format
+    name: Rewarded Ad Impressions by Source
+    series:
+      aj_ad_rewarded_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      al_ad_rewarded_count:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+      fb_ad_rewarded_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_ad_rewarded_count
+      - aj_ad_rewarded_count
+      - al_ad_rewarded_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_ad_rewarded_count
+    - aj_ad_rewarded_count
+    - al_ad_rewarded_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Revenue
+  widgets:
+  - id: c_applovin_ad_impressions_by_format_footnote
+    name: Rewarded Ad Impressions by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Events
+  widgets:
+  - col: 12
+    columns:
+    - frozen: true
+      label: Metric
+      name: metric
+    - label: Unit
+      name: unit
+    - align: right
+      label: Firebase
+      name: firebase
+      number: ',.2f'
+    - align: right
+      label: Adjust
+      name: adjust
+      number: ',.2f'
+    - align: right
+      label: AppLovin
+      name: applovin
+      number: ',.2f'
+    - align: right
+      format:
+      - if: is_empty
+        textColor: '#999999'
+      - bold: true
+        if: is_not_between
+        textColor: '#D55E00'
+        value:
+        - -0.05
+        - 0.05
+      - textColor: '#0072B2'
+      label: Firebase vs Adjust (%)
+      name: firebase_vs_adjust_diff_pct
+      number: +.1%
+    - align: right
+      format:
+      - if: is_empty
+        textColor: '#999999'
+      - bold: true
+        if: is_not_between
+        textColor: '#D55E00'
+        value:
+        - -0.05
+        - 0.05
+      - textColor: '#0072B2'
+      label: AppLovin vs Adjust (%)
+      name: applovin_vs_adjust_diff_pct
+      number: +.1%
+    - name: comparison_gap_rank
+      hidden: true
+    id: t_event_metric_summary
+    name: Event Metric Summary
+    type: table
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    model: data_quality_comparisons
+    dimensions:
+    - name: metric
+    - name: unit
+    metrics:
+    - firebase
+    - adjust
+    - applovin
+    - firebase_vs_adjust_diff_pct
+    - applovin_vs_adjust_diff_pct
+    - comparison_gap_rank
+    segments:
+    - events
+    sort:
+    - name: comparison_gap_rank
+      direction: desc
+- tab: Events
+  widgets:
+  - id: c_daily_play_on_by_source_header
+    name: Daily Play-On Accepts by Source context
+    type: text
+    col: 12
+    content: '# Daily Play-On Accepts by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_play_on_count: #E69F00, dashed; fb_play_on_count: #0072B2, solid.'
+- tab: Events
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_play_on_by_source
+    name: Daily Play-On Accepts by Source
+    series:
+      aj_play_on_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      fb_play_on_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_play_on_count
+      - aj_play_on_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_play_on_count
+    - aj_play_on_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Events
+  widgets:
+  - id: c_daily_play_on_by_source_footnote
+    name: Daily Play-On Accepts by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Events
+  widgets:
+  - id: c_daily_booster_use_by_source_header
+    name: Daily Booster Use by Source context
+    type: text
+    col: 12
+    content: '# Daily Booster Use by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_booster_use_count: #E69F00, dashed; fb_booster_use_count: #0072B2, solid.'
+- tab: Events
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_booster_use_by_source
+    name: Daily Booster Use by Source
+    series:
+      aj_booster_use_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      fb_booster_use_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_booster_use_count
+      - aj_booster_use_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_booster_use_count
+    - aj_booster_use_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Events
+  widgets:
+  - id: c_daily_booster_use_by_source_footnote
+    name: Daily Booster Use by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Events
+  widgets:
+  - id: c_daily_shop_views_by_source_header
+    name: Daily Shop Views by Source context
+    type: text
+    col: 12
+    content: '# Daily Shop Views by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_shop_view_count: #E69F00, dashed; fb_shop_view_count: #0072B2, solid.'
+- tab: Events
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_shop_views_by_source
+    name: Daily Shop Views by Source
+    series:
+      aj_shop_view_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      fb_shop_view_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_shop_view_count
+      - aj_shop_view_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_shop_view_count
+    - aj_shop_view_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Events
+  widgets:
+  - id: c_daily_shop_views_by_source_footnote
+    name: Daily Shop Views by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Events
+  widgets:
+  - id: c_daily_sessions_by_source_header
+    name: Daily Sessions by Source context
+    type: text
+    col: 12
+    content: '# Daily Sessions by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_session_count: #E69F00, dashed; fb_session_count: #0072B2, solid.'
+- tab: Events
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_sessions_by_source
+    name: Daily Sessions by Source
+    series:
+      aj_session_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      fb_session_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_session_count
+      - aj_session_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_session_count
+    - aj_session_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Events
+  widgets:
+  - id: c_daily_sessions_by_source_footnote
+    name: Daily Sessions by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Events
+  widgets:
+  - id: c_daily_installs_by_source_header
+    name: Daily Installs by Source context
+    type: text
+    col: 12
+    content: '# Daily Installs by Source
+
+
+      **The fixture includes 3 simulated sources; Firebase ad capture is reduced by 35% on September 21–22. The
+      selected dates control the comparison.**
+
+
+      **Encoding:** X = Date; Y = Count. aj_install_count: #E69F00, dashed; fb_install_count: #0072B2, solid.'
+- tab: Events
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_installs_by_source
+    name: Daily Installs by Source
+    series:
+      aj_install_count:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      fb_install_count:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - fb_install_count
+      - aj_install_count
+      format: ',.0f'
+      markers: false
+      title: Count
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_install_count
+    - aj_install_count
+    sort:
+    - name: dt
+      direction: asc
+- tab: Events
+  widgets:
+  - id: c_daily_installs_by_source_footnote
+    name: Daily Installs by Source sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Gaps
+  widgets:
+  - id: c_daily_ad_revenue_ratio_header
+    name: Daily Ad Revenue Source Ratio context
+    type: text
+    col: 12
+    content: '# Daily Ad Revenue Source Ratio
+
+
+      **A ratio of 1.00 means parity with Adjust. Ratios divide aggregate source totals; they are not averages of
+      user ratios.**
+
+
+      **Encoding:** X = Date; Y = Ratio (%). applovin_adjust_ad_ratio: #E69F00, dashed; firebase_adjust_ad_ratio:
+      #0072B2, solid.'
+- tab: Gaps
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_ad_revenue_ratio
+    name: Daily Ad Revenue Source Ratio
+    refLines:
+    - axis: y
+      value: 1
+      label: Parity with Adjust (1.00)
+    series:
+      applovin_adjust_ad_ratio:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      firebase_adjust_ad_ratio:
+        color: '#0072B2'
+        curve: straight
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - firebase_adjust_ad_ratio
+      - applovin_adjust_ad_ratio
+      format: .0%
+      markers: false
+      title: Ratio (%)
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - firebase_adjust_ad_ratio
+    - applovin_adjust_ad_ratio
+    sort:
+    - name: dt
+      direction: asc
+- tab: Gaps
+  widgets:
+  - id: c_daily_ad_revenue_ratio_footnote
+    name: Daily Ad Revenue Source Ratio sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Gaps
+  widgets:
+  - id: c_daily_event_match_ratio_header
+    name: Daily Firebase / Adjust Event Ratio context
+    type: text
+    col: 12
+    content: '# Daily Firebase / Adjust Event Ratio
+
+
+      **A ratio of 1.00 means parity with Adjust. Ratios divide aggregate source totals; they are not averages of
+      user ratios.**
+
+
+      **Encoding:** X = Date; Y = Ratio (%). booster_use_count_ratio: #E69F00, dashed; install_count_ratio: #CC79A7,
+      dashed; play_on_count_ratio: #0072B2, solid; session_count_ratio: #D55E00, long-dash; shop_view_count_ratio:
+      #009E73, dotted.'
+- tab: Gaps
+  height: 420px
+  widgets:
+  - chart: line
+    col: 12
+    id: c_daily_event_match_ratio
+    name: Daily Firebase / Adjust Event Ratio
+    refLines:
+    - axis: y
+      value: 1
+      label: Parity with Adjust (1.00)
+    series:
+      booster_use_count_ratio:
+        color: '#E69F00'
+        curve: straight
+        dash: dashed
+      install_count_ratio:
+        color: '#CC79A7'
+        curve: straight
+        dash: dashed
+      play_on_count_ratio:
+        color: '#0072B2'
+        curve: straight
+      session_count_ratio:
+        color: '#D55E00'
+        curve: straight
+        dash: long-dash
+      shop_view_count_ratio:
+        color: '#009E73'
+        curve: straight
+        dash: dotted
+    type: chart
+    x:
+      field: dt
+      format: '%b %d'
+      title: Date
+      type: date
+    y:
+      beginAtZero: false
+      curve: straight
+      field:
+      - play_on_count_ratio
+      - booster_use_count_ratio
+      - shop_view_count_ratio
+      - session_count_ratio
+      - install_count_ratio
+      format: .0%
+      markers: false
+      title: Ratio (%)
+      type: number
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - play_on_count_ratio
+    - booster_use_count_ratio
+    - shop_view_count_ratio
+    - session_count_ratio
+    - install_count_ratio
+    sort:
+    - name: dt
+      direction: asc
+- tab: Gaps
+  widgets:
+  - id: c_daily_event_match_ratio_footnote
+    name: Daily Firebase / Adjust Event Ratio sources
+    type: text
+    col: 12
+    content: '**Sources:** **[Data Quality synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality)**,
+      reproduced from dashboard 1135; no external data or source license applies.
+
+
+      **Tools:** **Bruin cli** (pipeline), **BigQuery** (warehouse), **Bruin dac** (visualization).
+
+
+      **Limitations:** DUMMY DATA, not production Firebase/Adjust/AppLovin. Fixed September 6–October 5, 2026 fixture;
+      outside dates return no observations. Unattributed AppLovin revenue is included in totals, excluded from user
+      counts.'
+- tab: Gaps
+  widgets:
+  - col: 12
+    id: t_top_user_day_ad_rev_gaps
+    name: Top User-Day Ad Revenue Gaps (USD)
+    type: table
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    - name: user_hash
+    - name: in_firebase
+    - name: in_adjust
+    - name: in_applovin
+    segments:
+    - attributed
+    metrics:
+    - firebase_ad_revenue_usd
+    - adjust_ad_revenue_usd
+    - applovin_ad_revenue_usd
+    - firebase_minus_adjust_ad_revenue_usd
+    - applovin_minus_adjust_ad_revenue_usd
+    - ad_gap_rank
+    sort:
+    - name: ad_gap_rank
+      direction: desc
+    - name: dt
+      direction: asc
+    - name: user_hash
+      direction: asc
+    limit: 50
+    columns:
+    - name: dt
+    - name: user_hash
+    - name: in_firebase
+    - name: in_adjust
+    - name: in_applovin
+    - name: firebase_ad_revenue_usd
+    - name: adjust_ad_revenue_usd
+    - name: applovin_ad_revenue_usd
+    - name: firebase_minus_adjust_ad_revenue_usd
+    - name: applovin_minus_adjust_ad_revenue_usd
+    - name: ad_gap_rank
+      hidden: true
+- tab: Gaps
+  widgets:
+  - col: 12
+    id: t_top_user_ad_rev_gaps
+    name: Top User Ad Revenue Gaps by Hash (USD)
+    type: table
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: user_hash
+    - name: source_presence
+    - name: in_firebase
+    - name: in_adjust
+    - name: in_applovin
+    segments:
+    - attributed
+    - has_ad_gap
+    metrics:
+    - user_days
+    - firebase_user_days
+    - adjust_user_days
+    - applovin_user_days
+    - firebase_ad_revenue_usd
+    - adjust_ad_revenue_usd
+    - applovin_ad_revenue_usd
+    - firebase_minus_adjust_ad_revenue_usd
+    - applovin_minus_adjust_ad_revenue_usd
+    - firebase_vs_adjust_diff_pct
+    - applovin_vs_adjust_diff_pct
+    - firebase_ad_impressions
+    - adjust_ad_impressions
+    - applovin_ad_impressions
+    - ad_gap_rank
+    sort:
+    - name: ad_gap_rank
+      direction: desc
+    - name: user_hash
+      direction: asc
+    limit: 50
+    columns:
+    - name: user_hash
+    - name: source_presence
+    - name: in_firebase
+    - name: in_adjust
+    - name: in_applovin
+    - name: user_days
+    - name: firebase_user_days
+    - name: adjust_user_days
+    - name: applovin_user_days
+    - name: firebase_ad_revenue_usd
+    - name: adjust_ad_revenue_usd
+    - name: applovin_ad_revenue_usd
+    - name: firebase_minus_adjust_ad_revenue_usd
+    - name: applovin_minus_adjust_ad_revenue_usd
+    - name: firebase_vs_adjust_diff_pct
+    - name: applovin_vs_adjust_diff_pct
+    - name: firebase_ad_impressions
+    - name: adjust_ad_impressions
+    - name: applovin_ad_impressions
+    - name: ad_gap_rank
+      hidden: true
+- tab: Daily Detail
+  widgets:
+  - col: 12
+    columns:
+    - frozen: true
+      label: Date
+      name: dt
+    - label: Firebase users
+      name: fb_users
+      number: ',.0f'
+    - label: Adjust users
+      name: aj_users
+      number: ',.0f'
+    - label: AppLovin mapped users
+      name: al_users
+      number: ',.0f'
+    - label: All-source identity days
+      name: all_sources_user_days
+      number: ',.0f'
+    - label: Firebase ad revenue (USD)
+      name: fb_ad_rev
+      number: $,.2f
+    - label: Adjust ad revenue (USD)
+      name: aj_ad_rev
+      number: $,.2f
+    - label: AppLovin ad revenue (USD)
+      name: al_ad_rev
+      number: $,.2f
+    - label: Firebase IAP revenue (USD)
+      name: fb_iap_rev
+      number: $,.2f
+    - label: Adjust IAP revenue (USD)
+      name: aj_iap_rev
+      number: $,.2f
+    - label: Firebase ad impressions
+      name: fb_ad_impressions
+      number: ',.0f'
+    - label: Adjust ad impressions
+      name: aj_ad_impressions
+      number: ',.0f'
+    - label: AppLovin ad impressions
+      name: al_ad_impressions
+      number: ',.0f'
+    id: t_daily_source_rollup
+    name: Daily Source Rollup
+    type: table
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '{{ filters.start_date }}'
+        end: '{{ filters.end_date }}'
+    dimensions:
+    - name: dt
+    metrics:
+    - fb_users
+    - aj_users
+    - al_users
+    - all_sources_user_days
+    - fb_ad_rev
+    - aj_ad_rev
+    - al_ad_rev
+    - fb_iap_rev
+    - aj_iap_rev
+    - fb_ad_impressions
+    - aj_ad_impressions
+    - al_ad_impressions
+    sort:
+    - name: dt
+      direction: desc
+- widgets:
+  - id: methodology
+    name: Methodology
+    type: text
+    col: 12
+    content: '# Methodology
+
+
+      DUMMY DATA. The [synthetic fixture](https://github.com/arsalann/data_playground/tree/main/data-quality) preserves
+      dashboard 1135’s equations for 1,000 synthetic users plus a daily unattributed AppLovin bucket, September
+      6–October 5, 2026. Dates are inclusive.
+
+
+      User counts are COUNT DISTINCT over the selected period; daily counts must not be added to obtain period users.
+      The presence buckets are stable source memberships in this fixture. Revenue and events are additive; ratios
+      and percentage differences are calculated from unrounded aggregate totals, relative to Adjust. Division by
+      zero returns NULL. Unsupported AppLovin measurements remain NULL.
+
+
+      AppLovin unattributed revenue and impressions enter source totals but never user counts or gap tables. Gap
+      tables show the top 50 by the greatest absolute raw source revenue difference, breaking ties by date and user
+      hash. User-level gaps aggregate within the selected period before ranking.
+
+
+      All data-backed widgets reference repository semantic models; the dashboard contains no SQL or named query
+      definitions. Metrics and dimensions are defined in the shared semantic catalog. No inference about real source
+      quality can be made from this demo.'
+  tab: Daily Detail
+model: data_quality_user_days

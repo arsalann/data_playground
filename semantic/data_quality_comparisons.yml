@@ -1,0 +1,187 @@
+schema: v1
+name: data_quality_comparisons
+label: Data Quality metric comparisons (synthetic)
+description: Comparable source measurements in long form. User rows count distinct IDs over the filtered period;
+  all other rows sum source values. Unsupported AppLovin metrics remain NULL.
+source:
+  table: staging.data_quality_comparison_values
+  connection: bruin-playground-arsalan
+dimensions:
+- name: dt
+  type: time
+- name: metric
+  type: string
+- name: unit
+  type: string
+metrics:
+- name: firebase_raw
+  expression: CASE WHEN MAX(metric) = 'Users' THEN CAST(COUNT(DISTINCT IF(in_firebase AND is_attributed, user_pseudo_id,
+    NULL)) AS FLOAT64) ELSE SUM(firebase_value) END
+  hidden: true
+- name: firebase
+  expression: ROUND({firebase_raw}, 2)
+- name: adjust_raw
+  expression: CASE WHEN MAX(metric) = 'Users' THEN CAST(COUNT(DISTINCT IF(in_adjust AND is_attributed, user_pseudo_id,
+    NULL)) AS FLOAT64) ELSE SUM(adjust_value) END
+  hidden: true
+- name: adjust
+  expression: ROUND({adjust_raw}, 2)
+- name: applovin_raw
+  expression: CASE WHEN MAX(metric) = 'Users' THEN CAST(COUNT(DISTINCT IF(in_applovin AND is_attributed, user_pseudo_id,
+    NULL)) AS FLOAT64) ELSE SUM(applovin_value) END
+  hidden: true
+- name: applovin
+  expression: ROUND({applovin_raw}, 2)
+- name: firebase_vs_adjust_diff_pct
+  expression: SAFE_DIVIDE({firebase_raw} - {adjust_raw}, {adjust_raw})
+  format:
+    type: percentage
+    decimals: 1
+- name: applovin_vs_adjust_diff_pct
+  expression: SAFE_DIVIDE({applovin_raw} - {adjust_raw}, {adjust_raw})
+  format:
+    type: percentage
+    decimals: 1
+- name: comparison_gap_rank
+  expression: GREATEST(COALESCE(ABS({firebase_vs_adjust_diff_pct}), 0), COALESCE(ABS({applovin_vs_adjust_diff_pct}),
+    0))
+  hidden: true
+segments:
+- name: overview
+  filter: metric IN ('Users', 'IAP Revenue', 'IAP Purchases', 'Ad Revenue', 'Ad Impressions')
+- name: revenue
+  filter: metric IN ('IAP Revenue', 'Ad Revenue')
+- name: events
+  filter: metric IN ('IAP Revenue', 'IAP Purchases', 'Ad Revenue', 'Interstitial Ad Revenue', 'Rewarded Ad Revenue',
+    'Ad Impressions', 'Interstitial Impressions', 'Rewarded Impressions', 'Play-On Accepts', 'Booster Use', 'Shop
+    Views', 'Sessions', 'Installs')
+checks:
+- name: full_overview_matches_original
+  query:
+    dimensions:
+    - name: metric
+    - name: unit
+    metrics:
+    - firebase
+    - adjust
+    - applovin
+    segments:
+    - overview
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '2026-09-06'
+        end: '2026-10-05'
+  value:
+  - metric: Users
+    unit: count
+    firebase: 890
+    adjust: 890
+    applovin: 810
+  - metric: IAP Revenue
+    unit: USD
+    firebase: 3418.25
+    adjust: 3381.92
+    applovin: null
+  - metric: IAP Purchases
+    unit: count
+    firebase: 699
+    adjust: 721
+    applovin: null
+  - metric: Ad Revenue
+    unit: USD
+    firebase: 12440.03
+    adjust: 12184.2
+    applovin: 12725.44
+  - metric: Ad Impressions
+    unit: count
+    firebase: 229461
+    adjust: 222392
+    applovin: 225451
+- name: narrow_overview_matches_original
+  query:
+    dimensions:
+    - name: metric
+    - name: unit
+    metrics:
+    - firebase
+    - adjust
+    - applovin
+    segments:
+    - overview
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '2026-09-20'
+        end: '2026-09-23'
+  value:
+  - metric: Users
+    unit: count
+    firebase: 678
+    adjust: 689
+    applovin: 618
+  - metric: IAP Revenue
+    unit: USD
+    firebase: 464.57
+    adjust: 459.68
+    applovin: null
+  - metric: IAP Purchases
+    unit: count
+    firebase: 95
+    adjust: 98
+    applovin: null
+  - metric: Ad Revenue
+    unit: USD
+    firebase: 1411.44
+    adjust: 1638.9
+    applovin: 1731.2
+  - metric: Ad Impressions
+    unit: count
+    firebase: 25793
+    adjust: 29917
+    applovin: 30662
+- name: single_overview_matches_original
+  query:
+    dimensions:
+    - name: metric
+    - name: unit
+    metrics:
+    - firebase
+    - adjust
+    - applovin
+    segments:
+    - overview
+    filters:
+    - dimension: dt
+      operator: between
+      value:
+        start: '2026-09-21'
+        end: '2026-09-21'
+  value:
+  - metric: Users
+    unit: count
+    firebase: 471
+    adjust: 453
+    applovin: 428
+  - metric: IAP Revenue
+    unit: USD
+    firebase: 107.58
+    adjust: 112.57
+    applovin: null
+  - metric: IAP Purchases
+    unit: count
+    firebase: 22
+    adjust: 24
+    applovin: null
+  - metric: Ad Revenue
+    unit: USD
+    firebase: 287.62
+    adjust: 409.51
+    applovin: 441
+  - metric: Ad Impressions
+    unit: count
+    firebase: 5196
+    adjust: 7491
+    applovin: 7830
